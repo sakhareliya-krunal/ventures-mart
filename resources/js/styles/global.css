@@ -1,0 +1,278 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+main {
+  min-height: 60vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.eyebrow {
+  color: var(--color-primary-dark);
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin-bottom: 0.6rem;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-sans);
+  line-height: 1.05;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.4rem, 6vw, 5.25rem);
+}
+
+h2 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+p {
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.page-section {
+  margin: 0 auto;
+  max-width: var(--container);
+  padding: 3rem 1rem;
+}
+
+.page-section--tinted {
+  background: var(--color-soft-2);
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+}
+
+.section-header,
+.page-title-row {
+  align-items: end;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.section-header p,
+.page-title-row p {
+  max-width: 600px;
+}
+
+.section-header a {
+  color: var(--color-primary-dark);
+  font-weight: 900;
+}
+
+.price {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.price strong {
+  color: var(--color-ink);
+}
+
+.price span {
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  text-decoration: line-through;
+}
+
+.price--large {
+  align-items: baseline;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.price--large strong {
+  font-size: 2rem;
+}
+
+.check-list {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.check-list li::before {
+  color: var(--color-success);
+  content: "✓ ";
+  font-weight: 900;
+}
+
+.stock-note {
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.full-width {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+
+.skeleton-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.skeleton-card__media,
+.skeleton-card__line {
+  animation: shimmer 1.4s ease infinite;
+  background: linear-gradient(
+    90deg,
+    var(--color-background) 25%,
+    var(--color-border) 50%,
+    var(--color-background) 75%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-card__media {
+  aspect-ratio: 1;
+}
+
+.skeleton-card__body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.skeleton-card__line {
+  border-radius: 6px;
+  height: 0.85rem;
+}
+
+.skeleton-card__line--title {
+  height: 1.1rem;
+  width: 70%;
+}
+
+.skeleton-card__line--short {
+  width: 40%;
+}
+
+.breadcrumb {
+  margin-bottom: 1.15rem;
+}
+
+.breadcrumb__list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb__item {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.2rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.breadcrumb__link {
+  color: rgba(28, 44, 76, 0.62);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: color 160ms ease;
+  white-space: nowrap;
+}
+
+.breadcrumb__link:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumb__current {
+  color: var(--color-ink);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  max-width: min(52vw, 18rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumb__sep {
+  color: rgba(28, 44, 76, 0.35);
+  flex-shrink: 0;
+}
+
+@media (min-width: 721px) {
+  .breadcrumb__current {
+    max-width: min(40vw, 28rem);
+  }
+}
+
+@media (max-width: 720px) {
+  h1 {
+    font-size: 2.45rem;
+  }
+
+  .page-section {
+    padding-block: 2rem;
+  }
+
+  .section-header,
+  .page-title-row {
+    align-items: start;
+    display: grid;
+  }
+}

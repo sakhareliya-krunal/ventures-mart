@@ -1,0 +1,241 @@
+import { createRouter, createWebHistory } from 'vue-router';
+import MainLayout from '@/layouts/MainLayout.vue';
+import AdminLayout from '@/layouts/AdminLayout.vue';
+import { useAuthStore } from '@/stores/auth';
+
+const router = createRouter({
+  history: createWebHistory(),
+  scrollBehavior() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return { top: 0, behavior: reduced ? 'auto' : 'smooth' };
+  },
+  routes: [
+    {
+      path: '/',
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: () => import('@/pages/HomePage.vue'),
+        },
+        {
+          path: 'shop',
+          name: 'shop',
+          component: () => import('@/pages/ShopPage.vue'),
+        },
+        {
+          path: 'category/:slug',
+          name: 'category',
+          component: () => import('@/pages/CategoryPage.vue'),
+        },
+        {
+          path: 'product/:slug',
+          name: 'product',
+          component: () => import('@/pages/ProductPage.vue'),
+        },
+        {
+          path: 'search',
+          name: 'search',
+          component: () => import('@/pages/SearchPage.vue'),
+        },
+        {
+          path: 'wishlist',
+          name: 'wishlist',
+          component: () => import('@/pages/WishlistPage.vue'),
+        },
+        {
+          path: 'cart',
+          name: 'cart',
+          component: () => import('@/pages/CartPage.vue'),
+        },
+        {
+          path: 'checkout',
+          name: 'checkout',
+          component: () => import('@/pages/CheckoutPage.vue'),
+        },
+        {
+          path: 'login',
+          name: 'login',
+          component: () => import('@/pages/LoginPage.vue'),
+        },
+        {
+          path: 'register',
+          name: 'register',
+          component: () => import('@/pages/RegisterPage.vue'),
+        },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/pages/ProfilePage.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'orders',
+          name: 'orders',
+          component: () => import('@/pages/OrdersPage.vue'),
+        },
+        {
+          path: 'contact',
+          name: 'contact',
+          component: () => import('@/pages/ContactPage.vue'),
+        },
+        {
+          path: 'about',
+          name: 'about',
+          component: () => import('@/pages/AboutPage.vue'),
+        },
+        {
+          path: 'privacy-policy',
+          name: 'privacy',
+          component: () => import('@/pages/PrivacyPage.vue'),
+        },
+        {
+          path: 'terms',
+          name: 'terms',
+          component: () => import('@/pages/TermsPage.vue'),
+        },
+        {
+          path: 'shipping',
+          name: 'shipping',
+          component: () => import('@/pages/ShippingPage.vue'),
+        },
+        {
+          path: 'returns',
+          name: 'returns',
+          component: () => import('@/pages/ReturnsPage.vue'),
+        },
+        {
+          path: 'payments',
+          name: 'payments',
+          component: () => import('@/pages/PaymentsPage.vue'),
+        },
+        {
+          path: 'blog',
+          name: 'blog',
+          component: () => import('@/pages/BlogIndexPage.vue'),
+        },
+        {
+          path: 'blog/:slug',
+          name: 'blog-post',
+          component: () => import('@/pages/BlogPostPage.vue'),
+        },
+      ],
+    },
+    {
+      path: '/admin',
+      component: AdminLayout,
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [
+        {
+          path: '',
+          name: 'admin-dashboard',
+          component: () => import('@/pages/admin/AdminDashboardPage.vue'),
+          meta: { title: 'Dashboard' },
+        },
+        {
+          path: 'orders',
+          name: 'admin-orders',
+          component: () => import('@/pages/admin/AdminOrdersPage.vue'),
+          meta: { title: 'Orders' },
+        },
+        {
+          path: 'orders/:id',
+          name: 'admin-order-detail',
+          component: () => import('@/pages/admin/AdminOrderDetailPage.vue'),
+          meta: { title: 'Order detail' },
+        },
+        {
+          path: 'products',
+          name: 'admin-products',
+          component: () => import('@/pages/admin/AdminProductsPage.vue'),
+          meta: { title: 'Products' },
+        },
+        {
+          path: 'categories',
+          name: 'admin-categories',
+          component: () => import('@/pages/admin/AdminCategoriesPage.vue'),
+          meta: { title: 'Categories' },
+        },
+        {
+          path: 'posts',
+          name: 'admin-posts',
+          component: () => import('@/pages/admin/AdminPostsPage.vue'),
+          meta: { title: 'Blog posts' },
+        },
+        {
+          path: 'contacts',
+          name: 'admin-contacts',
+          component: () => import('@/pages/admin/AdminContactsPage.vue'),
+          meta: { title: 'Contact messages' },
+        },
+        {
+          path: 'customers',
+          name: 'admin-customers',
+          component: () => import('@/pages/admin/AdminUsersPage.vue'),
+          meta: { title: 'Customers' },
+        },
+        {
+          path: 'addresses',
+          name: 'admin-addresses',
+          component: () => import('@/pages/admin/AdminAddressesPage.vue'),
+          meta: { title: 'Addresses' },
+        },
+        {
+          path: 'account',
+          name: 'admin-account',
+          component: () => import('@/pages/admin/AdminAccountPage.vue'),
+          meta: { title: 'My account' },
+        },
+      ],
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'not-found',
+          component: () => import('@/pages/NotFoundPage.vue'),
+        },
+      ],
+    },
+  ],
+});
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore();
+  const needsAuth = to.matched.some((record) => record.meta.requiresAuth);
+  const needsAdmin = to.matched.some((record) => record.meta.requiresAdmin);
+  const isAdminRoute = to.path === '/admin' || to.path.startsWith('/admin/');
+  const isAuthPage = to.name === 'login' || to.name === 'register';
+
+  if (!auth.user && !auth.loading) {
+    await auth.fetchUser();
+  }
+
+  if (needsAuth || needsAdmin) {
+    if (!auth.user) {
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath },
+      };
+    }
+  }
+
+  if (needsAdmin && !auth.isAdmin) {
+    return { name: 'home' };
+  }
+
+  if (to.name === 'profile' && auth.isAdmin) {
+    return { name: 'admin-account' };
+  }
+
+  if (auth.isAdmin && !isAdminRoute && !isAuthPage) {
+    return { path: '/admin' };
+  }
+
+  return true;
+});
+
+export default router;

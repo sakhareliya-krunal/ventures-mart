@@ -1,0 +1,104 @@
+.page-hero {
+  background:
+    radial-gradient(circle at top right, rgba(232, 238, 248, 0.95), transparent 46%),
+    linear-gradient(180deg, #f7f9fd 0%, rgba(245, 247, 251, 0.55) 62%, transparent 100%);
+  border-bottom: 1px solid rgba(15, 40, 90, 0.06);
+  margin-bottom: 0.25rem;
+  padding-bottom: clamp(1.75rem, 3.5vw, 2.5rem);
+  padding-top: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.page-hero__inner {
+  align-items: end;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: space-between;
+}
+
+.page-hero__copy {
+  max-width: 42rem;
+  min-width: 0;
+}
+
+.page-hero__copy h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.1rem);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  margin: 0.2rem 0 0.75rem;
+}
+
+.page-hero__lead {
+  color: rgba(28, 44, 76, 0.82);
+  font-size: clamp(1.02rem, 2vw, 1.12rem);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 38rem;
+}
+
+.page-hero__meta {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  margin: 0.85rem 0 0;
+}
+
+.page-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.page-hero__aside {
+  color: rgba(28, 44, 76, 0.72);
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.page-hero__aside strong {
+  color: var(--color-ink);
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.page-hero--marketing .page-hero__copy h1 {
+  font-size: clamp(2.35rem, 5vw, 3.35rem);
+}
+
+.page-hero--catalog .page-hero__inner {
+  width: 100%;
+}
+
+.page-hero--catalog .page-hero__copy {
+  max-width: 36rem;
+}
+
+.page-hero--compact .page-hero__copy h1 {
+  font-size: clamp(1.85rem, 3.8vw, 2.45rem);
+  margin-bottom: 0.55rem;
+}
+
+.page-hero--compact {
+  padding-bottom: clamp(1.35rem, 3vw, 1.85rem);
+  padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.page-hero--compact .page-hero__lead {
+  font-size: 1rem;
+}
+
+@media (max-width: 720px) {
+  .page-hero__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .page-hero__aside {
+    text-align: left;
+  }
+}

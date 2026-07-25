@@ -1,0 +1,134 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
+use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class ProductController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Product::query()->with('category')->latest('id');
+
+        if ($search = $request->string('search')->trim()->toString()) {
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%");
+            });
+        }
+
+        return ProductResource::collection(
+            $query->paginate(min((int) $request->integer('per_page', 20), 100))
+        );
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $this->validated($request);
+        $product = Product::query()->create($validated);
+        $product->load('category');
+
+        return (new ProductResource($product))->response()->setStatusCode(201);
+    }
+
+    public function show(Product $product)
+    {
+        $product->load('category');
+
+        return new ProductResource($product);
+    }
+
+    public function update(Request $request, Product $product)
+    {
+        $validated = $this->validated($request, $product);
+        $product->fill($validated)->save();
+        $product->load('category');
+
+        return new ProductResource($product);
+    }
+
+    public function destroy(Product $product)
+    {
+        $product->delete();
+
+        return response()->json(['message' => 'Product deleted.']);
+    }
+
+    private function validated(Request $request, ?Product $product = null): array
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products', 'slug')->ignore($product?->id),
+            ],
+            'sku' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('products', 'sku')->ignore($product?->id),
+            ],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+            'image' => ['required', 'string', 'max:500'],
+            'hover_image' => ['nullable', 'string', 'max:500'],
+            'badge' => ['nullable', 'string', 'max:80'],
+            'description' => ['nullable', 'string'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'tags' => ['nullable', 'array'],
+            'details' => ['nullable', 'array'],
+            'gallery' => ['nullable', 'array'],
+            'gallery.*' => ['string', 'max:500'],
+            'color_name' => ['nullable', 'string', 'max:80'],
+            'color_hex' => ['nullable', 'string', 'max:20'],
+            'variant_group_id' => ['nullable', 'string', 'max:120'],
+            'external_id' => [
+                'nullable',
+                'string',
+                'max:120',
+                Rule::unique('products', 'external_id')->ignore($product?->id),
+            ],
+        ]);
+
+        $validated['slug'] = filled($validated['slug'] ?? null)
+            ? $validated['slug']
+            : Str::slug($validated['name']).'-'.Str::lower(Str::random(4));
+
+        if (! $product) {
+            $validated['external_id'] = filled($validated['external_id'] ?? null)
+                ? $validated['external_id']
+                : 'prod-'.Str::lower(Str::random(10));
+        } elseif (array_key_exists('external_id', $validated) && blank($validated['external_id'])) {
+            unset($validated['external_id']);
+        }
+
+        foreach (['image', 'description', 'hover_image', 'badge'] as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] === null) {
+                $validated[$field] = $field === 'hover_image' || $field === 'badge' ? null : '';
+            }
+        }
+
+        if (! array_key_exists('description', $validated) || $validated['description'] === null) {
+            $validated['description'] = '';
+        }
+
+        if (array_key_exists('gallery', $validated) && is_array($validated['gallery'])) {
+            $validated['gallery'] = array_values(array_filter(
+                $validated['gallery'],
+                fn ($path) => is_string($path) && $path !== ''
+            ));
+        }
+
+        return $validated;
+    }
+}

@@ -1,0 +1,121 @@
+.vm-loader {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  justify-content: center;
+  margin: 1.5rem auto;
+}
+
+.vm-loader--page {
+  min-height: 40vh;
+  padding: 2rem 1rem;
+}
+
+.vm-loader__mark {
+  position: relative;
+}
+
+.vm-loader--sm .vm-loader__mark {
+  height: 28px;
+  width: 28px;
+}
+
+.vm-loader--md .vm-loader__mark {
+  height: 48px;
+  width: 48px;
+}
+
+.vm-loader--lg .vm-loader__mark {
+  height: 64px;
+  width: 64px;
+}
+
+.vm-loader__ring {
+  border-radius: 50%;
+  box-sizing: border-box;
+  inset: 0;
+  position: absolute;
+}
+
+.vm-loader__ring--outer {
+  animation: vm-loader-spin 0.9s linear infinite;
+  border: 2.5px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  border-top-color: var(--color-accent);
+  border-right-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.vm-loader__ring--inner {
+  animation: vm-loader-spin-reverse 1.35s linear infinite;
+  border: 2px solid transparent;
+  border-bottom-color: var(--color-primary);
+  border-left-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  inset: 18%;
+}
+
+.vm-loader__core {
+  animation: vm-loader-pulse 1.4s ease-in-out infinite;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-soft-2) 80%, transparent);
+  height: 22%;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 22%;
+}
+
+.vm-loader__label {
+  color: var(--color-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.72;
+}
+
+.vm-loader--sm .vm-loader__label {
+  font-size: 0.78rem;
+}
+
+@keyframes vm-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vm-loader-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes vm-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vm-loader__ring--outer,
+  .vm-loader__ring--inner,
+  .vm-loader__core {
+    animation: none;
+  }
+
+  .vm-loader__ring--outer {
+    border-top-color: var(--color-accent);
+  }
+
+  .vm-loader__core {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
