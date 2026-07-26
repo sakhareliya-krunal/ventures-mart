@@ -12,7 +12,9 @@
   display: grid;
   font-family: var(--font-sans);
   grid-template-columns: 260px minmax(0, 1fr);
+  height: 100dvh;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 .admin-sidebar {
@@ -23,8 +25,11 @@
   color: var(--admin-sidebar-text);
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
-  padding: 1.25rem 1rem 1.5rem;
+  gap: 0.85rem;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1rem 0.85rem 1.1rem;
 }
 
 .admin-sidebar__backdrop {
@@ -34,8 +39,9 @@
 .admin-sidebar__brand {
   align-items: flex-start;
   display: grid;
-  gap: 0.55rem;
-  padding: 0.45rem 0.55rem 1rem;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem 0.55rem;
 }
 
 .admin-sidebar__brand-row {
@@ -75,8 +81,107 @@
 }
 
 .admin-sidebar__nav {
+  -ms-overflow-style: none;
+  align-content: start;
   display: grid;
-  gap: 0.3rem;
+  flex: 1 1 auto;
+  gap: 0.15rem;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.admin-sidebar__nav::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-sidebar__account {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 0.55rem;
+  position: relative;
+  z-index: 6;
+}
+
+.admin-sidebar__account-menu {
+  background: rgba(7, 31, 99, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  bottom: calc(100% + 0.4rem);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  display: grid;
+  gap: 0.15rem;
+  left: 0;
+  padding: 0.35rem;
+  position: absolute;
+  right: 0;
+  z-index: 7;
+}
+
+.admin-sidebar__account-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  position: relative;
+  text-align: left;
+  transition: background 0.18s ease, color 0.18s ease;
+  width: 100%;
+}
+
+.admin-sidebar__account-toggle:hover,
+.admin-sidebar__account-toggle.is-active,
+.admin-sidebar__account.is-open .admin-sidebar__account-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--admin-sidebar-active);
+}
+
+.admin-sidebar__account-toggle:hover::before,
+.admin-sidebar__account-toggle.is-active::before,
+.admin-sidebar__account.is-open .admin-sidebar__account-toggle::before {
+  background: var(--color-secondary);
+  border-radius: 999px;
+  content: "";
+  inset: 0.35rem auto 0.35rem 0;
+  position: absolute;
+  width: 3px;
+}
+
+.admin-sidebar__account-label {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.admin-sidebar__account-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.admin-sidebar__account-name {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-sidebar__account-chevron {
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: transform 0.18s ease;
+}
+
+.admin-sidebar__account:not(.is-open) .admin-sidebar__account-chevron {
+  transform: rotate(180deg);
 }
 
 .admin-nav-link {
@@ -85,10 +190,24 @@
   color: inherit;
   display: flex;
   gap: 0.7rem;
-  padding: 0.72rem 0.85rem;
+  padding: 0.52rem 0.75rem;
   position: relative;
   text-decoration: none;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.admin-nav-link--button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.admin-nav-link--button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .admin-nav-link:hover {
@@ -98,7 +217,22 @@
 
 .admin-nav-link.is-active {
   background: rgba(11, 46, 138, 0.55);
-  box-shadow: inset 3px 0 0 var(--color-secondary);
+  color: var(--admin-sidebar-active);
+  font-weight: 700;
+}
+
+.admin-nav-link.is-active::before,
+.admin-nav-link:hover::before {
+  background: var(--color-secondary);
+  border-radius: 999px;
+  content: "";
+  inset: 0.35rem auto 0.35rem 0;
+  position: absolute;
+  width: 3px;
+}
+
+.admin-sidebar__account-menu .admin-nav-link.is-active {
+  background: rgba(11, 46, 138, 0.55);
   color: var(--admin-sidebar-active);
   font-weight: 700;
 }
@@ -106,7 +240,9 @@
 .admin-main {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .admin-topbar {
@@ -116,11 +252,11 @@
   border-bottom: 1px solid var(--admin-border);
   box-shadow: 0 4px 24px rgba(11, 46, 138, 0.05);
   display: flex;
+  flex-shrink: 0;
   gap: 1rem;
   justify-content: space-between;
   padding: 1rem 1.4rem;
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 10;
 }
 
@@ -197,6 +333,10 @@
 }
 
 .admin-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 1.35rem;
 }
 
@@ -728,6 +868,14 @@
 .admin-form {
   display: grid;
   gap: 0.85rem;
+}
+
+.admin-form__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
 }
 
 .admin-form__grid {
@@ -1427,8 +1575,9 @@
 
   .admin-sidebar {
     bottom: 0;
+    height: 100%;
     left: 0;
-    overflow-y: auto;
+    overflow: hidden;
     padding-top: 1rem;
     position: fixed;
     top: 0;

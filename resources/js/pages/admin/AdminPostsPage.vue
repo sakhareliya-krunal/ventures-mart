@@ -18,6 +18,7 @@ const posts = ref([]);
 const search = ref('');
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
+const deleting = ref(false);
 
 let searchTimer = null;
 let successTimer = null;
@@ -44,8 +45,8 @@ function consumeNotice() {
   router.replace({ query });
 }
 
-async function load() {
-  loading.value = true;
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true;
   listError.value = '';
   try {
     const { data } = await api.get('/admin/posts', {
@@ -56,7 +57,7 @@ async function load() {
     posts.value = [];
     listError.value = apiErrorMessage(err, 'Unable to load posts.');
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -74,16 +75,20 @@ async function requestRemove(id) {
 }
 
 async function remove() {
-  if (!pendingDeleteId.value) return;
+  if (!pendingDeleteId.value || deleting.value) return;
   listError.value = '';
+  deleting.value = true;
   try {
     await api.delete(`/admin/posts/${pendingDeleteId.value}`);
     pendingDeleteId.value = null;
+    confirmOpen.value = false;
     flashSuccess('Post deleted.');
-    await load();
+    await load({ silent: true });
   } catch (err) {
     listError.value = apiErrorMessage(err, 'Unable to delete post.');
     pendingDeleteId.value = null;
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -164,6 +169,9 @@ onBeforeUnmount(() => {
       title="Delete post?"
       message="This blog post will be permanently removed."
       confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      :close-on-confirm="false"
       danger
       @confirm="remove"
     />

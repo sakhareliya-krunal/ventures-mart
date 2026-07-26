@@ -59,6 +59,19 @@ class CartService
     public function add(Request $request, Product $product, int $quantity = 1): array
     {
         $quantity = max(1, min(99, $quantity));
+
+        if (! $product->is_active) {
+            throw ValidationException::withMessages([
+                'product' => 'This product is unavailable.',
+            ]);
+        }
+
+        if ($product->stock < 1) {
+            throw ValidationException::withMessages([
+                'product' => 'This product is out of stock.',
+            ]);
+        }
+
         $owner = $this->ownerKey($request);
 
         $item = CartItem::query()
@@ -67,13 +80,23 @@ class CartService
             ->where('product_id', $product->id)
             ->first();
 
+        $nextQuantity = $item
+            ? min(99, $item->quantity + $quantity)
+            : $quantity;
+
+        if ($nextQuantity > $product->stock) {
+            throw ValidationException::withMessages([
+                'quantity' => "Only {$product->stock} left in stock.",
+            ]);
+        }
+
         if ($item) {
-            $item->update(['quantity' => min(99, $item->quantity + $quantity)]);
+            $item->update(['quantity' => $nextQuantity]);
         } else {
             CartItem::query()->create([
                 ...$owner,
                 'product_id' => $product->id,
-                'quantity' => $quantity,
+                'quantity' => $nextQuantity,
             ]);
         }
 
@@ -84,6 +107,14 @@ class CartService
     {
         if ($quantity <= 0) {
             return $this->remove($request, $product);
+        }
+
+        if ($quantity > $product->stock) {
+            throw ValidationException::withMessages([
+                'quantity' => $product->stock < 1
+                    ? 'This product is out of stock.'
+                    : "Only {$product->stock} left in stock.",
+            ]);
         }
 
         $owner = $this->ownerKey($request);

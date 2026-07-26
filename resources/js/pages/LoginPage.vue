@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import GoogleContinueButton from '@/components/auth/GoogleContinueButton.vue';
@@ -21,9 +21,15 @@ const form = reactive({
   password: '',
 });
 
+let leaving = false;
+
 useHead({
   title: () => `Login | ${theme.brandName}`,
 });
+
+const resetNotice = computed(() =>
+  route.query.reset === '1' ? 'Password updated. Sign in with your new password.' : '',
+);
 
 function defaultPostLoginPath() {
   return auth.isAdmin ? '/admin' : '/profile';
@@ -38,24 +44,40 @@ const registerLink = computed(() => ({
   query: route.query.redirect ? { redirect: String(route.query.redirect) } : {},
 }));
 
-watch(
-  () => auth.user,
-  (user) => {
-    if (user) {
-      auth.beginRedirect();
-      router.replace(postLoginPath());
-    }
-  },
-  { immediate: true },
-);
-
 async function leaveAfterAuth() {
+  if (leaving || !auth.user) return;
+  leaving = true;
   auth.beginRedirect();
-  await router.replace(postLoginPath());
+  try {
+    await router.replace(postLoginPath());
+  } catch {
+    auth.endRedirect();
+    leaving = false;
+  }
 }
 
+onMounted(() => {
+  if (auth.user) {
+    leaveAfterAuth();
+    return;
+  }
+
+  // Session restore may still be in flight when landing on /login already signed in.
+  if (auth.booting) {
+    const stop = watch(
+      () => auth.booting,
+      (isBooting) => {
+        if (!isBooting) {
+          stop();
+          if (auth.user) leaveAfterAuth();
+        }
+      },
+    );
+  }
+});
+
 async function submit() {
-  if (auth.loading || auth.redirecting) return;
+  if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
   errorCode.value = '';
@@ -65,6 +87,7 @@ async function submit() {
     await leaveAfterAuth();
   } catch (err) {
     auth.endRedirect();
+    leaving = false;
     error.value =
       err.response?.data?.message ||
       Object.values(err.response?.data?.errors || {})[0]?.[0] ||
@@ -73,7 +96,7 @@ async function submit() {
 }
 
 async function continueWithGoogle(credential) {
-  if (auth.loading || auth.redirecting) return;
+  if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
   errorCode.value = '';
@@ -83,6 +106,7 @@ async function continueWithGoogle(credential) {
     await leaveAfterAuth();
   } catch (err) {
     auth.endRedirect();
+    leaving = false;
     errorCode.value = err.code || '';
     error.value = err.message || 'Unable to continue with Google.';
   }
@@ -103,6 +127,7 @@ function onGoogleError(message) {
     >
       <span class="eyebrow">Account</span>
       <h1>Login</h1>
+      <p v-if="resetNotice" class="form-success">{{ resetNotice }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <div v-if="errorCode === 'account_missing'" class="auth-alert-actions">
         <AppButton :to="registerLink" variant="secondary" size="sm">Create an account</AppButton>
@@ -123,6 +148,9 @@ function onGoogleError(message) {
         autocomplete="current-password"
         :disabled="auth.loading || auth.redirecting"
       />
+      <p class="auth-forgot">
+        <RouterLink to="/forgot-password">Forgot password?</RouterLink>
+      </p>
       <AppButton
         class="auth-submit"
         type="submit"

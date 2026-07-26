@@ -12,7 +12,7 @@ class ProductReviewController extends Controller
 {
     public function index(string $slug)
     {
-        $product = Product::query()->where('slug', $slug)->firstOrFail();
+        $product = Product::query()->active()->where('slug', $slug)->firstOrFail();
 
         $reviews = ProductReview::query()
             ->where('product_id', $product->id)
@@ -24,7 +24,7 @@ class ProductReviewController extends Controller
 
     public function store(Request $request, string $slug)
     {
-        $product = Product::query()->where('slug', $slug)->firstOrFail();
+        $product = Product::query()->active()->where('slug', $slug)->firstOrFail();
 
         $data = $request->validate([
             'author_name' => ['required', 'string', 'min:2', 'max:80'],

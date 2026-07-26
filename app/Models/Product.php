@@ -27,6 +27,7 @@ class Product extends Model
         'description',
         'details',
         'stock',
+        'is_active',
         'variant_group_id',
         'color_name',
         'color_hex',
@@ -42,7 +43,13 @@ class Product extends Model
             'tags' => 'array',
             'details' => 'array',
             'gallery' => 'array',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function category(): BelongsTo

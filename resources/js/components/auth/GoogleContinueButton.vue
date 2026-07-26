@@ -80,7 +80,7 @@ function renderButton() {
   window.google.accounts.id.renderButton(hostRef.value, {
     type: 'standard',
     theme: 'filled_blue',
-    size: 'large',
+    size: 'medium',
     text: props.intent === 'register' ? 'signup_with' : 'continue_with',
     shape: 'pill',
     width: Math.min(Math.max(hostRef.value.clientWidth || 0, 1), 360),

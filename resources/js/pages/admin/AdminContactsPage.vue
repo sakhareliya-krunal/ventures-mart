@@ -11,14 +11,15 @@ const messages = ref([]);
 const selected = ref(null);
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
+const deleting = ref(false);
 
-async function load() {
-  loading.value = true;
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true;
   try {
     const { data } = await api.get('/admin/contact-messages');
     messages.value = unwrapData(data) || data.data || [];
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -33,14 +34,20 @@ function requestRemove(id) {
 }
 
 async function remove() {
-  if (!pendingDeleteId.value) return;
+  if (!pendingDeleteId.value || deleting.value) return;
   const id = pendingDeleteId.value;
-  await api.delete(`/admin/contact-messages/${id}`);
-  if (selected.value?.id === id) {
-    selected.value = null;
+  deleting.value = true;
+  try {
+    await api.delete(`/admin/contact-messages/${id}`);
+    if (selected.value?.id === id) {
+      selected.value = null;
+    }
+    pendingDeleteId.value = null;
+    confirmOpen.value = false;
+    await load({ silent: true });
+  } finally {
+    deleting.value = false;
   }
-  pendingDeleteId.value = null;
-  await load();
 }
 
 onMounted(load);
@@ -100,6 +107,9 @@ onMounted(load);
       title="Delete message?"
       message="This contact message will be permanently removed."
       confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      :close-on-confirm="false"
       danger
       @confirm="remove"
     />

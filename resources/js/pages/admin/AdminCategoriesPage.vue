@@ -14,6 +14,7 @@ const editingId = ref(null);
 const showForm = ref(false);
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
+const deleting = ref(false);
 
 const form = reactive({
   name: '',
@@ -50,13 +51,13 @@ function edit(category) {
   });
 }
 
-async function load() {
-  loading.value = true;
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true;
   try {
     const { data } = await api.get('/admin/categories');
     categories.value = unwrapData(data) || [];
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -70,7 +71,7 @@ async function save() {
       await api.post('/admin/categories', { ...form });
     }
     resetForm();
-    await load();
+    await load({ silent: true });
   } catch (err) {
     error.value =
       err.response?.data?.message ||
@@ -87,10 +88,16 @@ async function requestRemove(id) {
 }
 
 async function remove() {
-  if (!pendingDeleteId.value) return;
-  await api.delete(`/admin/categories/${pendingDeleteId.value}`);
-  pendingDeleteId.value = null;
-  await load();
+  if (!pendingDeleteId.value || deleting.value) return;
+  deleting.value = true;
+  try {
+    await api.delete(`/admin/categories/${pendingDeleteId.value}`);
+    pendingDeleteId.value = null;
+    confirmOpen.value = false;
+    await load({ silent: true });
+  } finally {
+    deleting.value = false;
+  }
 }
 
 onMounted(load);
@@ -161,6 +168,9 @@ onMounted(load);
       title="Delete category?"
       message="This category will be permanently removed."
       confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      :close-on-confirm="false"
       danger
       @confirm="remove"
     />

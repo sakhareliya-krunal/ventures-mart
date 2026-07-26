@@ -30,6 +30,29 @@
   margin: 0;
 }
 
+.auth-lead {
+  color: color-mix(in srgb, var(--color-ink) 72%, var(--color-muted));
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.auth-forgot {
+  margin: -0.25rem 0 0;
+  text-align: right;
+}
+
+.auth-forgot a {
+  color: var(--color-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-forgot a:hover {
+  text-decoration: underline;
+}
+
 .auth-card > p:last-child {
   color: var(--color-muted);
   font-size: 0.9rem;

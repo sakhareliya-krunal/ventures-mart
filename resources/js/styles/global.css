@@ -149,6 +149,11 @@ p {
   margin: 0;
 }
 
+.stock-note--oos {
+  color: var(--color-secondary);
+  font-weight: 700;
+}
+
 .full-width {
   margin-top: 1rem;
   width: 100%;

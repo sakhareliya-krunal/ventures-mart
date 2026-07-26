@@ -85,6 +85,8 @@ class ProductController extends Controller
             'badge' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string'],
             'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+            'featured' => ['sometimes', 'boolean'],
             'tags' => ['nullable', 'array'],
             'details' => ['nullable', 'array'],
             'gallery' => ['nullable', 'array'],
@@ -108,8 +110,29 @@ class ProductController extends Controller
             $validated['external_id'] = filled($validated['external_id'] ?? null)
                 ? $validated['external_id']
                 : 'prod-'.Str::lower(Str::random(10));
+            $validated['is_active'] = array_key_exists('is_active', $validated)
+                ? (bool) $validated['is_active']
+                : true;
         } elseif (array_key_exists('external_id', $validated) && blank($validated['external_id'])) {
             unset($validated['external_id']);
+        }
+
+        if (array_key_exists('featured', $validated)) {
+            $featured = (bool) $validated['featured'];
+            unset($validated['featured']);
+            $tags = array_values(array_filter(
+                $validated['tags'] ?? ($product?->tags ?? []),
+                fn ($tag) => $tag !== 'featured'
+            ));
+            if ($featured) {
+                $tags[] = 'featured';
+                if (! filled($validated['badge'] ?? null)) {
+                    $validated['badge'] = 'Featured';
+                }
+            } elseif (($validated['badge'] ?? $product?->badge) === 'Featured') {
+                $validated['badge'] = null;
+            }
+            $validated['tags'] = $tags;
         }
 
         foreach (['image', 'description', 'hover_image', 'badge'] as $field) {

@@ -32,9 +32,11 @@ class OrderService
                 /** @var Product $product */
                 $product = Product::query()->lockForUpdate()->find($item->product_id);
 
-                if (! $product || $product->stock < $item->quantity) {
+                if (! $product || ! $product->is_active || $product->stock < $item->quantity) {
                     throw ValidationException::withMessages([
-                        'stock' => ($product?->name ?? 'A product').' does not have enough stock.',
+                        'stock' => ! $product || ! $product->is_active
+                            ? ($product?->name ?? 'A product').' is no longer available.'
+                            : ($product->name).' does not have enough stock.',
                     ]);
                 }
 

@@ -7,6 +7,7 @@ use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
@@ -42,7 +43,7 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'current_password' => [$hasPassword ? 'required' : 'nullable', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         if ($hasPassword && ! Hash::check($validated['current_password'], $user->password)) {

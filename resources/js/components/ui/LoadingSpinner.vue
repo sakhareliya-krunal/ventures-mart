@@ -15,6 +15,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  overlay: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const rootClass = computed(() => [
@@ -22,6 +26,7 @@ const rootClass = computed(() => [
   `vm-loader--${props.size}`,
   {
     'vm-loader--page': props.page,
+    'vm-loader--overlay': props.overlay,
     'vm-loader--icon-only': !props.label,
   },
 ]);

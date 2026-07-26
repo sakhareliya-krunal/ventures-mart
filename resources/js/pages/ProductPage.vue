@@ -43,6 +43,7 @@ const wished = computed(() =>
 const adding = computed(() =>
   product.value ? cart.isAdding(product.value.id) : false,
 );
+const inStock = computed(() => Number(product.value?.stock ?? 0) > 0);
 const variants = computed(() => product.value?.variants || []);
 const gallery = computed(() => {
   if (!product.value) {
@@ -322,6 +323,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="product-detail__copy">
+          <span v-if="product.badge" class="product-detail__badge">{{ product.badge }}</span>
           <span class="eyebrow">{{ product.sku }}</span>
           <h1>{{ product.name }}</h1>
           <div class="product-detail__rating">
@@ -370,12 +372,13 @@ onBeforeUnmount(() => {
             <AppButton
               size="lg"
               class="button--busy-lg"
-              :disabled="adding"
+              :disabled="adding || !inStock"
               :aria-busy="adding"
-              aria-label="Add to cart"
-              @click="cart.addItem(product.id)"
+              :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+              @click="inStock && cart.addItem(product.id)"
             >
               <span v-if="adding" class="button-spinner" aria-hidden="true" />
+              <template v-else-if="!inStock">Out of stock</template>
               <template v-else>
                 <ShoppingBag :size="18" />
                 Add to cart
@@ -393,8 +396,11 @@ onBeforeUnmount(() => {
               {{ wished ? 'Saved' : 'Wishlist' }}
             </AppButton>
           </div>
-          <p class="stock-note">
-            {{ product.stock }} in stock. Ships from Venture Smart fulfillment.
+          <p class="stock-note" :class="{ 'stock-note--oos': !inStock }">
+            <template v-if="inStock">
+              {{ product.stock }} in stock. Ships from Venture Smart fulfillment.
+            </template>
+            <template v-else>Currently out of stock.</template>
           </p>
         </div>
       </div>

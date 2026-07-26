@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import MainLayout from '@/layouts/MainLayout.vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -65,6 +66,16 @@ const router = createRouter({
           path: 'register',
           name: 'register',
           component: () => import('@/pages/RegisterPage.vue'),
+        },
+        {
+          path: 'forgot-password',
+          name: 'forgot-password',
+          component: () => import('@/pages/ForgotPasswordPage.vue'),
+        },
+        {
+          path: 'reset-password',
+          name: 'reset-password',
+          component: () => import('@/pages/ResetPasswordPage.vue'),
         },
         {
           path: 'profile',
@@ -209,10 +220,22 @@ const router = createRouter({
           meta: { title: 'Addresses' },
         },
         {
+          path: 'account/create-admin',
+          name: 'admin-create-admin',
+          component: () => import('@/pages/admin/AdminUserCreatePage.vue'),
+          meta: { title: 'Create admin' },
+        },
+        {
           path: 'account',
           name: 'admin-account',
           component: () => import('@/pages/admin/AdminAccountPage.vue'),
-          meta: { title: 'My account' },
+          meta: { title: 'Profile' },
+        },
+        {
+          path: 'settings',
+          name: 'admin-settings',
+          component: () => import('@/pages/admin/AdminSettingsPage.vue'),
+          meta: { title: 'Settings' },
         },
       ],
     },
@@ -230,12 +253,22 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const auth = useAuthStore();
+  const ui = useUiStore();
+
+  if (to.fullPath !== from.fullPath) {
+    ui.startNavigating();
+  }
+
   const needsAuth = to.matched.some((record) => record.meta.requiresAuth);
   const needsAdmin = to.matched.some((record) => record.meta.requiresAdmin);
   const isAdminRoute = to.path === '/admin' || to.path.startsWith('/admin/');
-  const isAuthPage = to.name === 'login' || to.name === 'register';
+  const isAuthPage =
+    to.name === 'login' ||
+    to.name === 'register' ||
+    to.name === 'forgot-password' ||
+    to.name === 'reset-password';
 
   if (!auth.user && !auth.booting) {
     await auth.fetchUser();
@@ -266,16 +299,21 @@ router.beforeEach(async (to) => {
   return true;
 });
 
-router.afterEach((to, from) => {
+router.afterEach(() => {
   const auth = useAuthStore();
-  const landedOnAuth = to.name === 'login' || to.name === 'register';
-  const leftAuth = from.name === 'login' || from.name === 'register';
+  const ui = useUiStore();
 
-  // Clear outbound-to-login overlay once the auth page is ready,
-  // and clear post-login overlay once the destination route has loaded.
-  if (landedOnAuth || (leftAuth && !landedOnAuth)) {
+  ui.stopNavigating();
+
+  // Always clear the redirect overlay after a confirmed navigation so a
+  // duplicate/same-route follow-up cannot leave redirecting stuck true.
+  if (auth.redirecting) {
     auth.endRedirect();
   }
+});
+
+router.onError(() => {
+  useUiStore().stopNavigating();
 });
 
 export default router;

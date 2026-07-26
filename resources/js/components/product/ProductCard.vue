@@ -47,12 +47,15 @@ const display = computed(() => {
       variant.compare_at_price !== undefined ? variant.compare_at_price : base.compare_at_price,
     rating: variant.rating !== undefined ? variant.rating : base.rating,
     reviews: variant.reviews !== undefined ? variant.reviews : base.reviews,
+    stock: variant.stock !== undefined ? variant.stock : base.stock,
+    badge: variant.badge !== undefined ? variant.badge : base.badge,
     color_name: variant.color_name ?? base.color_name,
   };
 });
 
 const wished = computed(() => wishlist.isWishlisted(display.value.id));
 const adding = computed(() => cart.isAdding(display.value.id));
+const inStock = computed(() => Number(display.value.stock ?? 0) > 0);
 const hasHover = computed(() => Boolean(display.value.hover_image));
 
 function selectVariant(slug) {
@@ -62,7 +65,7 @@ function selectVariant(slug) {
 }
 
 async function addToCart() {
-  if (adding.value) return;
+  if (adding.value || !inStock.value) return;
   await cart.addItem(display.value.id);
 }
 
@@ -74,7 +77,8 @@ async function toggleWish() {
 <template>
   <article class="product-card">
     <div class="product-card__media">
-      <span v-if="display.badge" class="product-card__badge">{{ display.badge }}</span>
+      <span v-if="!inStock" class="product-card__badge product-card__badge--oos">Out of stock</span>
+      <span v-else-if="display.badge" class="product-card__badge">{{ display.badge }}</span>
       <RouterLink :to="`/product/${display.slug}`" :aria-label="display.name">
         <img
           class="is-primary"
@@ -137,12 +141,13 @@ async function toggleWish() {
         <AppButton
           size="sm"
           class="button--busy-sm"
-          :disabled="adding"
+          :disabled="adding || !inStock"
           :aria-busy="adding"
-          aria-label="Add to cart"
+          :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
           @click="addToCart"
         >
           <span v-if="adding" class="button-spinner" aria-hidden="true" />
+          <template v-else-if="!inStock">Out of stock</template>
           <template v-else>
             <ShoppingBag :size="16" />
             Add

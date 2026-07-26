@@ -276,6 +276,23 @@ function addPath() {
             <small v-if="fieldError('badge')" class="admin-field__error">{{ fieldError('badge') }}</small>
           </label>
           <div class="admin-field admin-field--full">
+            <label class="checkbox-row">
+              <input v-model="form.featured" type="checkbox" />
+              Featured on home
+            </label>
+            <p class="admin-muted admin-product-form__hint">
+              Marks this product for the Featured collection. Sale listings use Compare at when it is
+              higher than Price.
+            </p>
+            <label class="checkbox-row">
+              <input v-model="form.is_active" type="checkbox" />
+              Published on storefront
+            </label>
+            <p class="admin-muted admin-product-form__hint">
+              Uncheck to keep this product as a draft. Hidden products stay in admin but not on the shop.
+            </p>
+          </div>
+          <div class="admin-field admin-field--full">
             <span>Description</span>
             <AdminRichTextEditor
               v-model="form.description"

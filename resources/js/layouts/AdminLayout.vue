@@ -11,7 +11,9 @@ import {
   Users,
   MapPin,
   User,
+  Settings,
   LogOut,
+  ChevronUp,
   Menu,
   X,
 } from '@lucide/vue';
@@ -26,6 +28,7 @@ const route = useRoute();
 const router = useRouter();
 const confirmLogoutOpen = ref(false);
 const navOpen = ref(false);
+const accountMenuOpen = ref(false);
 
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -36,10 +39,16 @@ const nav = [
   { to: '/admin/contacts', label: 'Contact messages', icon: Mail },
   { to: '/admin/customers', label: 'Customers', icon: Users },
   { to: '/admin/addresses', label: 'Addresses', icon: MapPin },
-  { to: '/admin/account', label: 'My account', icon: User },
 ];
 
 const pageTitle = computed(() => route.meta.title || 'Admin');
+
+const accountMenuActive = computed(
+  () =>
+    route.path === '/admin/account' ||
+    route.path.startsWith('/admin/account/') ||
+    route.path === '/admin/settings',
+);
 
 function isActive(item) {
   if (item.exact) {
@@ -52,12 +61,21 @@ function closeNav() {
   navOpen.value = false;
 }
 
+function closeAccountMenu() {
+  accountMenuOpen.value = false;
+}
+
+function toggleAccountMenu() {
+  accountMenuOpen.value = !accountMenuOpen.value;
+}
+
 function toggleNav() {
   navOpen.value = !navOpen.value;
 }
 
 function onKeydown(event) {
   if (event.key === 'Escape') {
+    closeAccountMenu();
     closeNav();
   }
 }
@@ -67,6 +85,7 @@ function lockScroll(locked) {
 }
 
 function requestLogout() {
+  closeAccountMenu();
   closeNav();
   confirmLogoutOpen.value = true;
 }
@@ -81,13 +100,16 @@ watch(
   () => route.fullPath,
   () => {
     closeNav();
+    closeAccountMenu();
   },
 );
 
 watch(navOpen, (isOpen) => {
   lockScroll(isOpen);
+});
 
-  if (isOpen) {
+watch([navOpen, accountMenuOpen], ([isNavOpen, isAccountOpen]) => {
+  if (isNavOpen || isAccountOpen) {
     window.addEventListener('keydown', onKeydown);
   } else {
     window.removeEventListener('keydown', onKeydown);
@@ -135,6 +157,7 @@ onBeforeUnmount(() => {
         </div>
         <span>Admin</span>
       </div>
+
       <nav class="admin-sidebar__nav" aria-label="Admin">
         <RouterLink
           v-for="item in nav"
@@ -148,6 +171,62 @@ onBeforeUnmount(() => {
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>
+
+      <div class="admin-sidebar__account" :class="{ 'is-open': accountMenuOpen }">
+        <div
+          v-if="accountMenuOpen"
+          id="admin-account-menu"
+          class="admin-sidebar__account-menu"
+          role="menu"
+        >
+          <RouterLink
+            to="/admin/account"
+            class="admin-nav-link"
+            :class="{ 'is-active': route.path === '/admin/account' || route.path.startsWith('/admin/account/') }"
+            role="menuitem"
+            @click="closeNav"
+          >
+            <User :size="18" />
+            <span>Profile</span>
+          </RouterLink>
+          <RouterLink
+            to="/admin/settings"
+            class="admin-nav-link"
+            :class="{ 'is-active': route.path === '/admin/settings' }"
+            role="menuitem"
+            @click="closeNav"
+          >
+            <Settings :size="18" />
+            <span>Settings</span>
+          </RouterLink>
+          <button
+            type="button"
+            class="admin-nav-link admin-nav-link--button"
+            role="menuitem"
+            :disabled="auth.loggingOut"
+            @click="requestLogout"
+          >
+            <LogOut :size="18" />
+            <span>Logout</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="admin-sidebar__account-toggle"
+          :class="{ 'is-active': accountMenuActive }"
+          :aria-expanded="accountMenuOpen"
+          aria-controls="admin-account-menu"
+          @click="toggleAccountMenu"
+        >
+          <User :size="18" />
+          <span class="admin-sidebar__account-label">
+            <span class="admin-sidebar__account-title">My account</span>
+            <span class="admin-sidebar__account-name">{{ auth.user?.name || 'Admin' }}</span>
+          </span>
+          <ChevronUp :size="16" class="admin-sidebar__account-chevron" />
+        </button>
+      </div>
     </aside>
 
     <div class="admin-main">
@@ -170,16 +249,6 @@ onBeforeUnmount(() => {
         </div>
         <div class="admin-topbar__actions">
           <span class="admin-topbar__user">{{ auth.user?.name }}</span>
-          <button
-            class="button button--ghost button--sm admin-topbar__logout"
-            type="button"
-            aria-label="Log out"
-            :disabled="auth.loggingOut"
-            @click="requestLogout"
-          >
-            <LogOut :size="16" />
-            <span class="admin-topbar__logout-label">Logout</span>
-          </button>
         </div>
       </header>
       <main class="admin-content">

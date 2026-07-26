@@ -16,6 +16,7 @@ const products = ref([]);
 const search = ref('');
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
+const deleting = ref(false);
 const listError = ref('');
 const successMessage = ref('');
 
@@ -49,8 +50,8 @@ function openEdit(product) {
   router.push({ name: 'admin-product-edit', params: { id: product.id } });
 }
 
-async function load() {
-  loading.value = true;
+async function load({ silent = false } = {}) {
+  if (!silent) loading.value = true;
   listError.value = '';
   try {
     const { data } = await api.get('/admin/products', {
@@ -61,7 +62,7 @@ async function load() {
     products.value = [];
     listError.value = apiErrorMessage(err, 'Unable to load products.');
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
   }
 }
 
@@ -72,16 +73,20 @@ function requestRemove(id) {
 }
 
 async function remove() {
-  if (!pendingDeleteId.value) return;
+  if (!pendingDeleteId.value || deleting.value) return;
   const id = pendingDeleteId.value;
+  deleting.value = true;
   try {
     await api.delete(`/admin/products/${id}`);
     pendingDeleteId.value = null;
+    confirmOpen.value = false;
     flashSuccess('Product deleted.');
-    await load();
+    await load({ silent: true });
   } catch (err) {
     listError.value = apiErrorMessage(err, 'Unable to delete product.');
     pendingDeleteId.value = null;
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -123,6 +128,7 @@ onBeforeUnmount(() => {
               <th>SKU</th>
               <th>Price</th>
               <th>Stock</th>
+              <th>Status</th>
               <th />
             </tr>
           </thead>
@@ -145,6 +151,14 @@ onBeforeUnmount(() => {
               <td data-label="SKU">{{ product.sku || '—' }}</td>
               <td data-label="Price">{{ formatCurrency(product.price) }}</td>
               <td data-label="Stock">{{ product.stock }}</td>
+              <td data-label="Status">
+                <span
+                  class="admin-badge"
+                  :class="product.is_active === false ? 'admin-badge--warn' : 'admin-badge--ok'"
+                >
+                  {{ product.is_active === false ? 'Hidden' : 'Active' }}
+                </span>
+              </td>
               <td data-label="Actions">
                 <div class="admin-actions">
                   <AppButton type="button" variant="secondary" size="sm" @click="openEdit(product)">
@@ -167,6 +181,9 @@ onBeforeUnmount(() => {
       title="Delete product?"
       message="This product will be permanently removed from the catalog."
       confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      :close-on-confirm="false"
       danger
       @confirm="remove"
     />

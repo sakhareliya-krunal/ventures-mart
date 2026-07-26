@@ -10,7 +10,7 @@ class ProductQueryService
 {
     public function query(array $filters = []): Collection
     {
-        $query = Product::query()->with('category');
+        $query = Product::query()->active()->with('category');
 
         if (! empty($filters['q'])) {
             $term = mb_strtolower(trim($filters['q']));
@@ -53,7 +53,7 @@ class ProductQueryService
 
     public function findBySlug(string $slug): ?Product
     {
-        $product = Product::query()->with('category')->where('slug', $slug)->first();
+        $product = Product::query()->active()->with('category')->where('slug', $slug)->first();
 
         if ($product) {
             $product->setRelation('colorVariants', $product->siblingVariants());
@@ -65,6 +65,7 @@ class ProductQueryService
     public function featured(int $limit = 16): Collection
     {
         $products = Product::query()
+            ->active()
             ->with('category')
             ->where(function (Builder $query) {
                 $query->where('badge', 'Featured')
@@ -79,8 +80,10 @@ class ProductQueryService
     public function sale(int $limit = 8): Collection
     {
         $products = Product::query()
+            ->active()
             ->with('category')
             ->whereNotNull('compare_at_price')
+            ->whereColumn('compare_at_price', '>', 'price')
             ->orderByDesc('rating')
             ->get();
 
@@ -90,6 +93,7 @@ class ProductQueryService
     public function related(Product $product, int $limit = 4): Collection
     {
         $products = Product::query()
+            ->active()
             ->with('category')
             ->where('category_id', $product->category_id)
             ->when(

@@ -4,6 +4,7 @@
 @import './layouts/shell.css';
 @import './components/button.css';
 @import './components/loader.css';
+@import './components/brand-splash.css';
 @import './components/select.css';
 @import './components/product.css';
 @import './components/category.css';

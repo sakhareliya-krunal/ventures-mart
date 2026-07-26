@@ -1,30 +1,66 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 
 const accountError = ref('');
 const accountSuccess = ref('');
-const passwordError = ref('');
-const passwordSuccess = ref('');
 const savingAccount = ref(false);
-const savingPassword = ref(false);
+const adminsLoading = ref(true);
+const adminsError = ref('');
+const admins = ref([]);
+const successMessage = ref('');
+let successTimer = null;
 
 const account = reactive({
   name: '',
   email: '',
 });
 
-const passwordForm = reactive({
-  current_password: '',
-  password: '',
-  password_confirmation: '',
-});
+function flashSuccess(message) {
+  successMessage.value = message;
+  if (successTimer) clearTimeout(successTimer);
+  successTimer = setTimeout(() => {
+    successMessage.value = '';
+  }, 3500);
+}
+
+function consumeNotice() {
+  if (route.query.notice !== 'admin-created') return;
+
+  flashSuccess('Admin created.');
+  const query = { ...route.query };
+  delete query.notice;
+  router.replace({ query });
+}
+
+async function loadAdmins() {
+  adminsLoading.value = true;
+  adminsError.value = '';
+  try {
+    const { data } = await api.get('/admin/users', {
+      params: { role: 'admin', per_page: 100 },
+    });
+    admins.value = unwrapData(data) || [];
+  } catch (err) {
+    admins.value = [];
+    adminsError.value =
+      err.response?.data?.message ||
+      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
+      'Unable to load admins.';
+  } finally {
+    adminsLoading.value = false;
+  }
+}
 
 onMounted(async () => {
   if (!auth.user) {
@@ -33,6 +69,12 @@ onMounted(async () => {
 
   account.name = auth.user?.name || '';
   account.email = auth.user?.email || '';
+  consumeNotice();
+  await loadAdmins();
+});
+
+onBeforeUnmount(() => {
+  if (successTimer) clearTimeout(successTimer);
 });
 
 async function saveAccount() {
@@ -54,32 +96,15 @@ async function saveAccount() {
   }
 }
 
-async function savePassword() {
-  passwordError.value = '';
-  passwordSuccess.value = '';
-  savingPassword.value = true;
-
-  try {
-    const { data } = await api.put('/profile/password', { ...passwordForm });
-    passwordSuccess.value = data.message || 'Password updated.';
-    passwordForm.current_password = '';
-    passwordForm.password = '';
-    passwordForm.password_confirmation = '';
-  } catch (err) {
-    passwordError.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to update password.';
-  } finally {
-    savingPassword.value = false;
-  }
+function openCreateAdmin() {
+  router.push({ name: 'admin-create-admin' });
 }
 </script>
 
 <template>
   <div class="admin-detail-grid">
     <div class="admin-panel">
-      <h2>Account details</h2>
+      <h2>Profile</h2>
       <p v-if="accountError" class="form-error">{{ accountError }}</p>
       <p v-if="accountSuccess" class="form-success">{{ accountSuccess }}</p>
       <form class="admin-form" @submit.prevent="saveAccount">
@@ -92,27 +117,33 @@ async function savePassword() {
     </div>
 
     <div class="admin-panel">
-      <h2>Change password</h2>
-      <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
-      <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
-      <form class="admin-form" @submit.prevent="savePassword">
-        <FormField
-          v-model="passwordForm.current_password"
-          label="Current password"
-          type="password"
-          required
-        />
-        <FormField v-model="passwordForm.password" label="New password" type="password" required />
-        <FormField
-          v-model="passwordForm.password_confirmation"
-          label="Confirm password"
-          type="password"
-          required
-        />
-        <AppButton type="submit" :disabled="savingPassword">
-          {{ savingPassword ? 'Updating…' : 'Update password' }}
-        </AppButton>
-      </form>
+      <div class="admin-toolbar">
+        <div>
+          <h2>Admins</h2>
+          <p class="admin-muted">Administrators who can access this panel.</p>
+        </div>
+        <AppButton type="button" @click="openCreateAdmin">Create admin</AppButton>
+      </div>
+
+      <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
+      <p v-if="adminsError" class="form-error">{{ adminsError }}</p>
+      <LoadingSpinner v-if="adminsLoading" page label="Loading admins" />
+      <div v-else class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in admins" :key="user.id">
+              <td data-label="Name">{{ user.name }}</td>
+              <td data-label="Email">{{ user.email }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>

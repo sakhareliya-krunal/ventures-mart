@@ -38,7 +38,7 @@ onMounted(async () => {
   <HeroBanner />
   <CategoryPillars />
 
-  <section class="page-section">
+  <section v-if="lunchPicks.length" class="page-section">
     <SectionHeader
       title="Steel & kids lunch boxes"
       description="Durable tiffins for school and everyday packing."
@@ -47,7 +47,7 @@ onMounted(async () => {
     <ProductGrid :products="lunchPicks" />
   </section>
 
-  <section class="page-section page-section--soft">
+  <section v-if="toyPicks.length" class="page-section page-section--soft">
     <SectionHeader
       title="Toys for play"
       description="Building, pretend play, and soft companions for every day."
