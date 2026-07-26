@@ -16,14 +16,14 @@ useHead({
   <StaticPageLayout
     eyebrow="Terms"
     title="Terms of Service"
-    lead="Simple terms for shopping toys and lunch boxes on Venture Smart across India."
+    lead="Simple terms for shopping toys and lunch boxes on Ventures Mart across India."
     meta="Last updated: July 2026"
   >
     <div class="static-prose">
       <section>
         <h2>Store overview</h2>
         <p>
-          Venture Smart is an online store for curated toys and everyday lunch boxes, delivered
+          Ventures Mart is an online store for curated toys and everyday lunch boxes, delivered
           across India. By browsing or placing an order, you agree to these terms.
         </p>
       </section>
@@ -73,7 +73,7 @@ useHead({
       <section>
         <h2>Limitation</h2>
         <p>
-          To the extent allowed by law, Venture Smart is not liable for indirect or consequential
+          To the extent allowed by law, Ventures Mart is not liable for indirect or consequential
           losses arising from use of the storefront or delays outside our reasonable control.
         </p>
       </section>

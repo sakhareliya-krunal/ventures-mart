@@ -13,7 +13,7 @@ useHead({
 <template>
   <section class="page-section empty-state">
     <h1>Page not found</h1>
-    <p>The route is not part of the rebuilt Venture Smart storefront.</p>
+    <p>The route is not part of the rebuilt Ventures Mart storefront.</p>
     <AppButton to="/">Go home</AppButton>
   </section>
 </template>

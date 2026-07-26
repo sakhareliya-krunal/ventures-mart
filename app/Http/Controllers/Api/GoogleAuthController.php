@@ -51,9 +51,10 @@ class GoogleAuthController extends Controller
 
         if ($intent === 'register') {
             if ($user) {
-                $this->syncGoogleProfile($user, $profile);
-
-                return $this->completeLogin($request, $user);
+                return response()->json([
+                    'code' => 'account_exists',
+                    'message' => 'Your account already exists. Please log in to continue.',
+                ], 422);
             }
 
             $user = User::query()->create([

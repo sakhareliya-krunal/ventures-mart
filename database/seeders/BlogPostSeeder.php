@@ -51,7 +51,7 @@ HTML,
 <li>Size that matches one school meal, not a picnic</li>
 <li>Handles or shapes that fit the school bag pocket</li>
 </ul>
-<h2>Our take at Venture Smart</h2>
+<h2>Our take at Ventures Mart</h2>
 <p>We curate lunch boxes for everyday Indian routines—not endless clutter. If you want something sturdy for school years ahead, start with steel options in our <a href="/category/lunch-box">lunch box category</a>. Prefer browsing everything together? Visit the <a href="/shop">shop</a>.</p>
 HTML,
             ],
@@ -70,7 +70,7 @@ HTML,
 <h2>Early school age: challenge without overwhelm</h2>
 <p>Slightly more complex builds and role-play sets keep interest high. Avoid toys that only do one flashy thing once. If a toy can be rebuilt, restaged, or shared with siblings, it earns its shelf space.</p>
 <h2>Curate, don’t clutter</h2>
-<p>At Venture Smart we keep the catalog focused: creative toys chosen for daily family life. Explore the <a href="/category/toys">toys collection</a>, or pair playtime picks with practical <a href="/category/lunch-box">lunch boxes</a> when you are shopping for the whole routine.</p>
+<p>At Ventures Mart we keep the catalog focused: creative toys chosen for daily family life. Explore the <a href="/category/toys">toys collection</a>, or pair playtime picks with practical <a href="/category/lunch-box">lunch boxes</a> when you are shopping for the whole routine.</p>
 HTML,
             ],
             [
@@ -86,18 +86,18 @@ HTML,
 <h2>When toys make the celebration</h2>
 <p>Building sets, pretend kitchens, and soft companions turn a birthday into weeks of play. Pick for age and interest, not just packaging. A gift that invites stories lasts longer than one that only lights up once.</p>
 <h2>Bundle the day</h2>
-<p>A thoughtful pair works beautifully: one creative toy for play, one practical lunch box for school. It feels complete without being excessive—and it matches how Venture Smart thinks about family routines.</p>
+<p>A thoughtful pair works beautifully: one creative toy for play, one practical lunch box for school. It feels complete without being excessive—and it matches how Ventures Mart thinks about family routines.</p>
 <p>Start with <a href="/category/toys">toys</a> or <a href="/category/lunch-box">lunch boxes</a>, or browse the full <a href="/shop">catalog</a> for something that fits the child you know.</p>
 HTML,
             ],
             [
-                'title' => 'Shopping with confidence at Venture Smart',
+                'title' => 'Shopping with confidence at Ventures Mart',
                 'slug' => 'shopping-confidence-shipping-replacement',
                 'excerpt' => 'How delivery across India, free shipping thresholds, and 7-day replacement support work when you order toys or lunch boxes.',
                 'cover_image' => '/images/home5-info1.png',
                 'published_at' => Carbon::parse('2026-07-16 10:00:00'),
                 'body' => <<<'HTML'
-<p>Ordering online for kids’ essentials should feel calm. Here is how Venture Smart supports you from add-to-cart through delivery—without inventing fine print.</p>
+<p>Ordering online for kids’ essentials should feel calm. Here is how Ventures Mart supports you from add-to-cart through delivery—without inventing fine print.</p>
 <h2>Delivery across India</h2>
 <p>We ship toys and lunch boxes nationwide, subject to courier coverage. After you place an order, we prepare it for dispatch and share updates through the contact details you provide at checkout.</p>
 <h2>Free shipping on orders over ₹999</h2>

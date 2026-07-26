@@ -35,7 +35,7 @@ const values = [
 <template>
   <div class="about-page">
     <PageHero
-      eyebrow="Why Venture Smart"
+      eyebrow="Why Ventures Mart"
       :title="theme.brandName"
       lead="A focused store for creative toys and everyday lunch boxes—curated for school, play, and family life across India."
     >

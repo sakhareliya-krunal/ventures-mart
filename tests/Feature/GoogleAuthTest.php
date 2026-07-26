@@ -60,7 +60,7 @@ class GoogleAuthTest extends TestCase
         ]);
     }
 
-    public function test_register_with_google_signs_in_existing_account(): void
+    public function test_register_with_google_rejects_existing_account(): void
     {
         $user = User::factory()->create([
             'email' => 'google.user@example.com',
@@ -74,14 +74,14 @@ class GoogleAuthTest extends TestCase
             'credential' => 'fake-google-credential',
             'intent' => 'register',
         ])
-            ->assertOk()
-            ->assertJsonPath('user.email', 'google.user@example.com')
-            ->assertJsonPath('user.id', $user->id);
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'account_exists')
+            ->assertJsonPath('message', 'Your account already exists. Please log in to continue.');
 
-        $this->assertAuthenticatedAs($user);
+        $this->assertGuest();
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'google_id' => 'google-sub-123',
+            'google_id' => null,
         ]);
     }
 

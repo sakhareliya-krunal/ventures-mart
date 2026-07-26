@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Venture Smart'),
+    'name' => env('APP_NAME', 'Ventures Mart'),
 
     /*
     |--------------------------------------------------------------------------

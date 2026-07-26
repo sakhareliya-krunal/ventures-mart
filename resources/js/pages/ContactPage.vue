@@ -80,7 +80,7 @@ async function submit() {
     <PageHero
       eyebrow="Support"
       title="Contact"
-      lead="Reach the Venture Smart team by WhatsApp, phone, or email—or send a message and we’ll get back to you."
+      lead="Reach the Ventures Mart team by WhatsApp, phone, or email—or send a message and we’ll get back to you."
     >
       <template #actions>
         <a

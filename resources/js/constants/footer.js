@@ -9,7 +9,7 @@ export const footerBlurb =
 
 const whatsappNumber = '919173279323';
 const whatsappMessage =
-  'Hello Venture Smart! I have a question about your toys and lunch boxes. Please help me when you are available.';
+  'Hello Ventures Mart! I have a question about your toys and lunch boxes. Please help me when you are available.';
 
 export const footerWhatsApp = {
   href: `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
@@ -32,7 +32,7 @@ export const footerSupportLinks = [
 ];
 
 export const footerCompanyLinks = [
-  { label: 'Why Venture Smart', href: '/about' },
+  { label: 'Why Ventures Mart', href: '/about' },
   { label: 'Blog', href: '/blog' },
   { label: 'Payments', href: '/payments' },
   { label: 'Privacy Policy', href: '/privacy-policy' },

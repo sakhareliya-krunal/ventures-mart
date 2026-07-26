@@ -1,7 +1,7 @@
 <x-mail::message>
 # New contact message
 
-Someone submitted the Venture Smart contact form.
+Someone submitted the Ventures Mart contact form.
 
 **Name:** {{ $contactMessage->name }}
 

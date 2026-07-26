@@ -15,7 +15,7 @@ useHead({
   <StaticPageLayout
     eyebrow="Privacy"
     title="Privacy Policy"
-    lead="How Venture Smart collects and uses information when you browse, shop, or reach out for support."
+    lead="How Ventures Mart collects and uses information when you browse, shop, or reach out for support."
     meta="Last updated: July 2026"
   >
     <div class="static-prose">

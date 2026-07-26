@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
           </div>
           <p class="stock-note" :class="{ 'stock-note--oos': !inStock }">
             <template v-if="inStock">
-              {{ product.stock }} in stock. Ships from Venture Smart fulfillment.
+              {{ product.stock }} in stock. Ships from Ventures Mart fulfillment.
             </template>
             <template v-else>Currently out of stock.</template>
           </p>

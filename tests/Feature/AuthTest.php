@@ -19,6 +19,29 @@ class AuthTest extends TestCase
         $this->withCredentials();
     }
 
+    public function test_register_rejects_existing_email_with_friendly_message(): void
+    {
+        User::factory()->create([
+            'email' => 'shopper@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->postJson('/api/register', [
+            'name' => 'Shopper',
+            'email' => 'shopper@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email'])
+            ->assertJsonPath(
+                'errors.email.0',
+                'Your account already exists. Please log in to continue.',
+            );
+
+        $this->assertGuest();
+    }
+
     public function test_user_can_login_and_fetch_profile(): void
     {
         $user = User::factory()->create([

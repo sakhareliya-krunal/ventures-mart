@@ -170,39 +170,68 @@
   width: 100%;
 }
 
-.google-continue.is-disabled .google-continue__host {
+.google-continue.is-disabled .google-continue__btn {
+  cursor: not-allowed;
   opacity: 0.55;
-  pointer-events: none;
 }
 
-.google-continue__host {
+.google-continue__btn {
+  align-items: center;
+  background: #1a73e8;
   border: none;
+  border-radius: 999px;
   box-shadow: none;
-  display: flex;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 900;
+  gap: 0.55rem;
   justify-content: center;
-  max-width: 100%;
+  letter-spacing: 0.01em;
+  line-height: 1;
   min-height: 44px;
-  min-width: 0;
   outline: none;
-  outline-offset: 0;
+  padding: 0.78rem 1.1rem;
   -webkit-tap-highlight-color: transparent;
+  transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   width: 100%;
 }
 
-.google-continue__host:focus,
-.google-continue__host:focus-visible,
-.google-continue__host:focus-within,
-.google-continue__host:active,
-.google-continue__host iframe,
-.google-continue__host iframe:focus,
-.google-continue__host iframe:focus-visible,
-.google-continue__host iframe:active,
-.google-continue__host * {
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  outline-offset: 0 !important;
-  -webkit-tap-highlight-color: transparent;
+.google-continue__btn:hover:not(:disabled) {
+  background: #1765cc;
+  transform: translateY(-1px);
+}
+
+.google-continue__btn:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, #1a73e8 28%, transparent);
+}
+
+.google-continue__btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+}
+
+.google-continue__icon {
+  align-items: center;
+  background: #fff;
+  border-radius: 50%;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.google-continue__icon svg {
+  display: block;
+  height: 18px;
+  width: 18px;
+}
+
+.google-continue__label {
+  line-height: 1;
 }
 
 .google-continue__hint {

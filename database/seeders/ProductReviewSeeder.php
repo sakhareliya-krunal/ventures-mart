@@ -30,7 +30,7 @@ class ProductReviewSeeder extends Seeder
         'Bought this for my kids and they love it. Looks exactly like the photos on the site.',
         'Solid everyday pick. Feels sturdy and the finish is better than I expected.',
         'Good product overall. Colour matched what I ordered and it arrived without any damage.',
-        'Useful and well made. Would order again from Venture Smart without hesitation.',
+        'Useful and well made. Would order again from Ventures Mart without hesitation.',
         'Nice build and practical for daily use. Customer support replied quickly when I asked a question.',
         'Value for money. The details are thoughtful and it holds up well with regular use.',
         'Exactly what we needed. Clean packaging and the item feels premium for this range.',

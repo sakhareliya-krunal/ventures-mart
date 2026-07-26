@@ -1134,7 +1134,7 @@
   font-style: normal;
 }
 
-.admin-product-form .admin-field input,
+.admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']),
 .admin-product-form .admin-field textarea {
   -webkit-appearance: none;
   appearance: none;
@@ -1156,12 +1156,12 @@
   resize: vertical;
 }
 
-.admin-product-form .admin-field input:hover,
+.admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']):hover,
 .admin-product-form .admin-field textarea:hover {
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
 }
 
-.admin-product-form .admin-field input:focus,
+.admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']):focus,
 .admin-product-form .admin-field textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
@@ -1546,7 +1546,12 @@
 }
 
 .checkbox-row input {
-  width: auto;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 1.05rem;
+  margin: 0;
+  width: 1.05rem;
 }
 
 .muted {

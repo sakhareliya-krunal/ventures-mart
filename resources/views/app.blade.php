@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Venture Smart') }}</title>
+    <title>{{ config('app.name', 'Ventures Mart') }}</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -159,7 +159,7 @@
     @vite(['resources/js/app.js'])
 </head>
 <body>
-    <div id="brand-splash" class="brand-splash" role="status" aria-live="polite" aria-label="Loading Venture Smart">
+    <div id="brand-splash" class="brand-splash" role="status" aria-live="polite" aria-label="Loading Ventures Mart">
         <span class="brand-splash__orb brand-splash__orb--1" aria-hidden="true"></span>
         <span class="brand-splash__orb brand-splash__orb--2" aria-hidden="true"></span>
         <span class="brand-splash__orb brand-splash__orb--3" aria-hidden="true"></span>
@@ -167,9 +167,9 @@
             <div class="brand-splash__mark">
                 <span class="brand-splash__ring" aria-hidden="true"></span>
                 <span class="brand-splash__ring brand-splash__ring--inner" aria-hidden="true"></span>
-                <img class="brand-splash__logo" src="/images/ventures-mart-logo.png" alt="Venture Smart" width="120" height="120" />
+                <img class="brand-splash__logo" src="/images/ventures-mart-logo.png" alt="Ventures Mart" width="120" height="120" />
             </div>
-            <p class="brand-splash__name">Venture Smart</p>
+            <p class="brand-splash__name">Ventures Mart</p>
             <p class="brand-splash__tagline">Toys &amp; lunch boxes</p>
             <div class="brand-splash__bar" aria-hidden="true">
                 <span class="brand-splash__bar-fill"></span>

@@ -8,7 +8,6 @@ export function blankProductForm() {
     compare_at_price: '',
     stock: 0,
     is_active: true,
-    featured: false,
     images: [],
     description: '',
     badge: '',
@@ -21,11 +20,6 @@ export function productImagesFromRecord(product) {
   return product?.image ? [product.image] : [];
 }
 
-export function isFeaturedProduct(product) {
-  const tags = Array.isArray(product?.tags) ? product.tags : [];
-  return product?.badge === 'Featured' || tags.includes('featured');
-}
-
 export function fillProductForm(form, product) {
   Object.assign(form, {
     name: product.name || '',
@@ -36,7 +30,6 @@ export function fillProductForm(form, product) {
     compare_at_price: product.compare_at_price ?? '',
     stock: product.stock || 0,
     is_active: product.is_active !== false,
-    featured: isFeaturedProduct(product),
     images: productImagesFromRecord(product),
     description: product.description || '',
     badge: product.badge || '',
@@ -54,7 +47,6 @@ export function buildProductPayload(form) {
     compare_at_price: form.compare_at_price === '' ? null : form.compare_at_price,
     stock: form.stock,
     is_active: Boolean(form.is_active),
-    featured: Boolean(form.featured),
     image: images[0] || null,
     hover_image: images[1] || null,
     gallery: images.slice(1),

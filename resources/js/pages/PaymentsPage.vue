@@ -22,7 +22,7 @@ useHead({
       <section>
         <h2>Accepted methods</h2>
         <p>
-          Venture Smart checkout supports the payment options below. Online payments are processed
+          Ventures Mart checkout supports the payment options below. Online payments are processed
           securely through Razorpay.
         </p>
         <div class="payment-pills">
