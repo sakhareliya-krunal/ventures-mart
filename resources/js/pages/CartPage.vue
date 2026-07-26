@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import CartLineItem from '@/components/cart/CartLineItem.vue';
 import OrderSummary from '@/components/cart/OrderSummary.vue';
@@ -7,17 +8,30 @@ import AppButton from '@/components/ui/AppButton.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import PageHero from '@/components/ui/PageHero.vue';
+import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
+import { requireLogin } from '@/utils/authRedirect';
 
 const theme = useThemeStore();
+const auth = useAuthStore();
 const cart = useCartStore();
+const router = useRouter();
 
 useHead({
   title: () => `Cart | ${theme.brandName}`,
 });
 
 onMounted(() => cart.fetch());
+
+function goToCheckout() {
+  if (!auth.user) {
+    requireLogin(router, '/checkout');
+    return;
+  }
+
+  router.push('/checkout');
+}
 </script>
 
 <template>
@@ -42,7 +56,7 @@ onMounted(() => cart.fetch());
         </div>
         <div>
           <OrderSummary :totals="cart.totals" />
-          <AppButton to="/checkout" size="lg" class="full-width">Checkout</AppButton>
+          <AppButton size="lg" class="full-width" @click="goToCheckout">Checkout</AppButton>
         </div>
       </div>
     </div>

@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import { LogOut, Package } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
-import PageHero from '@/components/ui/PageHero.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { useAuthStore } from '@/stores/auth';
@@ -13,23 +14,16 @@ import { useThemeStore } from '@/stores/theme';
 const theme = useThemeStore();
 const auth = useAuthStore();
 const router = useRouter();
+const confirmLogoutOpen = ref(false);
 
-const accountError = ref('');
-const accountSuccess = ref('');
 const passwordError = ref('');
 const passwordSuccess = ref('');
 const addressError = ref('');
 const addressSuccess = ref('');
-const savingAccount = ref(false);
 const savingPassword = ref(false);
 const savingAddress = ref(false);
 const addresses = ref([]);
 const editingId = ref(null);
-
-const account = reactive({
-  name: '',
-  email: '',
-});
 
 const passwordForm = reactive({
   current_password: '',
@@ -48,6 +42,15 @@ const addressForm = reactive({
   is_default: false,
 });
 
+const displayName = computed(() => auth.user?.name || 'Account');
+const displayEmail = computed(() => auth.user?.email || '');
+const avatarUrl = computed(() => auth.user?.avatar || '');
+const hasPassword = computed(() => Boolean(auth.user?.has_password));
+const avatarInitial = computed(() => {
+  const name = displayName.value.trim();
+  return name ? name.charAt(0).toUpperCase() : '?';
+});
+
 useHead({
   title: () => `Profile | ${theme.brandName}`,
 });
@@ -56,9 +59,6 @@ onMounted(async () => {
   if (!auth.user) {
     await auth.fetchUser();
   }
-
-  account.name = auth.user?.name || '';
-  account.email = auth.user?.email || '';
   await loadAddresses();
 });
 
@@ -97,36 +97,28 @@ function editAddress(item) {
   addressSuccess.value = '';
 }
 
-async function saveAccount() {
-  accountError.value = '';
-  accountSuccess.value = '';
-  savingAccount.value = true;
-
-  try {
-    const { data } = await api.patch('/profile', { ...account });
-    auth.user = unwrapData(data);
-    accountSuccess.value = 'Profile updated.';
-  } catch (err) {
-    accountError.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to update profile.';
-  } finally {
-    savingAccount.value = false;
-  }
-}
-
 async function savePassword() {
   passwordError.value = '';
   passwordSuccess.value = '';
   savingPassword.value = true;
 
   try {
-    const { data } = await api.put('/profile/password', { ...passwordForm });
-    passwordSuccess.value = data.message || 'Password updated.';
+    const payload = hasPassword.value
+      ? { ...passwordForm }
+      : {
+          password: passwordForm.password,
+          password_confirmation: passwordForm.password_confirmation,
+        };
+    const { data } = await api.put('/profile/password', payload);
+    passwordSuccess.value = data.message || (hasPassword.value ? 'Password updated.' : 'Password set.');
     passwordForm.current_password = '';
     passwordForm.password = '';
     passwordForm.password_confirmation = '';
+    if (data.user) {
+      auth.user = unwrapData(data.user) ?? data.user;
+    } else {
+      await auth.fetchUser();
+    }
   } catch (err) {
     passwordError.value =
       err.response?.data?.message ||
@@ -175,74 +167,128 @@ async function deleteAddress(id) {
   await loadAddresses();
 }
 
+async function requestLogout() {
+  if (auth.loggingOut) return;
+  confirmLogoutOpen.value = true;
+}
+
 async function logout() {
+  if (auth.loggingOut) return;
   await auth.logout();
+  confirmLogoutOpen.value = false;
   await router.push('/');
 }
 </script>
 
 <template>
   <div class="profile-page">
-    <PageHero
-      eyebrow="Account"
-      title="Your profile"
-      lead="Update your details, manage saved addresses, and review orders."
-      size="compact"
-    >
-      <template #actions>
-        <AppButton to="/orders" variant="secondary" size="lg">View orders</AppButton>
-        <AppButton variant="ghost" size="lg" @click="logout">Logout</AppButton>
-      </template>
-    </PageHero>
-
-    <section class="page-section profile-sections">
-      <div class="profile-panel">
-        <h2>Account details</h2>
-        <p v-if="accountError" class="form-error">{{ accountError }}</p>
-        <p v-if="accountSuccess" class="form-success">{{ accountSuccess }}</p>
-        <form class="contact-form" @submit.prevent="saveAccount">
-          <FormField v-model="account.name" label="Name" required />
-          <FormField v-model="account.email" label="Email" type="email" required />
-          <AppButton type="submit" :disabled="savingAccount">
-            {{ savingAccount ? 'Saving…' : 'Save profile' }}
+    <section class="profile-identity">
+      <div class="profile-identity__glow" aria-hidden="true" />
+      <div class="profile-identity__inner page-section">
+        <div class="profile-identity__main">
+          <div class="profile-avatar">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="displayName"
+              class="profile-avatar__image"
+              referrerpolicy="no-referrer"
+            />
+            <span v-else class="profile-avatar__initial" aria-hidden="true">{{ avatarInitial }}</span>
+          </div>
+          <div class="profile-identity__copy">
+            <p class="profile-identity__eyebrow">Account</p>
+            <h1>{{ displayName }}</h1>
+            <p class="profile-identity__email">{{ displayEmail }}</p>
+            <p class="profile-identity__note">
+              Name and email are managed by your account and can’t be edited here.
+            </p>
+          </div>
+        </div>
+        <div class="profile-identity__actions">
+          <AppButton to="/orders" variant="primary" size="lg">
+            <Package :size="18" />
+            View orders
           </AppButton>
-        </form>
+          <AppButton
+            variant="secondary"
+            size="lg"
+            :disabled="auth.loggingOut"
+            @click="requestLogout"
+          >
+            <LogOut :size="18" />
+            Logout
+          </AppButton>
+        </div>
       </div>
+    </section>
 
-      <div class="profile-panel">
-        <h2>Change password</h2>
+    <section class="page-section profile-body">
+      <div class="profile-block">
+        <header class="profile-block__header">
+          <h2>{{ hasPassword ? 'Password' : 'Set a password' }}</h2>
+          <p>
+            {{
+              hasPassword
+                ? 'Keep your account secure with a strong password.'
+                : 'Optional. Add a password so you can also sign in with email.'
+            }}
+          </p>
+        </header>
         <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
         <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
-        <form class="contact-form" @submit.prevent="savePassword">
+        <form class="profile-form" @submit.prevent="savePassword">
           <FormField
+            v-if="hasPassword"
             v-model="passwordForm.current_password"
             label="Current password"
             type="password"
             required
+            autocomplete="current-password"
           />
-          <FormField v-model="passwordForm.password" label="New password" type="password" required />
+          <FormField
+            v-model="passwordForm.password"
+            :label="hasPassword ? 'New password' : 'Password'"
+            type="password"
+            required
+            autocomplete="new-password"
+          />
           <FormField
             v-model="passwordForm.password_confirmation"
             label="Confirm password"
             type="password"
             required
+            autocomplete="new-password"
           />
           <AppButton type="submit" :disabled="savingPassword">
-            {{ savingPassword ? 'Updating…' : 'Update password' }}
+            {{
+              savingPassword
+                ? hasPassword
+                  ? 'Updating…'
+                  : 'Saving…'
+                : hasPassword
+                  ? 'Update password'
+                  : 'Set password'
+            }}
           </AppButton>
         </form>
       </div>
 
-      <div class="profile-panel profile-panel--wide">
-        <h2>Saved addresses</h2>
+      <div class="profile-block">
+        <header class="profile-block__header">
+          <h2>Saved addresses</h2>
+          <p>Shipping destinations used at checkout.</p>
+        </header>
         <p v-if="addressError" class="form-error">{{ addressError }}</p>
         <p v-if="addressSuccess" class="form-success">{{ addressSuccess }}</p>
 
         <ul v-if="addresses.length" class="address-list">
           <li v-for="item in addresses" :key="item.id" class="address-card">
-            <div>
-              <strong>{{ item.label }}</strong>
-              <span v-if="item.is_default" class="address-badge">Default</span>
+            <div class="address-card__body">
+              <div class="address-card__title">
+                <strong>{{ item.label }}</strong>
+                <span v-if="item.is_default" class="address-badge">Default</span>
+              </div>
               <p>
                 {{ item.full_name }} · {{ item.phone }}<br />
                 {{ item.address }}, {{ item.city }}, {{ item.state }} {{ item.postal_code }}
@@ -267,10 +313,10 @@ async function logout() {
             </div>
           </li>
         </ul>
-        <p v-else class="muted">No saved addresses yet.</p>
+        <p v-else class="profile-empty">No saved addresses yet.</p>
 
-        <h3>{{ editingId ? 'Edit address' : 'Add address' }}</h3>
-        <form class="contact-form" @submit.prevent="saveAddress">
+        <h3 class="profile-block__subheader">{{ editingId ? 'Edit address' : 'Add address' }}</h3>
+        <form class="profile-form" @submit.prevent="saveAddress">
           <div class="form-grid">
             <FormField v-model="addressForm.label" label="Label" />
             <FormField v-model="addressForm.full_name" label="Full name" required />
@@ -297,5 +343,17 @@ async function logout() {
         </form>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="confirmLogoutOpen"
+      title="Log out?"
+      message="You will leave your account and need to sign in again."
+      confirm-label="Log out"
+      busy-label="Signing out…"
+      :busy="auth.loggingOut"
+      :close-on-confirm="false"
+      danger
+      @confirm="logout"
+    />
   </div>
 </template>

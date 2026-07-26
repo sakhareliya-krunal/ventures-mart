@@ -16,6 +16,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
   rows: {
     type: Number,
     default: 4,
@@ -40,6 +44,7 @@ const emit = defineEmits(['update:modelValue']);
       v-if="type === 'textarea'"
       :value="modelValue"
       :required="required"
+      :disabled="disabled"
       :rows="rows"
       :placeholder="placeholder"
       @input="emit('update:modelValue', $event.target.value)"
@@ -49,6 +54,7 @@ const emit = defineEmits(['update:modelValue']);
       :type="type"
       :value="modelValue"
       :required="required"
+      :disabled="disabled"
       :placeholder="placeholder"
       :autocomplete="autocomplete"
       @input="emit('update:modelValue', $event.target.value)"

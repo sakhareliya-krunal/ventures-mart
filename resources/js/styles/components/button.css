@@ -55,3 +55,39 @@
   background: var(--color-secondary);
   color: var(--color-surface);
 }
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+  transform: none;
+}
+
+.button:disabled:hover {
+  transform: none;
+}
+
+.button--busy-sm {
+  min-width: 4.5rem;
+}
+
+.button--busy-lg {
+  min-width: 9rem;
+}
+
+.button-spinner {
+  animation: spin 0.6s linear infinite;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  box-sizing: border-box;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 16px;
+  width: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner {
+    animation-duration: 1.2s;
+  }
+}

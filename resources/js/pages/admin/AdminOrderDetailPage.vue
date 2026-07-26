@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
@@ -58,7 +59,7 @@ async function saveStatus() {
       </AppButton>
     </div>
 
-    <div v-if="loading" class="admin-panel">Loading…</div>
+    <LoadingSpinner v-if="loading" page label="Loading order" />
     <div v-else-if="!order" class="admin-panel">{{ error || 'Order not found.' }}</div>
     <div v-else class="admin-detail-grid">
       <div class="admin-panel">
@@ -68,7 +69,7 @@ async function saveStatus() {
         </p>
         <p v-if="error" class="form-error">{{ error }}</p>
 
-        <div class="admin-form" style="margin: 1rem 0">
+        <div class="admin-form admin-order-status">
           <label>
             Status
             <AppSelect
@@ -96,13 +97,13 @@ async function saveStatus() {
             </thead>
             <tbody>
               <tr v-for="item in items" :key="`${item.product_id}-${item.sku}`">
-                <td>
+                <td data-label="Item">
                   <strong>{{ item.name }}</strong>
                   <div class="admin-muted">{{ item.sku }}</div>
                 </td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ formatCurrency(item.unit_price) }}</td>
-                <td>{{ formatCurrency(item.line_total) }}</td>
+                <td data-label="Qty">{{ item.quantity }}</td>
+                <td data-label="Unit">{{ formatCurrency(item.unit_price) }}</td>
+                <td data-label="Line">{{ formatCurrency(item.line_total) }}</td>
               </tr>
             </tbody>
           </table>

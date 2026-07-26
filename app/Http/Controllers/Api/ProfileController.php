@@ -37,14 +37,15 @@ class ProfileController extends Controller
 
     public function updatePassword(Request $request)
     {
+        $user = $request->user();
+        $hasPassword = filled($user->password);
+
         $validated = $request->validate([
-            'current_password' => ['required', 'string'],
+            'current_password' => [$hasPassword ? 'required' : 'nullable', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = $request->user();
-
-        if (! Hash::check($validated['current_password'], $user->password)) {
+        if ($hasPassword && ! Hash::check($validated['current_password'], $user->password)) {
             throw ValidationException::withMessages([
                 'current_password' => 'The current password is incorrect.',
             ]);
@@ -55,7 +56,8 @@ class ProfileController extends Controller
         ])->save();
 
         return response()->json([
-            'message' => 'Password updated.',
+            'message' => $hasPassword ? 'Password updated.' : 'Password set.',
+            'user' => new UserResource($user->fresh()),
         ]);
     }
 }

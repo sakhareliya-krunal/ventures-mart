@@ -36,7 +36,21 @@ class AdminPanelTest extends TestCase
 
         $this->getJson('/api/admin/stats')
             ->assertOk()
-            ->assertJsonPath('orders_count', 1);
+            ->assertJsonPath('orders_count', 1)
+            ->assertJsonPath('customers_count', 0)
+            ->assertJsonStructure([
+                'orders_by_status' => [
+                    'Processing',
+                    'Shipped',
+                    'Delivered',
+                    'Cancelled',
+                ],
+                'revenue_last_7_days',
+                'low_stock_products',
+                'recent_messages',
+                'recent_posts',
+            ])
+            ->assertJsonPath('orders_by_status.Processing', 1);
 
         $this->getJson('/api/admin/orders')
             ->assertOk()

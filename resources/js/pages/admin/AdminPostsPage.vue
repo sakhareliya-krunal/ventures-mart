@@ -1,93 +1,71 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
+import { apiErrorMessage } from '@/utils/adminPostForm';
 
+const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
-const saving = ref(false);
-const error = ref('');
+const listError = ref('');
+const successMessage = ref('');
 const posts = ref([]);
 const search = ref('');
-const editingId = ref(null);
-const showForm = ref(false);
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 
-const form = reactive({
-  title: '',
-  slug: '',
-  excerpt: '',
-  body: '',
-  cover_image: '',
-  published_at: '',
-});
+let searchTimer = null;
+let successTimer = null;
 
-function resetForm() {
-  editingId.value = null;
-  showForm.value = false;
-  Object.assign(form, {
-    title: '',
-    slug: '',
-    excerpt: '',
-    body: '',
-    cover_image: '',
-    published_at: '',
-  });
+function flashSuccess(message) {
+  successMessage.value = message;
+  if (successTimer) clearTimeout(successTimer);
+  successTimer = setTimeout(() => {
+    successMessage.value = '';
+  }, 3500);
 }
 
-async function edit(post) {
-  const { data } = await api.get(`/admin/posts/${post.id}`);
-  const full = unwrapData(data);
-  editingId.value = full.id;
-  showForm.value = true;
-  Object.assign(form, {
-    title: full.title || '',
-    slug: full.slug || '',
-    excerpt: full.excerpt || '',
-    body: full.body || '',
-    cover_image: full.cover_image || '',
-    published_at: full.published_at ? full.published_at.slice(0, 16) : '',
-  });
+function consumeNotice() {
+  const notice = route.query.notice;
+  if (!notice) return;
+
+  if (notice === 'published') flashSuccess('Post published.');
+  else if (notice === 'draft') {
+    flashSuccess('Post saved as draft (hidden on the public blog until you set Published at).');
+  } else if (notice === 'saved') flashSuccess('Post saved.');
+
+  const query = { ...route.query };
+  delete query.notice;
+  router.replace({ query });
 }
 
 async function load() {
   loading.value = true;
+  listError.value = '';
   try {
     const { data } = await api.get('/admin/posts', {
       params: { search: search.value || undefined },
     });
     posts.value = unwrapData(data) || [];
+  } catch (err) {
+    posts.value = [];
+    listError.value = apiErrorMessage(err, 'Unable to load posts.');
   } finally {
     loading.value = false;
   }
 }
 
-async function save() {
-  saving.value = true;
-  error.value = '';
-  const payload = {
-    ...form,
-    published_at: form.published_at || null,
-  };
-  try {
-    if (editingId.value) {
-      await api.put(`/admin/posts/${editingId.value}`, payload);
-    } else {
-      await api.post('/admin/posts', payload);
-    }
-    resetForm();
-    await load();
-  } catch (err) {
-    error.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to save post.';
-  } finally {
-    saving.value = false;
-  }
+function openCreate() {
+  router.push({ name: 'admin-post-create' });
+}
+
+function openEdit(post) {
+  router.push({ name: 'admin-post-edit', params: { id: post.id } });
 }
 
 async function requestRemove(id) {
@@ -97,13 +75,32 @@ async function requestRemove(id) {
 
 async function remove() {
   if (!pendingDeleteId.value) return;
-  await api.delete(`/admin/posts/${pendingDeleteId.value}`);
-  pendingDeleteId.value = null;
-  await load();
+  listError.value = '';
+  try {
+    await api.delete(`/admin/posts/${pendingDeleteId.value}`);
+    pendingDeleteId.value = null;
+    flashSuccess('Post deleted.');
+    await load();
+  } catch (err) {
+    listError.value = apiErrorMessage(err, 'Unable to delete post.');
+    pendingDeleteId.value = null;
+  }
 }
 
-onMounted(load);
-watch(search, load);
+onMounted(() => {
+  consumeNotice();
+  load();
+});
+
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(load, 300);
+});
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+  if (successTimer) clearTimeout(successTimer);
+});
 </script>
 
 <template>
@@ -117,10 +114,12 @@ watch(search, load);
             placeholder="Search posts…"
             aria-label="Search posts"
           />
-          <AppButton type="button" @click="showForm = true; editingId = null">Add post</AppButton>
+          <AppButton type="button" @click="openCreate">Add post</AppButton>
         </div>
       </div>
-      <div v-if="loading" class="admin-muted">Loading…</div>
+      <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
+      <p v-if="listError" class="form-error">{{ listError }}</p>
+      <LoadingSpinner v-if="loading" page label="Loading posts" />
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -132,20 +131,20 @@ watch(search, load);
           </thead>
           <tbody>
             <tr v-for="post in posts" :key="post.id">
-              <td>
+              <td data-label="Title">
                 <strong>{{ post.title }}</strong>
                 <div class="admin-muted">{{ post.slug }}</div>
               </td>
-              <td>
+              <td data-label="Published">
                 {{
                   post.published_at
                     ? new Date(post.published_at).toLocaleString()
                     : 'Draft'
                 }}
               </td>
-              <td>
+              <td data-label="Actions">
                 <div class="admin-actions">
-                  <AppButton type="button" variant="secondary" size="sm" @click="edit(post)">
+                  <AppButton type="button" variant="secondary" size="sm" @click="openEdit(post)">
                     Edit
                   </AppButton>
                   <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(post.id)">
@@ -156,26 +155,8 @@ watch(search, load);
             </tr>
           </tbody>
         </table>
+        <p v-if="!posts.length" class="admin-empty">No posts found.</p>
       </div>
-    </div>
-
-    <div v-if="showForm" class="admin-panel">
-      <h3>{{ editingId ? 'Edit post' : 'New post' }}</h3>
-      <p v-if="error" class="form-error">{{ error }}</p>
-      <form class="admin-form" @submit.prevent="save">
-        <div class="admin-form__grid">
-          <label>Title <input v-model="form.title" required /></label>
-          <label>Slug <input v-model="form.slug" /></label>
-          <label>Cover image <input v-model="form.cover_image" /></label>
-          <label>Published at <input v-model="form.published_at" type="datetime-local" /></label>
-        </div>
-        <label>Excerpt <textarea v-model="form.excerpt" rows="2" required /></label>
-        <label>Body <textarea v-model="form.body" rows="8" required /></label>
-        <div class="admin-actions">
-          <AppButton type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</AppButton>
-          <AppButton type="button" variant="ghost" @click="resetForm">Cancel</AppButton>
-        </div>
-      </form>
     </div>
 
     <ConfirmDialog

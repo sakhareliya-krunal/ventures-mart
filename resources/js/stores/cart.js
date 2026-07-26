@@ -27,9 +27,14 @@ export const useCartStore = defineStore('cart', () => {
   const loading = ref(false);
   const error = ref(null);
   const trayOpen = ref(false);
+  const addingIds = ref(new Set());
 
   const isEmpty = computed(() => items.value.length === 0);
   const lineCount = computed(() => items.value.length);
+
+  function isAdding(productId) {
+    return addingIds.value.has(Number(productId));
+  }
 
   function openTray() {
     if (!items.value.length) {
@@ -57,12 +62,30 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function addItem(productId, quantity = 1) {
-    const { data } = await api.post('/cart', {
-      product_id: productId,
-      quantity,
-    });
-    applyPayload({ items, itemCount, quantityCount, totals }, data);
-    trayOpen.value = true;
+    const id = Number(productId);
+
+    if (!id || addingIds.value.has(id)) {
+      return;
+    }
+
+    addingIds.value = new Set([...addingIds.value, id]);
+    error.value = null;
+
+    try {
+      const { data } = await api.post('/cart', {
+        product_id: id,
+        quantity,
+      });
+      applyPayload({ items, itemCount, quantityCount, totals }, data);
+      trayOpen.value = true;
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Unable to add to cart.';
+      throw err;
+    } finally {
+      const next = new Set(addingIds.value);
+      next.delete(id);
+      addingIds.value = next;
+    }
   }
 
   async function updateQuantity(productId, quantity) {
@@ -95,8 +118,10 @@ export const useCartStore = defineStore('cart', () => {
     loading,
     error,
     trayOpen,
+    addingIds,
     isEmpty,
     lineCount,
+    isAdding,
     openTray,
     closeTray,
     fetch,

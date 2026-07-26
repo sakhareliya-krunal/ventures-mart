@@ -141,14 +141,38 @@
 }
 
 .blog-prose p,
-.blog-prose ul {
+.blog-prose ul,
+.blog-prose ol,
+.blog-prose li,
+.blog-prose h2,
+.blog-prose h3 {
+  color: rgba(28, 44, 76, 0.9);
+}
+
+.blog-prose p,
+.blog-prose ul,
+.blog-prose ol {
   margin: 0 0 1rem;
 }
 
-.blog-prose ul {
+.blog-prose ul,
+.blog-prose ol {
   display: grid;
   gap: 0.4rem;
   padding-left: 1.2rem;
+}
+
+.blog-prose h3 {
+  font-size: clamp(1.1rem, 2vw, 1.25rem);
+  letter-spacing: -0.015em;
+  margin: 1.5rem 0 0.55rem;
+}
+
+.blog-prose blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  color: rgba(28, 44, 76, 0.72);
+  margin: 0 0 1rem;
+  padding-left: 0.9rem;
 }
 
 .blog-prose a {

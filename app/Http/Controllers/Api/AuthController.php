@@ -30,7 +30,7 @@ class AuthController extends Controller
             'password' => $request->string('password')->toString(),
         ]);
 
-        Auth::login($user);
+        Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $this->cart->mergeGuestIntoUser($request, $user);
         $this->wishlist->mergeGuestIntoUser($request, $user);
@@ -42,7 +42,7 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request)
     {
-        if (! Auth::attempt($request->only('email', 'password'), true)) {
+        if (! Auth::guard('web')->attempt($request->only('email', 'password'), true)) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);

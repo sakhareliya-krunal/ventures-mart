@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 
 const props = defineProps({
   open: {
@@ -27,18 +28,34 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  busy: {
+    type: Boolean,
+    default: false,
+  },
+  busyLabel: {
+    type: String,
+    default: 'Working…',
+  },
+  closeOnConfirm: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(['update:open', 'confirm', 'cancel']);
 
 function close() {
+  if (props.busy) return;
   emit('update:open', false);
   emit('cancel');
 }
 
 function confirm() {
+  if (props.busy) return;
   emit('confirm');
-  emit('update:open', false);
+  if (props.closeOnConfirm) {
+    emit('update:open', false);
+  }
 }
 
 function onKeydown(event) {
@@ -69,27 +86,37 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div v-if="open" class="confirm-dialog" role="presentation">
-      <button class="confirm-dialog__backdrop" type="button" aria-label="Close dialog" @click="close" />
+      <button
+        class="confirm-dialog__backdrop"
+        type="button"
+        aria-label="Close dialog"
+        :disabled="busy"
+        @click="close"
+      />
       <div
         class="confirm-dialog__panel"
         role="alertdialog"
         aria-modal="true"
-        :aria-labelledby="'confirm-dialog-title'"
-        :aria-describedby="'confirm-dialog-message'"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-message"
+        :aria-busy="busy ? 'true' : 'false'"
       >
         <h2 id="confirm-dialog-title">{{ title }}</h2>
         <p id="confirm-dialog-message">{{ message }}</p>
         <div class="confirm-dialog__actions">
-          <AppButton type="button" variant="ghost" @click="close">
+          <AppButton type="button" variant="ghost" :disabled="busy" @click="close">
             {{ cancelLabel }}
           </AppButton>
           <AppButton
             type="button"
+            class="confirm-dialog__confirm auth-submit"
             :variant="danger ? 'primary' : 'primary'"
             :class="{ 'button--danger': danger }"
+            :disabled="busy"
             @click="confirm"
           >
-            {{ confirmLabel }}
+            <LoadingSpinner v-if="busy" size="sm" :label="busyLabel" />
+            <template v-else>{{ confirmLabel }}</template>
           </AppButton>
         </div>
       </div>

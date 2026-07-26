@@ -17,6 +17,16 @@ useHead({
   title: () => `Orders | ${theme.brandName}`,
 });
 
+function formatOrderDate(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-GB');
+}
+
+function formatStatus(status) {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = '';
@@ -51,19 +61,29 @@ onMounted(async () => {
     <div class="page-section">
       <p v-if="error" class="form-error">{{ error }}</p>
       <div class="orders-list">
-        <article v-for="order in orders" :key="order.id" class="order-card">
-          <div>
-            <h2>{{ order.number || order.id }}</h2>
-            <p>
-              {{ new Date(order.created_at).toLocaleDateString() }} - {{ order.status }}
+        <article
+          v-for="(order, index) in orders"
+          :key="order.id"
+          class="order-card"
+          :style="{ animationDelay: `${Math.min(index, 8) * 55}ms` }"
+        >
+          <div class="order-card__meta">
+            <h2 class="order-card__number">{{ order.number || order.id }}</h2>
+            <p class="order-card__when">
+              {{ formatOrderDate(order.created_at) }}
+              <span aria-hidden="true"> — </span>
+              {{ formatStatus(order.status) }}
             </p>
           </div>
-          <ul>
-            <li v-for="item in order.items || []" :key="`${order.id}-${item.product_id}`">
+          <ul class="order-card__items">
+            <li
+              v-for="item in order.items || []"
+              :key="`${order.id}-${item.product_id}`"
+            >
               {{ item.quantity }} x {{ item.name }}
             </li>
           </ul>
-          <strong>{{ formatCurrency(order.total) }}</strong>
+          <strong class="order-card__total">{{ formatCurrency(order.total) }}</strong>
         </article>
       </div>
     </div>

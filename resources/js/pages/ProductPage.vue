@@ -9,6 +9,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { formatCurrency } from '@/utils/format';
+import { safeHtml, stripHtml } from '@/utils/html';
 import { useCartStore } from '@/stores/cart';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
@@ -38,6 +39,9 @@ const slug = computed(() => String(route.params.slug || ''));
 const product = computed(() => products.current);
 const wished = computed(() =>
   product.value ? wishlist.isWishlisted(product.value.id) : false,
+);
+const adding = computed(() =>
+  product.value ? cart.isAdding(product.value.id) : false,
 );
 const variants = computed(() => product.value?.variants || []);
 const gallery = computed(() => {
@@ -337,7 +341,7 @@ onBeforeUnmount(() => {
               {{ formatCurrency(product.compare_at_price) }}
             </span>
           </div>
-          <p class="product-detail__lead">{{ product.description }}</p>
+          <p class="product-detail__lead">{{ stripHtml(product.description, 160) }}</p>
 
           <div v-if="variants.length > 1" class="color-swatches">
             <span class="color-swatches__label">
@@ -363,9 +367,19 @@ onBeforeUnmount(() => {
           </ul>
 
           <div class="product-detail__actions">
-            <AppButton size="lg" @click="cart.addItem(product.id)">
-              <ShoppingBag :size="18" />
-              Add to cart
+            <AppButton
+              size="lg"
+              class="button--busy-lg"
+              :disabled="adding"
+              :aria-busy="adding"
+              aria-label="Add to cart"
+              @click="cart.addItem(product.id)"
+            >
+              <span v-if="adding" class="button-spinner" aria-hidden="true" />
+              <template v-else>
+                <ShoppingBag :size="18" />
+                Add to cart
+              </template>
             </AppButton>
             <AppButton
               variant="secondary"
@@ -388,7 +402,7 @@ onBeforeUnmount(() => {
 
     <section class="page-section product-detail__description" aria-labelledby="product-description-title">
       <h2 id="product-description-title">Description</h2>
-      <p>{{ product.description }}</p>
+      <div class="product-detail__prose" v-html="safeHtml(product.description)" />
       <ul v-if="product.details?.length" class="check-list">
         <li v-for="detail in product.details" :key="`desc-${detail}`">{{ detail }}</li>
       </ul>

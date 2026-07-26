@@ -764,3 +764,29 @@
   }
 }
 
+@media (max-width: 960px) {
+  .whatsapp-float,
+  .whatsapp-float:hover,
+  .whatsapp-float:focus-visible {
+    gap: 0;
+    max-width: 56px;
+    padding: 0.85rem;
+    transform: none;
+  }
+
+  .whatsapp-float__label,
+  .whatsapp-float:hover .whatsapp-float__label,
+  .whatsapp-float:focus-visible .whatsapp-float__label {
+    display: none;
+    max-width: 0;
+    opacity: 0;
+  }
+
+  .whatsapp-float:hover .whatsapp-float__ring,
+  .whatsapp-float:focus-visible .whatsapp-float__ring {
+    animation-play-state: running;
+    opacity: 0.7;
+  }
+}
+
+

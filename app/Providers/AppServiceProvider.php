@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use Composer\CaBundle\CaBundle;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Http::globalOptions([
+            'verify' => CaBundle::getSystemCaRootBundlePath(),
+        ]);
     }
 }

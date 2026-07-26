@@ -4,10 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { Minus, Plus, ShoppingBag, Trash2, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { formatCurrency } from '@/utils/format';
+import { requireLogin } from '@/utils/authRedirect';
+import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 
 const route = useRoute();
 const router = useRouter();
+const auth = useAuthStore();
 const cart = useCartStore();
 
 const hiddenOnRoute = computed(
@@ -48,6 +51,12 @@ async function increase(item) {
 
 function goToCheckout() {
   cart.closeTray();
+
+  if (!auth.user) {
+    requireLogin(router, '/checkout');
+    return;
+  }
+
   router.push('/checkout');
 }
 

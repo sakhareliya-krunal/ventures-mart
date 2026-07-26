@@ -4,6 +4,7 @@ import { Heart, ShoppingBag, Star } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import { formatCurrency } from '@/utils/format';
+import { stripHtml } from '@/utils/html';
 import { useCartStore } from '@/stores/cart';
 import { useWishlistStore } from '@/stores/wishlist';
 
@@ -51,6 +52,7 @@ const display = computed(() => {
 });
 
 const wished = computed(() => wishlist.isWishlisted(display.value.id));
+const adding = computed(() => cart.isAdding(display.value.id));
 const hasHover = computed(() => Boolean(display.value.hover_image));
 
 function selectVariant(slug) {
@@ -60,6 +62,7 @@ function selectVariant(slug) {
 }
 
 async function addToCart() {
+  if (adding.value) return;
   await cart.addItem(display.value.id);
 }
 
@@ -123,7 +126,7 @@ async function toggleWish() {
           />
         </template>
       </div>
-      <p>{{ display.description }}</p>
+      <p>{{ stripHtml(display.description, 120) }}</p>
       <div class="product-card__footer">
         <div class="price">
           <strong>{{ formatCurrency(display.price) }}</strong>
@@ -131,9 +134,19 @@ async function toggleWish() {
             {{ formatCurrency(display.compare_at_price) }}
           </span>
         </div>
-        <AppButton size="sm" @click="addToCart">
-          <ShoppingBag :size="16" />
-          Add
+        <AppButton
+          size="sm"
+          class="button--busy-sm"
+          :disabled="adding"
+          :aria-busy="adding"
+          aria-label="Add to cart"
+          @click="addToCart"
+        >
+          <span v-if="adding" class="button-spinner" aria-hidden="true" />
+          <template v-else>
+            <ShoppingBag :size="16" />
+            Add
+          </template>
         </AppButton>
       </div>
     </div>

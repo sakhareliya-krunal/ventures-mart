@@ -1,156 +1,67 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import AdminProductForm from '@/components/admin/AdminProductForm.vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { formatCurrency, unwrapData } from '@/utils/format';
+import { apiErrorMessage } from '@/utils/adminProductForm';
 
+const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
-const saving = ref(false);
-const error = ref('');
-const fieldErrors = ref({});
 const products = ref([]);
-const categories = ref([]);
 const search = ref('');
-const editingId = ref(null);
-const showForm = ref(false);
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 const listError = ref('');
+const successMessage = ref('');
 
-const form = reactive({
-  name: '',
-  slug: '',
-  sku: '',
-  category_id: '',
-  price: 0,
-  compare_at_price: '',
-  stock: 0,
-  images: [],
-  description: '',
-  badge: '',
-});
+let successTimer = null;
 
-const categoryOptions = computed(() =>
-  categories.value.map((category) => ({
-    value: category.id,
-    label: category.name,
-  })),
-);
-
-const blankForm = () => ({
-  name: '',
-  slug: '',
-  sku: '',
-  category_id: '',
-  price: 0,
-  compare_at_price: '',
-  stock: 0,
-  images: [],
-  description: '',
-  badge: '',
-});
-
-function clearFormState() {
-  editingId.value = null;
-  error.value = '';
-  fieldErrors.value = {};
-  Object.assign(form, blankForm());
+function flashSuccess(message) {
+  successMessage.value = message;
+  if (successTimer) clearTimeout(successTimer);
+  successTimer = setTimeout(() => {
+    successMessage.value = '';
+  }, 3500);
 }
 
-function closeForm() {
-  showForm.value = false;
-  clearFormState();
+function consumeNotice() {
+  const notice = route.query.notice;
+  if (!notice) return;
+
+  if (notice === 'created') flashSuccess('Product created.');
+  else if (notice === 'saved') flashSuccess('Product saved.');
+
+  const query = { ...route.query };
+  delete query.notice;
+  router.replace({ query });
 }
 
 function openCreate() {
-  clearFormState();
-  showForm.value = true;
+  router.push({ name: 'admin-product-create' });
 }
 
-function edit(product) {
-  clearFormState();
-  editingId.value = product.id;
-  const gallery = Array.isArray(product.gallery) ? product.gallery.filter(Boolean) : [];
-  const images = gallery.length ? gallery : product.image ? [product.image] : [];
-  Object.assign(form, {
-    name: product.name || '',
-    slug: product.slug || '',
-    sku: product.sku || '',
-    category_id: product.category_id || '',
-    price: product.price || 0,
-    compare_at_price: product.compare_at_price ?? '',
-    stock: product.stock || 0,
-    images,
-    description: product.description || '',
-    badge: product.badge || '',
-  });
-  showForm.value = true;
+function openEdit(product) {
+  router.push({ name: 'admin-product-edit', params: { id: product.id } });
 }
 
 async function load() {
   loading.value = true;
   listError.value = '';
   try {
-    const [{ data: productData }, { data: categoryData }] = await Promise.all([
-      api.get('/admin/products', { params: { search: search.value || undefined } }),
-      api.get('/admin/categories'),
-    ]);
-    products.value = unwrapData(productData) || [];
-    categories.value = unwrapData(categoryData) || [];
-  } catch {
-    listError.value = 'Unable to load products.';
+    const { data } = await api.get('/admin/products', {
+      params: { search: search.value || undefined },
+    });
+    products.value = unwrapData(data) || [];
+  } catch (err) {
+    products.value = [];
+    listError.value = apiErrorMessage(err, 'Unable to load products.');
   } finally {
     loading.value = false;
-  }
-}
-
-async function save() {
-  saving.value = true;
-  error.value = '';
-  fieldErrors.value = {};
-
-  const images = (form.images || []).filter(Boolean);
-  if (!images.length) {
-    fieldErrors.value = { image: ['At least one product image is required.'] };
-    error.value = 'At least one product image is required.';
-    saving.value = false;
-    return;
-  }
-
-  const payload = {
-    name: form.name,
-    slug: form.slug || null,
-    sku: form.sku,
-    category_id: form.category_id || null,
-    price: form.price,
-    compare_at_price: form.compare_at_price === '' ? null : form.compare_at_price,
-    stock: form.stock,
-    image: images[0],
-    hover_image: images[1] || null,
-    gallery: images.slice(1),
-    description: form.description || '',
-    badge: form.badge || null,
-  };
-
-  try {
-    if (editingId.value) {
-      await api.put(`/admin/products/${editingId.value}`, payload);
-    } else {
-      await api.post('/admin/products', payload);
-    }
-    closeForm();
-    await load();
-  } catch (err) {
-    fieldErrors.value = err.response?.data?.errors || {};
-    error.value =
-      err.response?.data?.message ||
-      Object.values(fieldErrors.value)[0]?.[0] ||
-      'Unable to save product.';
-  } finally {
-    saving.value = false;
   }
 }
 
@@ -166,18 +77,24 @@ async function remove() {
   try {
     await api.delete(`/admin/products/${id}`);
     pendingDeleteId.value = null;
+    flashSuccess('Product deleted.');
     await load();
   } catch (err) {
-    listError.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to delete product.';
+    listError.value = apiErrorMessage(err, 'Unable to delete product.');
     pendingDeleteId.value = null;
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  consumeNotice();
+  load();
+});
+
 watch(search, load);
+
+onBeforeUnmount(() => {
+  if (successTimer) clearTimeout(successTimer);
+});
 </script>
 
 <template>
@@ -195,8 +112,9 @@ watch(search, load);
         </div>
       </div>
 
+      <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
       <p v-if="listError" class="form-error">{{ listError }}</p>
-      <div v-if="loading" class="admin-muted">Loading…</div>
+      <LoadingSpinner v-if="loading" page label="Loading products" />
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -210,7 +128,7 @@ watch(search, load);
           </thead>
           <tbody>
             <tr v-for="product in products" :key="product.id">
-              <td>
+              <td data-label="Name">
                 <div class="admin-product-cell">
                   <img
                     v-if="product.image"
@@ -224,12 +142,12 @@ watch(search, load);
                   </div>
                 </div>
               </td>
-              <td>{{ product.sku || '—' }}</td>
-              <td>{{ formatCurrency(product.price) }}</td>
-              <td>{{ product.stock }}</td>
-              <td>
+              <td data-label="SKU">{{ product.sku || '—' }}</td>
+              <td data-label="Price">{{ formatCurrency(product.price) }}</td>
+              <td data-label="Stock">{{ product.stock }}</td>
+              <td data-label="Actions">
                 <div class="admin-actions">
-                  <AppButton type="button" variant="secondary" size="sm" @click="edit(product)">
+                  <AppButton type="button" variant="secondary" size="sm" @click="openEdit(product)">
                     Edit
                   </AppButton>
                   <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(product.id)">
@@ -243,18 +161,6 @@ watch(search, load);
         <p v-if="!products.length" class="admin-empty">No products found.</p>
       </div>
     </div>
-
-    <AdminProductForm
-      v-model:open="showForm"
-      :editing="Boolean(editingId)"
-      :form="form"
-      :category-options="categoryOptions"
-      :field-errors="fieldErrors"
-      :error="error"
-      :saving="saving"
-      @submit="save"
-      @cancel="closeForm"
-    />
 
     <ConfirmDialog
       v-model:open="confirmOpen"

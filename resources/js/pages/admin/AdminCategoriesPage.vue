@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 
@@ -102,7 +103,7 @@ onMounted(load);
         <h2>Categories</h2>
         <AppButton type="button" @click="showForm = true; editingId = null">Add category</AppButton>
       </div>
-      <div v-if="loading" class="admin-muted">Loading…</div>
+      <LoadingSpinner v-if="loading" page label="Loading categories" />
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -116,11 +117,11 @@ onMounted(load);
           </thead>
           <tbody>
             <tr v-for="category in categories" :key="category.id">
-              <td>{{ category.name }}</td>
-              <td>{{ category.slug }}</td>
-              <td>{{ category.featured ? 'Yes' : 'No' }}</td>
-              <td>{{ category.sort_order }}</td>
-              <td>
+              <td data-label="Name">{{ category.name }}</td>
+              <td data-label="Slug">{{ category.slug }}</td>
+              <td data-label="Featured">{{ category.featured ? 'Yes' : 'No' }}</td>
+              <td data-label="Sort">{{ category.sort_order }}</td>
+              <td data-label="Actions">
                 <div class="admin-actions">
                   <AppButton type="button" variant="secondary" size="sm" @click="edit(category)">
                     Edit

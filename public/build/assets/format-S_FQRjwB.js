@@ -1,1 +1,0 @@
-function e(e){return new Intl.NumberFormat(`en-IN`,{style:`currency`,currency:`INR`,maximumFractionDigits:0}).format(Number(e)||0)}function t(e){return e==null||Array.isArray(e)?e:Object.prototype.hasOwnProperty.call(e,`data`)?e.data:e}export{t as n,e as t};

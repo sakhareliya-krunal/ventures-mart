@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 
@@ -49,7 +50,7 @@ onMounted(load);
   <div class="admin-detail-grid">
     <div class="admin-panel">
       <h2>Contact messages</h2>
-      <div v-if="loading" class="admin-muted">Loading…</div>
+      <LoadingSpinner v-if="loading" page label="Loading messages" />
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -61,14 +62,16 @@ onMounted(load);
           </thead>
           <tbody>
             <tr v-for="message in messages" :key="message.id">
-              <td>
+              <td data-label="From">
                 <button type="button" class="linkish" @click="openMessage(message)">
                   <strong>{{ message.name }}</strong>
                 </button>
                 <div class="admin-muted">{{ message.email }}</div>
               </td>
-              <td>{{ message.created_at ? new Date(message.created_at).toLocaleString() : '—' }}</td>
-              <td>
+              <td data-label="Date">
+                {{ message.created_at ? new Date(message.created_at).toLocaleString() : '—' }}
+              </td>
+              <td data-label="Actions">
                 <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(message.id)">
                   Delete
                 </AppButton>
@@ -80,14 +83,14 @@ onMounted(load);
       </div>
     </div>
 
-    <div class="admin-panel">
+    <div class="admin-panel admin-message-pane">
       <h3>Message</h3>
       <template v-if="selected">
         <p>
           <strong>{{ selected.name }}</strong><br />
           <a :href="`mailto:${selected.email}`">{{ selected.email }}</a>
         </p>
-        <p>{{ selected.message }}</p>
+        <p class="admin-message-pane__body">{{ selected.message }}</p>
       </template>
       <p v-else class="admin-empty">Select a message to read it.</p>
     </div>

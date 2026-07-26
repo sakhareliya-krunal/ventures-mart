@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import { useAuthStore } from '@/stores/auth';
+import { requireLogin } from '@/utils/authRedirect';
 import { unwrapData } from '@/utils/format';
 
 function applyPayload(state, payload) {
@@ -43,6 +46,14 @@ export const useWishlistStore = defineStore('wishlist', () => {
   }
 
   async function toggle(productId) {
+    const auth = useAuthStore();
+
+    if (!auth.user) {
+      const router = useRouter();
+      await requireLogin(router, router.currentRoute.value.fullPath);
+      return false;
+    }
+
     const id = Number(productId);
 
     if (!id || pendingIds.value.has(id)) {

@@ -7,9 +7,23 @@
   margin: 1.5rem auto;
 }
 
+.vm-loader--sm {
+  gap: 0;
+  margin: 0;
+}
+
+.button .vm-loader--sm {
+  margin: 0;
+}
+
 .vm-loader--page {
-  min-height: 40vh;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100dvh - 7.5rem);
   padding: 2rem 1rem;
+  width: 100%;
 }
 
 .vm-loader__mark {

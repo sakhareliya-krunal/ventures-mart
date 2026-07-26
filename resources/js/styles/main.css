@@ -15,4 +15,6 @@
 @import './pages/auth.css';
 @import './pages/static.css';
 @import './pages/blog.css';
+@import './pages/profile.css';
+@import './pages/orders.css';
 @import './pages/admin.css';

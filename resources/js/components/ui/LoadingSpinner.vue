@@ -20,17 +20,20 @@ const props = defineProps({
 const rootClass = computed(() => [
   'vm-loader',
   `vm-loader--${props.size}`,
-  { 'vm-loader--page': props.page },
+  {
+    'vm-loader--page': props.page,
+    'vm-loader--icon-only': !props.label,
+  },
 ]);
 </script>
 
 <template>
-  <div :class="rootClass" role="status" :aria-label="label">
+  <div :class="rootClass" role="status" :aria-label="label || 'Loading'">
     <div class="vm-loader__mark" aria-hidden="true">
       <span class="vm-loader__ring vm-loader__ring--outer" />
       <span class="vm-loader__ring vm-loader__ring--inner" />
       <span class="vm-loader__core" />
     </div>
-    <span class="vm-loader__label">{{ label }}</span>
+    <span v-if="label" class="vm-loader__label">{{ label }}</span>
   </div>
 </template>

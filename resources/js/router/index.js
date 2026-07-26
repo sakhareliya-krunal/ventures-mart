@@ -43,6 +43,7 @@ const router = createRouter({
           path: 'wishlist',
           name: 'wishlist',
           component: () => import('@/pages/WishlistPage.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'cart',
@@ -53,6 +54,7 @@ const router = createRouter({
           path: 'checkout',
           name: 'checkout',
           component: () => import('@/pages/CheckoutPage.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'login',
@@ -74,6 +76,7 @@ const router = createRouter({
           path: 'orders',
           name: 'orders',
           component: () => import('@/pages/OrdersPage.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'contact',
@@ -146,6 +149,18 @@ const router = createRouter({
           meta: { title: 'Order detail' },
         },
         {
+          path: 'products/create',
+          name: 'admin-product-create',
+          component: () => import('@/pages/admin/AdminProductCreatePage.vue'),
+          meta: { title: 'New product' },
+        },
+        {
+          path: 'products/:id/edit',
+          name: 'admin-product-edit',
+          component: () => import('@/pages/admin/AdminProductEditPage.vue'),
+          meta: { title: 'Edit product' },
+        },
+        {
           path: 'products',
           name: 'admin-products',
           component: () => import('@/pages/admin/AdminProductsPage.vue'),
@@ -156,6 +171,18 @@ const router = createRouter({
           name: 'admin-categories',
           component: () => import('@/pages/admin/AdminCategoriesPage.vue'),
           meta: { title: 'Categories' },
+        },
+        {
+          path: 'posts/create',
+          name: 'admin-post-create',
+          component: () => import('@/pages/admin/AdminPostCreatePage.vue'),
+          meta: { title: 'New post' },
+        },
+        {
+          path: 'posts/:id/edit',
+          name: 'admin-post-edit',
+          component: () => import('@/pages/admin/AdminPostEditPage.vue'),
+          meta: { title: 'Edit post' },
         },
         {
           path: 'posts',
@@ -210,12 +237,13 @@ router.beforeEach(async (to) => {
   const isAdminRoute = to.path === '/admin' || to.path.startsWith('/admin/');
   const isAuthPage = to.name === 'login' || to.name === 'register';
 
-  if (!auth.user && !auth.loading) {
+  if (!auth.user && !auth.booting) {
     await auth.fetchUser();
   }
 
   if (needsAuth || needsAdmin) {
     if (!auth.user) {
+      auth.beginRedirect();
       return {
         name: 'login',
         query: { redirect: to.fullPath },
@@ -236,6 +264,18 @@ router.beforeEach(async (to) => {
   }
 
   return true;
+});
+
+router.afterEach((to, from) => {
+  const auth = useAuthStore();
+  const landedOnAuth = to.name === 'login' || to.name === 'register';
+  const leftAuth = from.name === 'login' || from.name === 'register';
+
+  // Clear outbound-to-login overlay once the auth page is ready,
+  // and clear post-login overlay once the destination route has loaded.
+  if (landedOnAuth || (leftAuth && !landedOnAuth)) {
+    auth.endRedirect();
+  }
 });
 
 export default router;

@@ -3,8 +3,6 @@ import { computed, onMounted } from 'vue';
 import { useHead } from '@unhead/vue';
 import HeroBanner from '@/components/home/HeroBanner.vue';
 import CategoryPillars from '@/components/home/CategoryPillars.vue';
-import ServiceStrip from '@/components/home/ServiceStrip.vue';
-import OfferBanner from '@/components/home/OfferBanner.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import { useCategoriesStore } from '@/stores/categories';
@@ -16,7 +14,7 @@ const categories = useCategoriesStore();
 const products = useProductsStore();
 
 useHead({
-  title: () => `${theme.brandName} | Premium toys & lunch boxes`,
+  title: () => `${theme.brandName} | Toys & lunch boxes`,
 });
 
 const lunchPicks = computed(() =>
@@ -39,13 +37,11 @@ onMounted(async () => {
 <template>
   <HeroBanner />
   <CategoryPillars />
-  <ServiceStrip />
 
   <section class="page-section">
     <SectionHeader
-      eyebrow="Lunch Box"
-      title="Steel & kids favorites"
-      description="Durable tiffins and colorful kids boxes curated for everyday packing."
+      title="Steel & kids lunch boxes"
+      description="Durable tiffins for school and everyday packing."
       :action="{ label: 'Shop lunch boxes', href: '/category/lunch-box' }"
     />
     <ProductGrid :products="lunchPicks" />
@@ -53,22 +49,18 @@ onMounted(async () => {
 
   <section class="page-section page-section--soft">
     <SectionHeader
-      eyebrow="Toys"
-      title="Play picks"
-      description="Hands-on toys that make building, cooking play, and cuddles part of the day."
+      title="Toys for play"
+      description="Building, pretend play, and soft companions for every day."
       :action="{ label: 'Shop toys', href: '/category/toys' }"
     />
     <ProductGrid :products="toyPicks" />
   </section>
 
-  <OfferBanner />
-
-  <section class="page-section page-section--tinted">
+  <section v-if="products.sale.length" class="page-section page-section--tinted">
     <SectionHeader
-      eyebrow="Offers"
-      title="Sale favorites"
-      description="Limited savings on toys and lunch boxes families love."
-      :action="{ label: 'View shop', href: '/shop' }"
+      title="On sale"
+      description="Limited savings on toys and lunch boxes."
+      :action="{ label: 'Shop all', href: '/shop' }"
     />
     <ProductGrid :products="products.sale" />
   </section>

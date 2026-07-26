@@ -6,6 +6,7 @@
   box-shadow: var(--shadow-sm);
   display: grid;
   gap: 1rem;
+  min-width: 0;
   padding: 1.25rem;
 }
 
@@ -38,7 +39,9 @@ textarea {
   color: var(--color-danger);
   font-weight: 800;
   margin: 0;
+  overflow-wrap: anywhere;
   padding: 0.8rem;
+  word-break: break-word;
 }
 
 .form-success {
@@ -48,7 +51,9 @@ textarea {
   color: var(--color-success);
   font-weight: 800;
   margin: 0;
+  overflow-wrap: anywhere;
   padding: 0.8rem;
+  word-break: break-word;
 }
 
 .profile-panel {

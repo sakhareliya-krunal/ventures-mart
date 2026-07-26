@@ -7,14 +7,25 @@ import { useWishlistStore } from '@/stores/wishlist';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
+  const booting = ref(false);
   const loading = ref(false);
+  const loggingOut = ref(false);
+  const redirecting = ref(false);
   const error = ref(null);
 
   const isAuthenticated = computed(() => Boolean(user.value));
   const isAdmin = computed(() => Boolean(user.value?.is_admin));
 
+  function beginRedirect() {
+    redirecting.value = true;
+  }
+
+  function endRedirect() {
+    redirecting.value = false;
+  }
+
   async function fetchUser() {
-    loading.value = true;
+    booting.value = true;
     error.value = null;
 
     try {
@@ -23,7 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       user.value = null;
     } finally {
-      loading.value = false;
+      booting.value = false;
     }
   }
 
@@ -61,8 +72,33 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function logout() {
+  async function loginWithGoogle({ credential, intent }) {
     loading.value = true;
+    error.value = null;
+
+    try {
+      const { data } = await api.post('/auth/google', { credential, intent });
+      user.value = unwrapData(data.user ?? data);
+      await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
+      return user.value;
+    } catch (err) {
+      const payload = err.response?.data || {};
+      const googleError = new Error(
+        payload.message ||
+          Object.values(payload.errors || {})[0]?.[0] ||
+          'Unable to continue with Google.',
+      );
+      googleError.code = payload.code || null;
+      googleError.status = err.response?.status || null;
+      error.value = googleError.message;
+      throw googleError;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function logout() {
+    loggingOut.value = true;
     error.value = null;
 
     try {
@@ -71,20 +107,26 @@ export const useAuthStore = defineStore('auth', () => {
       // Session may already be gone.
     } finally {
       user.value = null;
-      loading.value = false;
       await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
+      loggingOut.value = false;
     }
   }
 
   return {
     user,
+    booting,
     loading,
+    loggingOut,
+    redirecting,
     error,
     isAuthenticated,
     isAdmin,
+    beginRedirect,
+    endRedirect,
     fetchUser,
     login,
     register,
+    loginWithGoogle,
     logout,
   };
 });

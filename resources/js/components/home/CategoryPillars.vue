@@ -6,15 +6,15 @@ import { brandAssets } from '@/constants/assets';
 defineProps({
   eyebrow: {
     type: String,
-    default: 'Shop by world',
+    default: 'Shop categories',
   },
   title: {
     type: String,
-    default: 'Two collections. One premium store.',
+    default: 'Toys and lunch boxes',
   },
   subtitle: {
     type: String,
-    default: 'Start with toys for playtime or lunch boxes for everyday meals.',
+    default: 'Pick a category to browse playtime finds or everyday tiffins.',
   },
 });
 

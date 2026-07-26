@@ -5,6 +5,7 @@ import AppHeader from '@/components/common/AppHeader.vue';
 import AppFooter from '@/components/common/AppFooter.vue';
 import CartTray from '@/components/cart/CartTray.vue';
 import WhatsAppFloat from '@/components/common/WhatsAppFloat.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useWishlistStore } from '@/stores/wishlist';
@@ -48,12 +49,19 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell">
-    <AppHeader />
-    <main ref="mainRef">
-      <RouterView />
-    </main>
-    <AppFooter />
-    <CartTray />
-    <WhatsAppFloat />
+    <LoadingSpinner
+      v-if="auth.redirecting"
+      page
+      label="Redirecting…"
+    />
+    <template v-else>
+      <AppHeader />
+      <main ref="mainRef">
+        <RouterView />
+      </main>
+      <AppFooter />
+      <CartTray />
+      <WhatsAppFloat />
+    </template>
   </div>
 </template>

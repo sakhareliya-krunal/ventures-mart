@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { useAuthStore } from '@/stores/auth';
@@ -81,7 +82,7 @@ watch(search, load);
       />
     </div>
     <p v-if="error" class="form-error">{{ error }}</p>
-    <div v-if="loading" class="admin-muted">Loading…</div>
+    <LoadingSpinner v-if="loading" page label="Loading customers" />
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
@@ -94,12 +95,12 @@ watch(search, load);
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
-            <td>{{ user.name }}</td>
-            <td>{{ user.email }}</td>
-            <td>
+            <td data-label="Name">{{ user.name }}</td>
+            <td data-label="Email">{{ user.email }}</td>
+            <td data-label="Role">
               <span class="admin-badge">{{ user.is_admin ? 'Admin' : 'Customer' }}</span>
             </td>
-            <td>
+            <td data-label="Actions">
               <AppButton
                 type="button"
                 variant="secondary"

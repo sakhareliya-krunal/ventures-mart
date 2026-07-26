@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 
@@ -50,7 +51,7 @@ watch(search, load);
         aria-label="Search addresses"
       />
     </div>
-    <div v-if="loading" class="admin-muted">Loading…</div>
+    <LoadingSpinner v-if="loading" page label="Loading addresses" />
     <div v-else class="admin-table-wrap">
       <table class="admin-table">
         <thead>
@@ -63,18 +64,18 @@ watch(search, load);
         </thead>
         <tbody>
           <tr v-for="address in addresses" :key="address.id">
-            <td>
+            <td data-label="Customer">
               <strong>{{ address.user?.name || '—' }}</strong>
               <div class="admin-muted">{{ address.user?.email }}</div>
             </td>
-            <td>
+            <td data-label="Address">
               <strong>{{ address.label }}</strong> · {{ address.full_name }}<br />
               {{ address.address }}, {{ address.city }}, {{ address.state }}
               {{ address.postal_code }}
               <div class="admin-muted">{{ address.phone }}</div>
             </td>
-            <td>{{ address.is_default ? 'Yes' : 'No' }}</td>
-            <td>
+            <td data-label="Default">{{ address.is_default ? 'Yes' : 'No' }}</td>
+            <td data-label="Actions">
               <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(address.id)">
                 Delete
               </AppButton>

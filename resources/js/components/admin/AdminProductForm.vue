@@ -1,19 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { ChevronLeft, ChevronRight, ImagePlus, Trash2, X } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import { ChevronLeft, ChevronRight, ImagePlus, Trash2 } from '@lucide/vue';
+import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import api from '@/services/api';
 
 const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false,
-  },
-  editing: {
-    type: Boolean,
-    default: false,
-  },
   form: {
     type: Object,
     required: true,
@@ -34,9 +27,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  editing: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['update:open', 'submit', 'cancel']);
+const emit = defineEmits(['submit', 'cancel']);
 
 const fileInputRef = ref(null);
 const uploading = ref(false);
@@ -44,20 +41,11 @@ const uploadError = ref('');
 const pathDraft = ref('');
 const dragOver = ref(false);
 
-const title = computed(() => (props.editing ? 'Edit product' : 'Add product'));
 const images = computed(() => (Array.isArray(props.form.images) ? props.form.images : []));
 const busy = computed(() => props.saving || uploading.value);
-
-function close() {
-  emit('update:open', false);
-  emit('cancel');
-}
-
-function onKeydown(event) {
-  if (event.key === 'Escape' && !busy.value) {
-    close();
-  }
-}
+const submitLabel = computed(() =>
+  props.saving ? 'Saving…' : props.editing ? 'Save changes' : 'Create product',
+);
 
 function fieldError(name) {
   const value = props.fieldErrors?.[name];
@@ -125,238 +113,192 @@ function addPath() {
   }
   pathDraft.value = '';
 }
-
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) {
-      window.addEventListener('keydown', onKeydown);
-      document.body.style.overflow = 'hidden';
-      uploadError.value = '';
-      pathDraft.value = '';
-    } else {
-      window.removeEventListener('keydown', onKeydown);
-      document.body.style.overflow = '';
-    }
-  },
-);
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown);
-  document.body.style.overflow = '';
-});
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="admin-modal" role="presentation">
-      <button
-        class="admin-modal__backdrop"
-        type="button"
-        aria-label="Close dialog"
-        :disabled="busy"
-        @click="close"
-      />
-      <div
-        class="admin-modal__panel admin-modal__panel--wide"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="'admin-product-form-title'"
-      >
-        <header class="admin-modal__header">
+  <div class="admin-panel">
+    <form class="admin-product-form" novalidate @submit.prevent="emit('submit')">
+      <p v-if="error" class="form-error">{{ error }}</p>
+
+      <section class="admin-product-form__section">
+        <h3>Basics</h3>
+        <div class="admin-product-form__grid">
+          <label class="admin-field">
+            <span>Name <em>*</em></span>
+            <input v-model="form.name" type="text" autocomplete="off" />
+            <small v-if="fieldError('name')" class="admin-field__error">{{ fieldError('name') }}</small>
+          </label>
+          <label class="admin-field">
+            <span>Slug</span>
+            <input v-model="form.slug" type="text" placeholder="Auto-generated if empty" autocomplete="off" />
+            <small v-if="fieldError('slug')" class="admin-field__error">{{ fieldError('slug') }}</small>
+          </label>
+          <label class="admin-field">
+            <span>SKU <em>*</em></span>
+            <input v-model="form.sku" type="text" autocomplete="off" />
+            <small v-if="fieldError('sku')" class="admin-field__error">{{ fieldError('sku') }}</small>
+          </label>
+          <label class="admin-field">
+            <span>Category <em>*</em></span>
+            <AppSelect
+              v-model="form.category_id"
+              :options="categoryOptions"
+              placeholder="Select category"
+              aria-label="Product category"
+            />
+            <small v-if="fieldError('category_id')" class="admin-field__error">
+              {{ fieldError('category_id') }}
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="admin-product-form__section">
+        <h3>Pricing & stock</h3>
+        <div class="admin-product-form__grid admin-product-form__grid--3">
+          <label class="admin-field">
+            <span>Price <em>*</em></span>
+            <input v-model.number="form.price" type="number" min="0" step="0.01" />
+            <small v-if="fieldError('price')" class="admin-field__error">{{ fieldError('price') }}</small>
+          </label>
+          <label class="admin-field">
+            <span>Compare at</span>
+            <input v-model="form.compare_at_price" type="number" min="0" step="0.01" />
+            <small v-if="fieldError('compare_at_price')" class="admin-field__error">
+              {{ fieldError('compare_at_price') }}
+            </small>
+          </label>
+          <label class="admin-field">
+            <span>Stock <em>*</em></span>
+            <input v-model.number="form.stock" type="number" min="0" />
+            <small v-if="fieldError('stock')" class="admin-field__error">{{ fieldError('stock') }}</small>
+          </label>
+        </div>
+      </section>
+
+      <section class="admin-product-form__section">
+        <h3>Media <em class="admin-product-form__required">*</em></h3>
+        <p class="admin-muted admin-product-form__hint">
+          Upload multiple images. The first image is the product main image.
+        </p>
+
+        <div
+          class="admin-image-dropzone"
+          :class="{ 'is-dragover': dragOver, 'is-busy': uploading }"
+          @dragover.prevent="dragOver = true"
+          @dragleave.prevent="dragOver = false"
+          @drop.prevent="onDrop"
+        >
+          <ImagePlus :size="22" aria-hidden="true" />
           <div>
-            <p class="admin-modal__eyebrow">Catalog</p>
-            <h2 id="admin-product-form-title">{{ title }}</h2>
+            <strong>{{ uploading ? 'Uploading…' : 'Add images' }}</strong>
+            <p>Drop files here or browse. JPEG, PNG, or WebP up to 4MB.</p>
           </div>
-          <button
-            class="admin-modal__close"
+          <AppButton
             type="button"
-            aria-label="Close"
+            variant="secondary"
+            size="sm"
             :disabled="busy"
-            @click="close"
+            @click="fileInputRef?.click()"
           >
-            <X :size="18" />
-          </button>
-        </header>
+            Browse
+          </AppButton>
+          <input
+            ref="fileInputRef"
+            class="admin-image-dropzone__input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            @change="onFileChange"
+          />
+        </div>
 
-        <form class="admin-product-form" @submit.prevent="emit('submit')">
-          <p v-if="error" class="form-error">{{ error }}</p>
+        <p v-if="uploadError || fieldError('image') || fieldError('gallery')" class="admin-field__error">
+          {{ uploadError || fieldError('image') || fieldError('gallery') }}
+        </p>
 
-          <section class="admin-product-form__section">
-            <h3>Basics</h3>
-            <div class="admin-product-form__grid">
-              <label class="admin-field">
-                <span>Name <em>*</em></span>
-                <input v-model="form.name" type="text" required autocomplete="off" />
-                <small v-if="fieldError('name')" class="admin-field__error">{{ fieldError('name') }}</small>
-              </label>
-              <label class="admin-field">
-                <span>Slug</span>
-                <input v-model="form.slug" type="text" placeholder="Auto-generated if empty" autocomplete="off" />
-                <small v-if="fieldError('slug')" class="admin-field__error">{{ fieldError('slug') }}</small>
-              </label>
-              <label class="admin-field">
-                <span>SKU <em>*</em></span>
-                <input v-model="form.sku" type="text" required autocomplete="off" />
-                <small v-if="fieldError('sku')" class="admin-field__error">{{ fieldError('sku') }}</small>
-              </label>
-              <label class="admin-field">
-                <span>Category <em>*</em></span>
-                <AppSelect
-                  v-model="form.category_id"
-                  :options="categoryOptions"
-                  placeholder="Select category"
-                  aria-label="Product category"
-                />
-                <small v-if="fieldError('category_id')" class="admin-field__error">
-                  {{ fieldError('category_id') }}
-                </small>
-              </label>
-            </div>
-          </section>
-
-          <section class="admin-product-form__section">
-            <h3>Pricing & stock</h3>
-            <div class="admin-product-form__grid admin-product-form__grid--3">
-              <label class="admin-field">
-                <span>Price <em>*</em></span>
-                <input v-model.number="form.price" type="number" min="0" step="0.01" required />
-                <small v-if="fieldError('price')" class="admin-field__error">{{ fieldError('price') }}</small>
-              </label>
-              <label class="admin-field">
-                <span>Compare at</span>
-                <input v-model="form.compare_at_price" type="number" min="0" step="0.01" />
-                <small v-if="fieldError('compare_at_price')" class="admin-field__error">
-                  {{ fieldError('compare_at_price') }}
-                </small>
-              </label>
-              <label class="admin-field">
-                <span>Stock <em>*</em></span>
-                <input v-model.number="form.stock" type="number" min="0" required />
-                <small v-if="fieldError('stock')" class="admin-field__error">{{ fieldError('stock') }}</small>
-              </label>
-            </div>
-          </section>
-
-          <section class="admin-product-form__section">
-            <h3>Media <em class="admin-product-form__required">*</em></h3>
-            <p class="admin-muted admin-product-form__hint">
-              Upload multiple images. The first image is the product main image.
-            </p>
-
-            <div
-              class="admin-image-dropzone"
-              :class="{ 'is-dragover': dragOver, 'is-busy': uploading }"
-              @dragover.prevent="dragOver = true"
-              @dragleave.prevent="dragOver = false"
-              @drop.prevent="onDrop"
-            >
-              <ImagePlus :size="22" aria-hidden="true" />
-              <div>
-                <strong>{{ uploading ? 'Uploading…' : 'Add images' }}</strong>
-                <p>Drop files here or browse. JPEG, PNG, or WebP up to 4MB.</p>
-              </div>
-              <AppButton
+        <div v-if="images.length" class="admin-image-grid">
+          <div v-for="(src, index) in images" :key="`${src}-${index}`" class="admin-image-card">
+            <img :src="src" :alt="`Product image ${index + 1}`" />
+            <span v-if="index === 0" class="admin-image-card__badge">Main</span>
+            <div class="admin-image-card__actions">
+              <button
                 type="button"
-                variant="secondary"
-                size="sm"
-                :disabled="busy"
-                @click="fileInputRef?.click()"
+                aria-label="Move left"
+                :disabled="index === 0 || busy"
+                @click="moveImage(index, -1)"
               >
-                Browse
-              </AppButton>
-              <input
-                ref="fileInputRef"
-                class="admin-image-dropzone__input"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                @change="onFileChange"
-              />
+                <ChevronLeft :size="16" />
+              </button>
+              <button
+                type="button"
+                aria-label="Move right"
+                :disabled="index === images.length - 1 || busy"
+                @click="moveImage(index, 1)"
+              >
+                <ChevronRight :size="16" />
+              </button>
+              <button
+                type="button"
+                aria-label="Remove image"
+                :disabled="busy"
+                @click="removeImage(index)"
+              >
+                <Trash2 :size="16" />
+              </button>
             </div>
+          </div>
+        </div>
 
-            <p v-if="uploadError || fieldError('image') || fieldError('gallery')" class="admin-field__error">
-              {{ uploadError || fieldError('image') || fieldError('gallery') }}
-            </p>
+        <div class="admin-image-path">
+          <label class="admin-field admin-field--grow">
+            <span>Or add existing path / URL</span>
+            <input
+              v-model="pathDraft"
+              type="text"
+              placeholder="/products/…"
+              autocomplete="off"
+              @keydown.enter.prevent="addPath"
+            />
+          </label>
+          <AppButton type="button" variant="ghost" :disabled="busy || !pathDraft.trim()" @click="addPath">
+            Add
+          </AppButton>
+        </div>
+      </section>
 
-            <div v-if="images.length" class="admin-image-grid">
-              <div v-for="(src, index) in images" :key="`${src}-${index}`" class="admin-image-card">
-                <img :src="src" :alt="`Product image ${index + 1}`" />
-                <span v-if="index === 0" class="admin-image-card__badge">Main</span>
-                <div class="admin-image-card__actions">
-                  <button
-                    type="button"
-                    aria-label="Move left"
-                    :disabled="index === 0 || busy"
-                    @click="moveImage(index, -1)"
-                  >
-                    <ChevronLeft :size="16" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move right"
-                    :disabled="index === images.length - 1 || busy"
-                    @click="moveImage(index, 1)"
-                  >
-                    <ChevronRight :size="16" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Remove image"
-                    :disabled="busy"
-                    @click="removeImage(index)"
-                  >
-                    <Trash2 :size="16" />
-                  </button>
-                </div>
-              </div>
-            </div>
+      <section class="admin-product-form__section">
+        <h3>Merchandising</h3>
+        <div class="admin-product-form__grid">
+          <label class="admin-field">
+            <span>Badge</span>
+            <input v-model="form.badge" type="text" placeholder="e.g. New, Sale" autocomplete="off" />
+            <small v-if="fieldError('badge')" class="admin-field__error">{{ fieldError('badge') }}</small>
+          </label>
+          <div class="admin-field admin-field--full">
+            <span>Description</span>
+            <AdminRichTextEditor
+              v-model="form.description"
+              :disabled="busy"
+              placeholder="Describe the product…"
+              :min-height="180"
+              aria-label="Product description"
+            />
+            <small v-if="fieldError('description')" class="admin-field__error">
+              {{ fieldError('description') }}
+            </small>
+          </div>
+        </div>
+      </section>
 
-            <div class="admin-image-path">
-              <label class="admin-field admin-field--grow">
-                <span>Or add existing path / URL</span>
-                <input
-                  v-model="pathDraft"
-                  type="text"
-                  placeholder="/products/…"
-                  autocomplete="off"
-                  @keydown.enter.prevent="addPath"
-                />
-              </label>
-              <AppButton type="button" variant="ghost" :disabled="busy || !pathDraft.trim()" @click="addPath">
-                Add
-              </AppButton>
-            </div>
-          </section>
-
-          <section class="admin-product-form__section">
-            <h3>Merchandising</h3>
-            <div class="admin-product-form__grid">
-              <label class="admin-field">
-                <span>Badge</span>
-                <input v-model="form.badge" type="text" placeholder="e.g. New, Sale" autocomplete="off" />
-                <small v-if="fieldError('badge')" class="admin-field__error">{{ fieldError('badge') }}</small>
-              </label>
-              <label class="admin-field admin-field--full">
-                <span>Description</span>
-                <textarea v-model="form.description" rows="4" placeholder="Short product description" />
-                <small v-if="fieldError('description')" class="admin-field__error">
-                  {{ fieldError('description') }}
-                </small>
-              </label>
-            </div>
-          </section>
-
-          <footer class="admin-modal__footer">
-            <AppButton type="button" variant="ghost" :disabled="busy" @click="close">
-              Cancel
-            </AppButton>
-            <AppButton type="submit" :disabled="busy">
-              {{ saving ? 'Saving…' : editing ? 'Save changes' : 'Create product' }}
-            </AppButton>
-          </footer>
-        </form>
+      <div class="admin-actions">
+        <AppButton type="button" variant="ghost" :disabled="busy" @click="emit('cancel')">
+          Cancel
+        </AppButton>
+        <AppButton type="submit" :disabled="busy">
+          {{ submitLabel }}
+        </AppButton>
       </div>
-    </div>
-  </Teleport>
+    </form>
+  </div>
 </template>

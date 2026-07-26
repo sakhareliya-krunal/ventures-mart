@@ -7,7 +7,6 @@ use App\Http\Resources\PostResource;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class PostController extends Controller
 {
@@ -60,20 +59,38 @@ class PostController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::unique('posts', 'slug')->ignore($post?->id),
-            ],
+            'slug' => ['nullable', 'string', 'max:255'],
             'excerpt' => ['required', 'string', 'max:500'],
             'body' => ['required', 'string'],
             'cover_image' => ['nullable', 'string', 'max:500'],
             'published_at' => ['nullable', 'date'],
         ]);
 
-        $validated['slug'] = $validated['slug'] ?? Str::slug($validated['title']);
+        $validated['slug'] = $this->uniqueSlug(
+            $validated['slug'] ?? null,
+            $validated['title'],
+            $post?->id,
+        );
 
         return $validated;
+    }
+
+    private function uniqueSlug(?string $slug, string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug((string) $slug) ?: Str::slug($title) ?: 'post-'.Str::lower(Str::random(8));
+        $candidate = $base;
+        $suffix = 2;
+
+        while (
+            Post::query()
+                ->where('slug', $candidate)
+                ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+                ->exists()
+        ) {
+            $candidate = "{$base}-{$suffix}";
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

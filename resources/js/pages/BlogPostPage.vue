@@ -8,6 +8,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
+import { safeHtml } from '@/utils/html';
 
 const route = useRoute();
 const router = useRouter();
@@ -66,7 +67,7 @@ watch(slug, load, { immediate: true });
         <img :src="post.cover_image" :alt="post.title" />
       </div>
 
-      <div class="blog-prose" v-html="post.body" />
+      <div class="blog-prose" v-html="safeHtml(post.body)" />
 
       <div class="blog-article__cta">
         <p>Explore the curated toys and lunch boxes behind these guides.</p>
