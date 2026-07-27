@@ -20,6 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // SPA has no named "login" route; never call route('login') (that 500s).
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return '/login';
+        });
+
         $middleware->statefulApi();
 
         // Guest cart/wishlist need a session even when Origin checks miss (same-origin SPA).

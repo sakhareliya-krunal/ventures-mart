@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
-  AlertTriangle,
   FileText,
   Mail,
   Package,
@@ -40,10 +39,6 @@ const stats = ref({
   recent_messages: [],
   recent_posts: [],
   recent_orders: [],
-  errors_total: 0,
-  errors_unresolved: 0,
-  errors_today: 0,
-  top_errors: [],
 });
 
 const statusOrder = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
@@ -98,14 +93,6 @@ const kpis = computed(() => [
     value: String(stats.value.posts_count),
     hint: `${stats.value.published_posts_count} published`,
     icon: FileText,
-  },
-  {
-    key: 'errors',
-    label: 'Error logs',
-    value: String(stats.value.errors_unresolved),
-    hint: `${stats.value.errors_today} today · ${stats.value.errors_total} total`,
-    icon: AlertTriangle,
-    to: '/admin/error',
   },
 ]);
 
@@ -164,10 +151,6 @@ onMounted(async () => {
       recent_messages: data.recent_messages || [],
       recent_posts: data.recent_posts || [],
       recent_orders: unwrapData(data.recent_orders) || data.recent_orders || [],
-      errors_total: data.errors_total || 0,
-      errors_unresolved: data.errors_unresolved || 0,
-      errors_today: data.errors_today || 0,
-      top_errors: data.top_errors || [],
     };
   } finally {
     loading.value = false;
@@ -305,26 +288,6 @@ onMounted(async () => {
       </div>
 
       <div class="admin-dash-grid admin-dash-grid--3">
-        <section class="admin-panel">
-          <div class="admin-toolbar">
-            <h2>Top errors</h2>
-            <RouterLink class="button button--secondary button--sm" to="/admin/error">
-              Error logs
-            </RouterLink>
-          </div>
-          <ul v-if="stats.top_errors.length" class="admin-dash-list admin-dash-list--simple">
-            <li v-for="item in stats.top_errors" :key="item.uuid">
-              <div class="admin-dash-list__body">
-                <strong>{{ item.message }}</strong>
-                <span class="admin-muted">
-                  {{ item.category }} · ×{{ item.occurrence_count || 1 }} · {{ item.status }}
-                </span>
-              </div>
-            </li>
-          </ul>
-          <p v-else class="admin-empty">No recorded errors.</p>
-        </section>
-
         <section class="admin-panel">
           <div class="admin-toolbar">
             <h2>Low stock</h2>

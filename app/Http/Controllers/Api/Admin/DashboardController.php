@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminOrderResource;
-use App\Models\ApplicationError;
 use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Order;
@@ -73,12 +72,6 @@ class DashboardController extends Controller
             ->limit(4)
             ->get(['id', 'title', 'slug', 'published_at', 'cover_image']);
 
-        $topErrors = ApplicationError::query()
-            ->orderByDesc('occurrence_count')
-            ->orderByDesc('last_seen_at')
-            ->limit(5)
-            ->get(['uuid', 'message', 'category', 'status', 'occurrence_count', 'last_seen_at']);
-
         $nonCancelled = fn ($query) => $query->where('status', '!=', 'Cancelled');
 
         return response()->json([
@@ -90,10 +83,6 @@ class DashboardController extends Controller
             'posts_count' => Post::query()->count(),
             'published_posts_count' => Post::query()->published()->count(),
             'categories_count' => Category::query()->count(),
-            'errors_total' => ApplicationError::query()->count(),
-            'errors_unresolved' => ApplicationError::query()->unresolved()->count(),
-            'errors_today' => ApplicationError::query()->where('last_seen_at', '>=', $todayStart)->count(),
-            'top_errors' => $topErrors,
             'orders_today' => Order::query()->where('created_at', '>=', $todayStart)->count(),
             'revenue_today' => (float) Order::query()
                 ->where('created_at', '>=', $todayStart)

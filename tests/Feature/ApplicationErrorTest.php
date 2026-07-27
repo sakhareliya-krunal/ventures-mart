@@ -98,6 +98,11 @@ class ApplicationErrorTest extends TestCase
         $this->getJson('/api/admin/errors/summary')->assertUnauthorized();
         $this->getJson("/api/admin/errors/{$error->uuid}")->assertUnauthorized();
 
+        $html = $this->get('/api/admin/errors', ['Accept' => 'text/html']);
+        $html->assertUnauthorized()
+            ->assertJsonPath('code', 'unauthenticated');
+        $this->assertStringNotContainsString('Route [login]', $html->getContent());
+
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 

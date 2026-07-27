@@ -80,4 +80,18 @@ class AdminPanelTest extends TestCase
     {
         $this->getJson('/api/admin/stats')->assertUnauthorized();
     }
+
+    public function test_guest_html_accept_on_admin_api_returns_401_not_login_route_500(): void
+    {
+        $stats = $this->get('/api/admin/stats', ['Accept' => 'text/html']);
+        $stats->assertUnauthorized()
+            ->assertJsonPath('code', 'unauthenticated')
+            ->assertJsonPath('message', 'Please sign in to continue.');
+        $this->assertStringNotContainsString('Route [login]', $stats->getContent());
+
+        $errors = $this->get('/api/admin/errors', ['Accept' => 'text/html']);
+        $errors->assertUnauthorized()
+            ->assertJsonPath('code', 'unauthenticated');
+        $this->assertStringNotContainsString('Route [login]', $errors->getContent());
+    }
 }

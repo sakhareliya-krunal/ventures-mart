@@ -380,18 +380,22 @@
 .admin-toolbar__filters {
   align-items: center;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.6rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-toolbar .app-select {
-  flex: 0 0 auto;
-  min-width: 12rem;
-  width: 12rem;
+  flex: 1 1 10rem;
+  max-width: 12rem;
+  min-width: 9.5rem;
+  width: auto;
 }
 
 .admin-toolbar__filters .button {
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .admin-form .app-select {

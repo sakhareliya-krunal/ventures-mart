@@ -16,7 +16,6 @@ import {
   ChevronUp,
   Menu,
   X,
-  TriangleAlert,
 } from '@lucide/vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { brandAssets } from '@/constants/assets';
@@ -49,7 +48,6 @@ const nav = [
   { to: '/admin/contacts', label: 'Contact messages', icon: Mail },
   { to: '/admin/customers', label: 'Customers', icon: Users },
   { to: '/admin/addresses', label: 'Addresses', icon: MapPin },
-  { to: '/admin/error', label: 'Error logs', icon: TriangleAlert },
 ];
 
 const pageTitle = computed(() => route.meta.title || 'Admin');
