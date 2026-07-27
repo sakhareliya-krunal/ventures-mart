@@ -70,7 +70,10 @@ async function addToCart() {
 }
 
 async function toggleWish() {
-  await wishlist.toggle(display.value.id);
+  const hasVariants = (props.product.variants || []).length > 1;
+  await wishlist.toggle(display.value.id, {
+    variantId: hasVariants ? display.value.id : null,
+  });
 }
 </script>
 
@@ -101,7 +104,7 @@ async function toggleWish() {
         type="button"
         :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'"
         :aria-pressed="wished"
-        @click="toggleWish"
+        @click.stop="toggleWish"
       >
         <Heart :size="18" :fill="wished ? 'currentColor' : 'none'" />
       </button>

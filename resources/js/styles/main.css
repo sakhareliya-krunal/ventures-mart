@@ -10,12 +10,14 @@
 @import './components/category.css';
 @import './components/cart.css';
 @import './components/forms.css';
+@import './components/toast.css';
 @import './components/home.css';
 @import './components/page-hero.css';
 @import './pages/shop.css';
 @import './pages/auth.css';
 @import './pages/static.css';
 @import './pages/blog.css';
+@import './pages/article-premium.css';
 @import './pages/profile.css';
 @import './pages/orders.css';
 @import './pages/admin.css';

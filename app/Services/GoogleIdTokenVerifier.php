@@ -65,6 +65,62 @@ class GoogleIdTokenVerifier
     }
 
     /**
+     * @return array{sub: string, email: string, email_verified: bool, name: ?string, picture: ?string}
+     */
+    public function verifyAccessToken(string $accessToken): array
+    {
+        $clientId = (string) config('services.google.client_id');
+
+        if ($clientId === '') {
+            throw new RuntimeException('Google sign-in is not configured.');
+        }
+
+        if ($accessToken === '') {
+            throw new RuntimeException('Invalid Google access token.');
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->withToken($accessToken)
+                ->acceptJson()
+                ->get('https://www.googleapis.com/oauth2/v3/userinfo');
+        } catch (ConnectionException|RequestException|Throwable $exception) {
+            throw new RuntimeException('Unable to reach Google sign-in. Please try again.', 0, $exception);
+        }
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            throw new RuntimeException('Invalid Google access token.');
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Unable to reach Google sign-in. Please try again.');
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = $response->json() ?: [];
+
+        $email = isset($payload['email']) ? strtolower((string) $payload['email']) : '';
+        $sub = isset($payload['sub']) ? (string) $payload['sub'] : '';
+
+        if ($sub === '' || $email === '') {
+            throw new RuntimeException('Google account is missing required profile details.');
+        }
+
+        $verified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if (! $verified) {
+            throw new RuntimeException('Google email address is not verified.');
+        }
+
+        return [
+            'sub' => $sub,
+            'email' => $email,
+            'email_verified' => true,
+            'name' => isset($payload['name']) ? (string) $payload['name'] : null,
+            'picture' => isset($payload['picture']) ? (string) $payload['picture'] : null,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function googleCerts(): array

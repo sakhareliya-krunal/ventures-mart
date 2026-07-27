@@ -9,11 +9,15 @@ const REVEAL_SELECTORS = [
   '.page-hero',
   '.about-cta',
   '.about-value',
+  '.article-premium__section',
+  '.article-premium__close',
+  '.article-premium__intro',
   '.static-page',
   '.empty-state',
 ].join(', ');
 
-const SOFT_SELECTORS = '.product-card, .category-card, .category-pillar, .about-value';
+const SOFT_SELECTORS =
+  '.product-card, .category-card, .category-pillar, .about-value, .article-premium__section';
 const VIEWPORT_MARGIN = 100;
 
 let observer = null;

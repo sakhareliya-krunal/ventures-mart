@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
+use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
 use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Api\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
@@ -46,6 +47,7 @@ Route::delete('/cart', [CartController::class, 'clear']);
 
 Route::get('/wishlist', [WishlistController::class, 'index']);
 Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
+Route::post('/wishlist/add', [WishlistController::class, 'add']);
 Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
 
 Route::post('/orders', [OrderController::class, 'store']);
@@ -97,4 +99,17 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     Route::get('/addresses', [AdminAddressController::class, 'index']);
     Route::delete('/addresses/{address}', [AdminAddressController::class, 'destroy']);
+
+    Route::get('/errors/summary', [AdminApplicationErrorController::class, 'summary']);
+    Route::get('/errors', [AdminApplicationErrorController::class, 'index']);
+    Route::get('/errors/{error}', [AdminApplicationErrorController::class, 'show']);
+    Route::patch('/errors/{error}', [AdminApplicationErrorController::class, 'update']);
+    Route::delete('/errors', [AdminApplicationErrorController::class, 'destroyMany']);
+    Route::delete('/errors/{error}', [AdminApplicationErrorController::class, 'destroy']);
 });
+
+if (app()->environment('testing')) {
+    Route::get('/__test-boom', function () {
+        throw new RuntimeException('SQLSTATE[HY000]: secret database failure');
+    });
+}

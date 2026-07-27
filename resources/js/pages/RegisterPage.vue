@@ -33,7 +33,9 @@ function defaultPostAuthPath() {
 }
 
 function postAuthPath() {
-  return String(route.query.redirect || defaultPostAuthPath());
+  return String(
+    auth.takePendingReturnUrl() || route.query.redirect || defaultPostAuthPath(),
+  );
 }
 
 const loginLink = computed(() => ({
@@ -41,12 +43,19 @@ const loginLink = computed(() => ({
   query: route.query.redirect ? { redirect: String(route.query.redirect) } : {},
 }));
 
-async function leaveAfterAuth() {
+async function leaveAfterAuth({ welcomeBack = false } = {}) {
   if (leaving || !auth.user) return;
   leaving = true;
   auth.beginRedirect();
   try {
-    await router.replace(postAuthPath());
+    const target = postAuthPath();
+    if (welcomeBack) {
+      const url = new URL(target, window.location.origin);
+      url.searchParams.set('welcome', '1');
+      await router.replace(`${url.pathname}${url.search}${url.hash}`);
+    } else {
+      await router.replace(target);
+    }
   } catch {
     auth.endRedirect();
     leaving = false;
@@ -91,14 +100,14 @@ async function submit() {
   }
 }
 
-async function continueWithGoogle(credential) {
+async function continueWithGoogle(accessToken) {
   if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
 
   try {
-    await auth.loginWithGoogle({ credential, intent: 'register' });
-    await leaveAfterAuth();
+    const { created } = await auth.loginWithGoogle({ accessToken, intent: 'register' });
+    await leaveAfterAuth({ welcomeBack: !created });
   } catch (err) {
     auth.endRedirect();
     leaving = false;
@@ -107,6 +116,7 @@ async function continueWithGoogle(credential) {
 }
 
 function onGoogleError(message) {
+  if (!message) return;
   error.value = message;
 }
 </script>
@@ -169,7 +179,7 @@ function onGoogleError(message) {
       <GoogleContinueButton
         intent="register"
         :disabled="auth.loading || auth.redirecting"
-        @credential="continueWithGoogle"
+        @token="continueWithGoogle"
         @error="onGoogleError"
       />
 

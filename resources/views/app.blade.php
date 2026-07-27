@@ -82,7 +82,7 @@
             animation-direction: reverse;
             animation-duration: 1.8s;
             border-color: transparent;
-            border-bottom-color: #ffc107;
+            border-bottom-color: #e61e4d;
             border-left-color: rgba(11, 46, 138, 0.45);
             inset: 12%;
         }

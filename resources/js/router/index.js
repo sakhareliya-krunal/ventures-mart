@@ -125,9 +125,23 @@ const router = createRouter({
           component: () => import('@/pages/PaymentsPage.vue'),
         },
         {
+          path: 'shopping-confidence-shipping-replacement',
+          name: 'shopping-confidence',
+          component: () => import('@/pages/ShoppingConfidencePage.vue'),
+        },
+        {
           path: 'blog',
           name: 'blog',
           component: () => import('@/pages/BlogIndexPage.vue'),
+        },
+        {
+          path: 'blog/shopping-confidence-shipping-replacement',
+          redirect: { name: 'shopping-confidence' },
+        },
+        {
+          path: 'errors/:code',
+          name: 'error-status',
+          component: () => import('@/pages/ErrorStatusPage.vue'),
         },
         {
           path: 'blog/:slug',
@@ -135,6 +149,14 @@ const router = createRouter({
           component: () => import('@/pages/BlogPostPage.vue'),
         },
       ],
+    },
+    {
+      path: '/error',
+      redirect: '/admin/error',
+    },
+    {
+      path: '/admin/errors',
+      redirect: '/admin/error',
     },
     {
       path: '/admin',
@@ -146,6 +168,12 @@ const router = createRouter({
           name: 'admin-dashboard',
           component: () => import('@/pages/admin/AdminDashboardPage.vue'),
           meta: { title: 'Dashboard' },
+        },
+        {
+          path: 'error',
+          name: 'admin-errors',
+          component: () => import('@/pages/admin/AdminErrorsPage.vue'),
+          meta: { title: 'Error logs' },
         },
         {
           path: 'orders',
@@ -246,7 +274,9 @@ const router = createRouter({
         {
           path: '',
           name: 'not-found',
-          component: () => import('@/pages/NotFoundPage.vue'),
+          component: () => import('@/pages/ErrorStatusPage.vue'),
+          props: { code: 404 },
+          meta: { errorCode: 404 },
         },
       ],
     },
@@ -263,15 +293,24 @@ router.beforeEach(async (to, from) => {
 
   const needsAuth = to.matched.some((record) => record.meta.requiresAuth);
   const needsAdmin = to.matched.some((record) => record.meta.requiresAdmin);
-  const isAdminRoute = to.path === '/admin' || to.path.startsWith('/admin/');
+  const isAdminRoute =
+    to.path === '/admin' ||
+    to.path.startsWith('/admin/');
+
   const isAuthPage =
     to.name === 'login' ||
     to.name === 'register' ||
     to.name === 'forgot-password' ||
     to.name === 'reset-password';
 
-  if (!auth.user && !auth.booting) {
-    await auth.fetchUser();
+  if (!auth.user) {
+    const session = auth.fetchUser();
+    const needsSession =
+      needsAuth || needsAdmin || isAdminRoute || isAuthPage;
+
+    if (needsSession) {
+      await session;
+    }
   }
 
   if (needsAuth || needsAdmin) {

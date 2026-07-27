@@ -15,7 +15,6 @@ const router = useRouter();
 const route = useRoute();
 
 const error = ref('');
-const errorCode = ref('');
 const form = reactive({
   email: '',
   password: '',
@@ -36,7 +35,9 @@ function defaultPostLoginPath() {
 }
 
 function postLoginPath() {
-  return String(route.query.redirect || defaultPostLoginPath());
+  return String(
+    auth.takePendingReturnUrl() || route.query.redirect || defaultPostLoginPath(),
+  );
 }
 
 const registerLink = computed(() => ({
@@ -80,7 +81,6 @@ async function submit() {
   if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
-  errorCode.value = '';
 
   try {
     await auth.login({ ...form });
@@ -95,25 +95,23 @@ async function submit() {
   }
 }
 
-async function continueWithGoogle(credential) {
+async function continueWithGoogle(accessToken) {
   if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
-  errorCode.value = '';
 
   try {
-    await auth.loginWithGoogle({ credential, intent: 'login' });
+    await auth.loginWithGoogle({ accessToken, intent: 'login' });
     await leaveAfterAuth();
   } catch (err) {
     auth.endRedirect();
     leaving = false;
-    errorCode.value = err.code || '';
     error.value = err.message || 'Unable to continue with Google.';
   }
 }
 
 function onGoogleError(message) {
-  errorCode.value = '';
+  if (!message) return;
   error.value = message;
 }
 </script>
@@ -129,9 +127,6 @@ function onGoogleError(message) {
       <h1>Login</h1>
       <p v-if="resetNotice" class="form-success">{{ resetNotice }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
-      <div v-if="errorCode === 'account_missing'" class="auth-alert-actions">
-        <AppButton :to="registerLink" variant="secondary" size="sm">Create an account</AppButton>
-      </div>
       <FormField
         v-model="form.email"
         label="Email"
@@ -168,7 +163,7 @@ function onGoogleError(message) {
       <GoogleContinueButton
         intent="login"
         :disabled="auth.loading || auth.redirecting"
-        @credential="continueWithGoogle"
+        @token="continueWithGoogle"
         @error="onGoogleError"
       />
 

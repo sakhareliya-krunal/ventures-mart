@@ -14,26 +14,23 @@ const props = defineProps({
 
 const cart = useCartStore();
 const product = computed(() => props.item.product);
+const syncing = computed(() => cart.isSyncing(props.item.product_id));
+const atMax = computed(() => {
+  const stock = Number(product.value?.stock);
+  const stockCap = Number.isFinite(stock) && stock > 0 ? stock : 99;
+  return props.item.quantity >= Math.min(99, stockCap);
+});
 
-async function decrease() {
-  if (props.item.quantity <= 1) {
-    await cart.removeItem(props.item.product_id);
-    return;
-  }
-
-  await cart.updateQuantity(props.item.product_id, props.item.quantity - 1);
+function decrease() {
+  cart.bumpQuantity(props.item.product_id, -1);
 }
 
-async function increase() {
-  if (props.item.quantity >= 99) {
-    return;
-  }
-
-  await cart.updateQuantity(props.item.product_id, props.item.quantity + 1);
+function increase() {
+  cart.bumpQuantity(props.item.product_id, 1);
 }
 
-async function remove() {
-  await cart.removeItem(props.item.product_id);
+function remove() {
+  cart.removeItem(props.item.product_id);
 }
 </script>
 
@@ -44,23 +41,28 @@ async function remove() {
       <RouterLink :to="`/product/${product.slug}`">{{ product.name }}</RouterLink>
       <span>{{ formatCurrency(product.price) }}</span>
     </div>
-    <div class="cart-line__qty" role="group" :aria-label="`Quantity for ${product.name}`">
+    <div
+      class="cart-line__qty"
+      :class="{ 'is-syncing': syncing }"
+      role="group"
+      :aria-label="`Quantity for ${product.name}`"
+    >
       <button
         type="button"
         :aria-label="item.quantity <= 1 ? 'Remove item' : 'Decrease quantity'"
         @click="decrease"
       >
-        <Trash2 v-if="item.quantity <= 1" :size="14" />
-        <Minus v-else :size="14" />
+        <Trash2 v-if="item.quantity <= 1" :size="16" />
+        <Minus v-else :size="16" />
       </button>
       <span>{{ item.quantity }}</span>
       <button
         type="button"
         aria-label="Increase quantity"
-        :disabled="item.quantity >= 99"
+        :disabled="atMax"
         @click="increase"
       >
-        <Plus :size="14" />
+        <Plus :size="16" />
       </button>
     </div>
     <strong>{{ formatCurrency(product.price * item.quantity) }}</strong>

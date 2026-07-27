@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import BrandSplashLoader from '@/components/ui/BrandSplashLoader.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import ToastHost from '@/components/ui/ToastHost.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 
@@ -22,5 +23,6 @@ const overlayLabel = computed(() =>
     overlay
     :label="overlayLabel"
   />
+  <ToastHost />
   <RouterView />
 </template>

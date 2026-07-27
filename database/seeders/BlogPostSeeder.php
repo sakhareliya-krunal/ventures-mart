@@ -90,29 +90,14 @@ HTML,
 <p>Start with <a href="/category/toys">toys</a> or <a href="/category/lunch-box">lunch boxes</a>, or browse the full <a href="/shop">catalog</a> for something that fits the child you know.</p>
 HTML,
             ],
-            [
-                'title' => 'Shopping with confidence at Ventures Mart',
-                'slug' => 'shopping-confidence-shipping-replacement',
-                'excerpt' => 'How delivery across India, free shipping thresholds, and 7-day replacement support work when you order toys or lunch boxes.',
-                'cover_image' => '/images/home5-info1.png',
-                'published_at' => Carbon::parse('2026-07-16 10:00:00'),
-                'body' => <<<'HTML'
-<p>Ordering online for kids’ essentials should feel calm. Here is how Ventures Mart supports you from add-to-cart through delivery—without inventing fine print.</p>
-<h2>Delivery across India</h2>
-<p>We ship toys and lunch boxes nationwide, subject to courier coverage. After you place an order, we prepare it for dispatch and share updates through the contact details you provide at checkout.</p>
-<h2>Free shipping on orders over ₹999</h2>
-<p>When your cart clears ₹999, shipping is free. It is a simple threshold designed for stocking up on the focused catalog—without pushing clutter you do not need.</p>
-<h2>7-day replacement support</h2>
-<p>If something arrives damaged or incorrect, reach out within seven days with your order details. We will guide you on next steps. You can also read more on our <a href="/returns">returns</a> and <a href="/shipping">shipping</a> pages, or <a href="/contact">contact us</a> directly.</p>
-<h2>Pay the way that suits you</h2>
-<p>Checkout supports UPI, cards, net banking, COD where available, and Razorpay for secure online payments. Details live on our <a href="/payments">payments</a> page.</p>
-<p>Ready when you are—explore the <a href="/shop">shop</a>, or jump into <a href="/category/toys">toys</a> and <a href="/category/lunch-box">lunch boxes</a>.</p>
-HTML,
-            ],
         ];
 
         foreach ($posts as $post) {
             Post::query()->create($post);
         }
+
+        Post::query()
+            ->where('slug', 'shopping-confidence-shipping-replacement')
+            ->delete();
     }
 }

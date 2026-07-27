@@ -58,6 +58,12 @@
   width: auto;
 }
 
+.admin-sidebar__brand-link {
+  display: inline-flex;
+  line-height: 0;
+  text-decoration: none;
+}
+
 .admin-sidebar__close {
   align-items: center;
   background: rgba(255, 255, 255, 0.1);
@@ -338,6 +344,10 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 1.35rem;
+}
+
+.admin-content > .form-success {
+  margin-bottom: 1rem;
 }
 
 .admin-panel {

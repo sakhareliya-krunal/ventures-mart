@@ -64,8 +64,8 @@
 .vm-loader__ring--outer {
   animation: vm-loader-spin 0.9s linear infinite;
   border: 2.5px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
-  border-top-color: var(--color-accent);
-  border-right-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  border-top-color: var(--color-secondary);
+  border-right-color: color-mix(in srgb, var(--color-secondary) 45%, transparent);
 }
 
 .vm-loader__ring--inner {
@@ -134,7 +134,7 @@
   }
 
   .vm-loader__ring--outer {
-    border-top-color: var(--color-accent);
+    border-top-color: var(--color-secondary);
   }
 
   .vm-loader__core {

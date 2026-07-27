@@ -5,7 +5,8 @@ import { brandAssets } from '@/constants/assets';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
 
-const MIN_MS = 1400;
+const MIN_MS = import.meta.env.DEV ? 300 : 1400;
+const READY_MAX_MS = 2000;
 const EXIT_MS = 400;
 
 const router = useRouter();
@@ -26,7 +27,10 @@ onMounted(async () => {
   const started = performance.now();
 
   try {
-    await router.isReady();
+    await Promise.race([
+      router.isReady(),
+      new Promise((resolve) => setTimeout(resolve, READY_MAX_MS)),
+    ]);
   } catch {
     // Continue dismiss even if router readiness fails.
   }

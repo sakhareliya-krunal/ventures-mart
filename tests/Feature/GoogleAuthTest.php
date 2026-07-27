@@ -34,9 +34,9 @@ class GoogleAuthTest extends TestCase
         ], $overrides);
 
         $this->mock(GoogleIdTokenVerifier::class, function ($mock) use ($profile, $times) {
-            $mock->shouldReceive('verify')
+            $mock->shouldReceive('verifyAccessToken')
                 ->times($times)
-                ->with('fake-google-credential')
+                ->with('fake-google-access-token')
                 ->andReturn($profile);
         });
     }
@@ -46,7 +46,7 @@ class GoogleAuthTest extends TestCase
         $this->fakeGoogleProfile();
 
         $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'register',
         ])
             ->assertCreated()
@@ -60,7 +60,7 @@ class GoogleAuthTest extends TestCase
         ]);
     }
 
-    public function test_register_with_google_rejects_existing_account(): void
+    public function test_register_with_google_signs_in_existing_account(): void
     {
         $user = User::factory()->create([
             'email' => 'google.user@example.com',
@@ -71,17 +71,16 @@ class GoogleAuthTest extends TestCase
         $this->fakeGoogleProfile();
 
         $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'register',
         ])
-            ->assertUnprocessable()
-            ->assertJsonPath('code', 'account_exists')
-            ->assertJsonPath('message', 'Your account already exists. Please log in to continue.');
+            ->assertOk()
+            ->assertJsonPath('user.email', 'google.user@example.com');
 
-        $this->assertGuest();
+        $this->assertAuthenticatedAs($user);
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
-            'google_id' => null,
+            'google_id' => 'google-sub-123',
         ]);
     }
 
@@ -96,7 +95,7 @@ class GoogleAuthTest extends TestCase
         $this->fakeGoogleProfile();
 
         $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'login',
         ])
             ->assertOk()
@@ -109,18 +108,23 @@ class GoogleAuthTest extends TestCase
         ]);
     }
 
-    public function test_login_with_google_rejects_missing_account(): void
+    public function test_login_with_google_creates_missing_account(): void
     {
         $this->fakeGoogleProfile();
 
         $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'login',
         ])
-            ->assertNotFound()
-            ->assertJsonPath('code', 'account_missing');
+            ->assertCreated()
+            ->assertJsonPath('user.email', 'google.user@example.com')
+            ->assertJsonPath('user.has_password', false);
 
-        $this->assertGuest();
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'email' => 'google.user@example.com',
+            'google_id' => 'google-sub-123',
+        ]);
     }
 
     public function test_google_register_logout_login_restores_same_user_and_addresses(): void
@@ -128,7 +132,7 @@ class GoogleAuthTest extends TestCase
         $this->fakeGoogleProfile(times: 2);
 
         $register = $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'register',
         ])->assertCreated();
 
@@ -152,7 +156,7 @@ class GoogleAuthTest extends TestCase
         $this->assertGuest();
 
         $login = $this->postJson('/api/auth/google', [
-            'credential' => 'fake-google-credential',
+            'access_token' => 'fake-google-access-token',
             'intent' => 'login',
         ])
             ->assertOk()

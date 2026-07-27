@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import api from '@/services/api';
+import router from '@/router';
+import PendingUserAction from '@/services/pendingUserAction';
 import { useAuthStore } from '@/stores/auth';
 import { requireLogin } from '@/utils/authRedirect';
 import { unwrapData } from '@/utils/format';
+import { friendlyApiError } from '@/utils/apiError';
 
 function applyPayload(state, payload) {
   state.count.value = payload.count ?? 0;
@@ -39,22 +41,41 @@ export const useWishlistStore = defineStore('wishlist', () => {
       const { data } = await api.get('/wishlist');
       applyPayload({ productIds, products, count }, data);
     } catch (err) {
-      error.value = err.response?.data?.message || 'Unable to load wishlist.';
+      error.value = friendlyApiError(err, 'Unable to load wishlist.');
     } finally {
       loading.value = false;
     }
   }
 
-  async function toggle(productId) {
+  /**
+   * @param {number|string} productId
+   * @param {{ variantId?: number|string|null }} [options]
+   */
+  async function toggle(productId, options = {}) {
     const auth = useAuthStore();
+    const id = Number(productId);
+    const variantId =
+      options.variantId == null || options.variantId === ''
+        ? null
+        : Number(options.variantId);
 
-    if (!auth.user) {
-      const router = useRouter();
-      await requireLogin(router, router.currentRoute.value.fullPath);
-      return false;
+    if (!auth.user && auth.booting) {
+      await auth.fetchUser();
     }
 
-    const id = Number(productId);
+    if (!auth.user) {
+      if (id) {
+        const returnUrl = router.currentRoute.value.fullPath || '/';
+        PendingUserAction.stash({
+          type: 'wishlist.add',
+          productId: id,
+          variantId: Number.isFinite(variantId) && variantId > 0 ? variantId : null,
+          returnUrl,
+        });
+        await requireLogin(router, returnUrl);
+      }
+      return false;
+    }
 
     if (!id || pendingIds.value.has(id)) {
       return isWishlisted(id);
@@ -93,12 +114,53 @@ export const useWishlistStore = defineStore('wishlist', () => {
       productIds.value = snapshot.productIds;
       count.value = snapshot.count;
       products.value = snapshot.products;
-      error.value = err.response?.data?.message || 'Unable to update wishlist.';
+      error.value = friendlyApiError(err, 'Unable to update wishlist.');
+      import('@/stores/ui').then(({ useUiStore }) => {
+        useUiStore().showToast(error.value, { type: 'error' });
+      }).catch(() => {});
       return wasWished;
     } finally {
       const next = new Set(pendingIds.value);
       next.delete(id);
       pendingIds.value = next;
+    }
+  }
+
+  /**
+   * After login/register: process a pending wishlist.add action (add-only).
+   * @param {import('@/services/pendingUserAction').PendingUserAction} action
+   * @returns {Promise<{ ok: boolean, added: boolean, returnUrl: string|null }>}
+   */
+  async function completePendingAdd(action) {
+    const auth = useAuthStore();
+
+    if (!auth.user || !action || action.type !== 'wishlist.add') {
+      return { ok: false, added: false, returnUrl: null };
+    }
+
+    const productId = Number(action.productId);
+    if (!productId) {
+      return { ok: false, added: false, returnUrl: null };
+    }
+
+    const payload = { product_id: productId };
+    if (action.variantId) {
+      payload.variant_id = Number(action.variantId);
+    }
+
+    try {
+      const { data } = await api.post('/wishlist/add', payload);
+      productIds.value = data.product_ids ?? productIds.value;
+      count.value = data.count ?? productIds.value.length;
+
+      return {
+        ok: Boolean(data.wished),
+        added: Boolean(data.added),
+        returnUrl: action.returnUrl || null,
+      };
+    } catch (err) {
+      error.value = friendlyApiError(err, 'Unable to add to wishlist.');
+      return { ok: false, added: false, returnUrl: action.returnUrl || null };
     }
   }
 
@@ -114,6 +176,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     isEmpty,
     fetch,
     toggle,
+    completePendingAdd,
     isWishlisted,
     isPending,
   };

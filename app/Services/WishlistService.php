@@ -76,6 +76,36 @@ class WishlistService
         ];
     }
 
+    public function add(Request $request, Product $product): array
+    {
+        $owner = $this->ownerKey($request);
+
+        $existing = WishlistItem::query()
+            ->when($owner['user_id'], fn ($q) => $q->where('user_id', $owner['user_id']))
+            ->when(! $owner['user_id'], fn ($q) => $q->where('session_id', $owner['session_id']))
+            ->where('product_id', $product->id)
+            ->first();
+
+        $added = false;
+
+        if (! $existing) {
+            WishlistItem::query()->create([
+                ...$owner,
+                'product_id' => $product->id,
+            ]);
+            $added = true;
+        }
+
+        $ids = $this->productIds($request);
+
+        return [
+            'wished' => true,
+            'added' => $added,
+            'count' => count($ids),
+            'product_ids' => $ids,
+        ];
+    }
+
     public function remove(Request $request, Product $product): array
     {
         $owner = $this->ownerKey($request);

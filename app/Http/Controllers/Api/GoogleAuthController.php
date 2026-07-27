@@ -26,12 +26,12 @@ class GoogleAuthController extends Controller
     public function __invoke(Request $request)
     {
         $validated = $request->validate([
-            'credential' => ['required', 'string'],
+            'access_token' => ['required', 'string'],
             'intent' => ['required', Rule::in(['login', 'register'])],
         ]);
 
         try {
-            $profile = $this->google->verify($validated['credential']);
+            $profile = $this->google->verifyAccessToken($validated['access_token']);
         } catch (RuntimeException $exception) {
             return response()->json([
                 'code' => 'invalid_credential',
@@ -47,16 +47,7 @@ class GoogleAuthController extends Controller
             })
             ->first();
 
-        $intent = $validated['intent'];
-
-        if ($intent === 'register') {
-            if ($user) {
-                return response()->json([
-                    'code' => 'account_exists',
-                    'message' => 'Your account already exists. Please log in to continue.',
-                ], 422);
-            }
-
+        if (! $user) {
             $user = User::query()->create([
                 'name' => $profile['name'] ?: Str::before($profile['email'], '@'),
                 'email' => $profile['email'],
@@ -67,13 +58,6 @@ class GoogleAuthController extends Controller
             ]);
 
             return $this->completeLogin($request, $user, 201);
-        }
-
-        if (! $user) {
-            return response()->json([
-                'code' => 'account_missing',
-                'message' => 'No account found for this Google email. Create an account to continue.',
-            ], 404);
         }
 
         $this->syncGoogleProfile($user, $profile);

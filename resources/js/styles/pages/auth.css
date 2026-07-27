@@ -121,8 +121,8 @@
 
 .auth-submit--ink .vm-loader__ring--outer {
   border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
-  border-right-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  border-top-color: var(--color-accent);
+  border-right-color: color-mix(in srgb, var(--color-secondary) 45%, transparent);
+  border-top-color: var(--color-secondary);
 }
 
 .auth-submit--ink .vm-loader__ring--inner {
@@ -166,21 +166,22 @@
   max-width: 100%;
   min-height: 44px;
   min-width: 0;
+  position: relative;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
 }
 
-.google-continue.is-disabled .google-continue__btn {
+.google-continue.is-disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.google-continue__btn {
+.google-continue__shell {
   align-items: center;
+  appearance: none;
   background: #1a73e8;
-  border: none;
+  border: 0;
   border-radius: 999px;
-  box-shadow: none;
   color: #fff;
   cursor: pointer;
   display: inline-flex;
@@ -192,25 +193,23 @@
   letter-spacing: 0.01em;
   line-height: 1;
   min-height: 44px;
-  outline: none;
   padding: 0.78rem 1.1rem;
-  -webkit-tap-highlight-color: transparent;
   transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   width: 100%;
 }
 
-.google-continue__btn:hover:not(:disabled) {
+.google-continue__shell:disabled {
+  cursor: not-allowed;
+}
+
+.google-continue.is-ready:not(.is-disabled) .google-continue__shell:hover {
   background: #1765cc;
   transform: translateY(-1px);
 }
 
-.google-continue__btn:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, #1a73e8 28%, transparent);
-}
-
-.google-continue__btn:disabled {
-  cursor: not-allowed;
-  transform: none;
+.google-continue.is-ready:not(.is-disabled) .google-continue__shell:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 3px;
 }
 
 .google-continue__icon {

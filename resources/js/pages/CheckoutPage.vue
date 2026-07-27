@@ -8,13 +8,16 @@ import FormField from '@/components/ui/FormField.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
+import { friendlyApiError } from '@/utils/apiError';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
+import { useUiStore } from '@/stores/ui';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
 const cart = useCartStore();
+const ui = useUiStore();
 const router = useRouter();
 
 const error = ref('');
@@ -78,10 +81,8 @@ async function submit() {
     await cart.fetch();
     await router.push('/orders');
   } catch (err) {
-    error.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to place the order.';
+    error.value = friendlyApiError(err, 'Unable to place the order.');
+    ui.showToast(error.value, { type: 'error' });
   } finally {
     submitting.value = false;
   }

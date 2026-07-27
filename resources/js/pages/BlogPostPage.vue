@@ -1,14 +1,14 @@
 <script setup>
 import { computed, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { ChevronRight } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
-import { safeHtml } from '@/utils/html';
+import { safeHtml, stripHtml } from '@/utils/html';
+import { splitPostBody } from '@/utils/splitPostBody';
 
 const route = useRoute();
 const router = useRouter();
@@ -18,9 +18,23 @@ const posts = usePostsStore();
 const slug = computed(() => String(route.params.slug || ''));
 const post = computed(() => posts.current);
 
+const bodyParts = computed(() => splitPostBody(safeHtml(post.value?.body || '')));
+
+const lead = computed(() => {
+  if (!post.value) return '';
+  if (post.value.excerpt) return post.value.excerpt;
+  return stripHtml(bodyParts.value.introHtml, 160);
+});
+
 useHead({
   title: () =>
     post.value ? `${post.value.title} | ${theme.brandName}` : `Blog | ${theme.brandName}`,
+  meta: [
+    {
+      name: 'description',
+      content: () => lead.value || `${theme.brandName} journal`,
+    },
+  ],
 });
 
 function formatDate(value) {
@@ -33,6 +47,10 @@ function formatDate(value) {
     month: 'long',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function sectionTone(index) {
+  return index % 2 === 0 ? 'soft' : 'plain';
 }
 
 async function load() {
@@ -48,33 +66,88 @@ watch(slug, load, { immediate: true });
 
 <template>
   <LoadingSpinner v-if="posts.loading" page label="Loading post" />
-  <div v-else-if="post" class="blog-page blog-page--article">
-    <section class="page-section blog-article">
-      <Breadcrumb
-        class="blog-article__crumb"
-        :items="[{ label: 'Blog', to: '/blog' }, { label: post.title }]"
-      />
-
-      <header class="blog-article__header">
-        <span class="eyebrow">Journal</span>
-        <h1>{{ post.title }}</h1>
-        <time v-if="post.published_at" :datetime="post.published_at">
-          {{ formatDate(post.published_at) }}
-        </time>
-      </header>
-
-      <div v-if="post.cover_image" class="blog-article__cover">
-        <img :src="post.cover_image" :alt="post.title" />
+  <div v-else-if="post" class="article-premium">
+    <section
+      class="article-premium__hero"
+      :class="{ 'article-premium__hero--fallback': !post.cover_image }"
+      aria-labelledby="blog-hero-title"
+    >
+      <div v-if="post.cover_image" class="article-premium__hero-media" aria-hidden="true">
+        <img :src="post.cover_image" alt="" />
       </div>
+      <div class="article-premium__hero-scrim" aria-hidden="true" />
+      <div class="article-premium__hero-inner page-section">
+        <div class="article-premium__hero-copy">
+          <p class="article-premium__brand">{{ theme.brandName }}</p>
+          <h1 id="blog-hero-title">{{ post.title }}</h1>
+          <p v-if="lead" class="article-premium__lead">{{ lead }}</p>
+          <time
+            v-if="post.published_at"
+            class="article-premium__meta"
+            :datetime="post.published_at"
+          >
+            {{ formatDate(post.published_at) }}
+          </time>
+          <div class="article-premium__actions">
+            <AppButton to="/shop" size="lg">
+              Shop collection
+              <ChevronRight :size="18" />
+            </AppButton>
+            <AppButton to="/blog" variant="secondary" size="lg">Back to journal</AppButton>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <div class="blog-prose" v-html="safeHtml(post.body)" />
+    <section
+      v-if="bodyParts.introHtml"
+      class="article-premium__intro"
+      aria-label="Introduction"
+    >
+      <div
+        class="page-section article-premium__intro-inner article-premium__prose"
+        v-html="bodyParts.introHtml"
+      />
+    </section>
 
-      <div class="blog-article__cta">
-        <p>Explore the curated toys and lunch boxes behind these guides.</p>
-        <AppButton to="/shop" size="lg">
-          Shop collection
-          <ChevronRight :size="18" />
-        </AppButton>
+    <section
+      v-for="(section, index) in bodyParts.sections"
+      :id="section.id"
+      :key="section.id"
+      class="article-premium__section"
+      :class="`article-premium__section--${sectionTone(index)}`"
+      :aria-labelledby="`${section.id}-title`"
+    >
+      <div class="page-section article-premium__section-inner">
+        <span class="eyebrow">Journal</span>
+        <h2 :id="`${section.id}-title`">{{ section.title }}</h2>
+        <div
+          v-if="section.html"
+          class="article-premium__prose"
+          v-html="section.html"
+        />
+      </div>
+    </section>
+
+    <section class="article-premium__close" aria-labelledby="blog-close-title">
+      <div class="page-section article-premium__close-inner">
+        <span class="eyebrow">Ready when you are</span>
+        <h2 id="blog-close-title">Explore the curated collection</h2>
+        <p>
+          Browse
+          <RouterLink to="/category/toys">toys</RouterLink>
+          and
+          <RouterLink to="/category/lunch-box">lunch boxes</RouterLink>
+          behind these guides—or return to the
+          <RouterLink to="/blog">journal</RouterLink>.
+        </p>
+        <div class="article-premium__close-actions">
+          <AppButton to="/shop" size="lg">
+            Shop collection
+            <ChevronRight :size="18" />
+          </AppButton>
+          <AppButton to="/blog" variant="secondary" size="lg">More articles</AppButton>
+        </div>
       </div>
     </section>
   </div>

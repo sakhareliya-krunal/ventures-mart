@@ -34,7 +34,7 @@ class CartService
         $owner = $this->ownerKey($request);
 
         return CartItem::query()
-            ->with('product.category')
+            ->with('product')
             ->when($owner['user_id'], fn ($q) => $q->where('user_id', $owner['user_id']))
             ->when(! $owner['user_id'], fn ($q) => $q->where('session_id', $owner['session_id']))
             ->get();

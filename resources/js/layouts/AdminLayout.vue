@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Menu,
   X,
+  TriangleAlert,
 } from '@lucide/vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { brandAssets } from '@/constants/assets';
@@ -29,6 +30,15 @@ const router = useRouter();
 const confirmLogoutOpen = ref(false);
 const navOpen = ref(false);
 const accountMenuOpen = ref(false);
+const welcomeMessage = ref('');
+
+function consumeWelcomeQuery() {
+  if (String(route.query.welcome || '') !== '1') return;
+
+  welcomeMessage.value = "Welcome back! You've been signed in.";
+  const { welcome: _welcome, ...rest } = route.query;
+  router.replace({ path: route.path, query: rest });
+}
 
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -39,6 +49,7 @@ const nav = [
   { to: '/admin/contacts', label: 'Contact messages', icon: Mail },
   { to: '/admin/customers', label: 'Customers', icon: Users },
   { to: '/admin/addresses', label: 'Addresses', icon: MapPin },
+  { to: '/admin/error', label: 'Error logs', icon: TriangleAlert },
 ];
 
 const pageTitle = computed(() => route.meta.title || 'Admin');
@@ -101,7 +112,9 @@ watch(
   () => {
     closeNav();
     closeAccountMenu();
+    consumeWelcomeQuery();
   },
+  { immediate: true },
 );
 
 watch(navOpen, (isOpen) => {
@@ -145,7 +158,14 @@ onBeforeUnmount(() => {
     <aside class="admin-sidebar" :class="{ 'is-open': navOpen }" id="admin-sidebar">
       <div class="admin-sidebar__brand">
         <div class="admin-sidebar__brand-row">
-          <img :src="brandAssets.logoLight" :alt="theme.brandName" />
+          <RouterLink
+            to="/admin"
+            class="admin-sidebar__brand-link"
+            aria-label="Go to dashboard"
+            @click="closeNav"
+          >
+            <img :src="brandAssets.logoLight" :alt="theme.brandName" />
+          </RouterLink>
           <button
             class="admin-sidebar__close"
             type="button"
@@ -252,6 +272,9 @@ onBeforeUnmount(() => {
         </div>
       </header>
       <main class="admin-content">
+        <p v-if="welcomeMessage" class="form-success" role="status">
+          {{ welcomeMessage }}
+        </p>
         <RouterView />
       </main>
     </div>

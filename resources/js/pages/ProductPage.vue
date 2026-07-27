@@ -45,6 +45,15 @@ const adding = computed(() =>
 );
 const inStock = computed(() => Number(product.value?.stock ?? 0) > 0);
 const variants = computed(() => product.value?.variants || []);
+
+async function toggleWish() {
+  if (!product.value) return;
+  const hasVariants = variants.value.length > 1;
+  await wishlist.toggle(product.value.id, {
+    variantId: hasVariants ? product.value.id : null,
+  });
+}
+
 const gallery = computed(() => {
   if (!product.value) {
     return [];
@@ -390,7 +399,7 @@ onBeforeUnmount(() => {
               class="product-detail__wish"
               :class="{ 'is-wished': wished }"
               :aria-pressed="wished"
-              @click="wishlist.toggle(product.id)"
+              @click="toggleWish"
             >
               <Heart :size="18" :fill="wished ? 'currentColor' : 'none'" />
               {{ wished ? 'Saved' : 'Wishlist' }}

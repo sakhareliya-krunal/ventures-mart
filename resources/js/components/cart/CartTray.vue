@@ -36,17 +36,18 @@ function onKeydown(event) {
   }
 }
 
-async function decrease(item) {
-  const next = item.quantity - 1;
-  if (next <= 0) {
-    await cart.removeItem(item.product_id);
-    return;
-  }
-  await cart.updateQuantity(item.product_id, next);
+function decrease(item) {
+  cart.bumpQuantity(item.product_id, -1);
 }
 
-async function increase(item) {
-  await cart.updateQuantity(item.product_id, item.quantity + 1);
+function increase(item) {
+  cart.bumpQuantity(item.product_id, 1);
+}
+
+function atMaxQuantity(item) {
+  const stock = Number(item.product?.stock);
+  const stockCap = Number.isFinite(stock) && stock > 0 ? stock : 99;
+  return item.quantity >= Math.min(99, stockCap);
 }
 
 function goToCheckout() {
@@ -131,22 +132,28 @@ onBeforeUnmount(() => {
                 <strong>{{ item.product?.name }}</strong>
                 <span>{{ formatCurrency(item.product?.price || 0) }}</span>
               </div>
-              <div class="cart-tray__qty" role="group" :aria-label="`Quantity for ${item.product?.name}`">
+              <div
+                class="cart-tray__qty"
+                :class="{ 'is-syncing': cart.isSyncing(item.product_id) }"
+                role="group"
+                :aria-label="`Quantity for ${item.product?.name}`"
+              >
                 <button
                   type="button"
                   :aria-label="item.quantity <= 1 ? 'Remove item' : 'Decrease quantity'"
                   @click="decrease(item)"
                 >
-                  <Trash2 v-if="item.quantity <= 1" :size="14" />
-                  <Minus v-else :size="14" />
+                  <Trash2 v-if="item.quantity <= 1" :size="16" />
+                  <Minus v-else :size="16" />
                 </button>
                 <span>{{ item.quantity }}</span>
                 <button
                   type="button"
                   aria-label="Increase quantity"
+                  :disabled="atMaxQuantity(item)"
                   @click="increase(item)"
                 >
-                  <Plus :size="14" />
+                  <Plus :size="16" />
                 </button>
               </div>
               <strong class="cart-tray__line-total">
