@@ -114,8 +114,8 @@ const featureIcons = {
 
       <div class="footer-payments">
         <div class="footer-payments__copy">
-          <span>Payments coming soon</span>
-          <RouterLink to="/contact">
+          <span>Secure payments</span>
+          <RouterLink to="/payments">
             Learn more
             <ArrowUpRight :size="14" aria-hidden="true" />
           </RouterLink>

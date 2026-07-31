@@ -24,7 +24,7 @@ useHead({
 const paymentMethodLabel = computed(() => {
   const method = order.value?.payment_method;
   if (method === 'cod') return 'Cash on Delivery';
-  if (method === 'razorpay') return 'Razorpay';
+  if (method === 'razorpay') return 'Pay online';
   return method || '—';
 });
 

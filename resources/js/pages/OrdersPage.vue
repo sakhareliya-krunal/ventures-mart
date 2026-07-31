@@ -29,7 +29,7 @@ function formatStatus(status) {
 
 function formatPaymentMethod(method) {
   if (method === 'cod') return 'Cash on Delivery';
-  if (method === 'razorpay') return 'Razorpay';
+  if (method === 'razorpay') return 'Pay online';
   return method || '';
 }
 

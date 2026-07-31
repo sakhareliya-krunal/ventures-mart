@@ -45,7 +45,7 @@ export const footerContact = {
   phoneHref: 'tel:+919173279323',
 };
 
-export const footerPaymentPills = ['UPI', 'Cards', 'Net Banking', 'COD', 'Razorpay'];
+export const footerPaymentPills = ['UPI', 'Cards', 'Net Banking', 'COD'];
 
 export const footerBottomLinks = [
   { label: 'Privacy', href: '/privacy-policy' },

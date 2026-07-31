@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import { Banknote, CreditCard } from '@lucide/vue';
 import OrderSummary from '@/components/cart/OrderSummary.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -35,9 +36,9 @@ const address = reactive({
 
 const submitLabel = computed(() => {
   if (submitting.value) {
-    return paymentMethod.value === 'cod' ? 'Placing order…' : 'Opening Razorpay…';
+    return paymentMethod.value === 'cod' ? 'Placing order…' : 'Processing…';
   }
-  return paymentMethod.value === 'cod' ? 'Place COD order' : 'Pay with Razorpay';
+  return paymentMethod.value === 'cod' ? 'Place order' : 'Pay Now';
 });
 
 useHead({
@@ -244,16 +245,28 @@ async function submit() {
 
           <fieldset class="checkout-payment">
             <legend class="checkout-payment__legend">Payment method</legend>
-            <label class="checkout-payment__option">
+            <label
+              class="checkout-payment__option"
+              :class="{ 'is-selected': paymentMethod === 'razorpay' }"
+            >
               <input v-model="paymentMethod" type="radio" name="payment_method" value="razorpay" />
-              <span>
-                <strong>Pay online (Razorpay)</strong>
-                <small>Secure card, UPI, or netbanking</small>
+              <span class="checkout-payment__icon" aria-hidden="true">
+                <CreditCard :size="20" />
+              </span>
+              <span class="checkout-payment__copy">
+                <strong>Pay online</strong>
+                <small>UPI, cards, and net banking</small>
               </span>
             </label>
-            <label class="checkout-payment__option">
+            <label
+              class="checkout-payment__option"
+              :class="{ 'is-selected': paymentMethod === 'cod' }"
+            >
               <input v-model="paymentMethod" type="radio" name="payment_method" value="cod" />
-              <span>
+              <span class="checkout-payment__icon" aria-hidden="true">
+                <Banknote :size="20" />
+              </span>
+              <span class="checkout-payment__copy">
                 <strong>Cash on Delivery</strong>
                 <small>Pay when your order arrives</small>
               </span>
