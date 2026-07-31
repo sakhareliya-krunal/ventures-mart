@@ -27,6 +27,12 @@ function formatStatus(status) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function formatPaymentMethod(method) {
+  if (method === 'cod') return 'Cash on Delivery';
+  if (method === 'razorpay') return 'Razorpay';
+  return method || '';
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = '';
@@ -73,6 +79,11 @@ onMounted(async () => {
               {{ formatOrderDate(order.created_at) }}
               <span aria-hidden="true"> — </span>
               {{ formatStatus(order.status) }}
+            </p>
+            <p class="order-card__payment">
+              {{ formatPaymentMethod(order.payment_method) }}
+              <span aria-hidden="true"> · </span>
+              {{ formatStatus(order.payment_status) }}
             </p>
           </div>
           <ul class="order-card__items">

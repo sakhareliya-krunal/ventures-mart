@@ -45,7 +45,7 @@ class CartApiTest extends TestCase
                     ],
                 ],
                 'item_count',
-                'totals' => ['subtotal', 'shipping', 'tax', 'total'],
+                'totals' => ['subtotal', 'shipping', 'cgst', 'sgst', 'igst', 'tax', 'tax_type', 'total'],
             ])
             ->assertJsonMissingPath('items.0.product.description')
             ->assertJsonMissingPath('items.0.product.gallery')

@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { Heart, Menu, ShoppingBag, User } from '@lucide/vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ChevronDown, Heart, Menu, ShoppingBag, User } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import CartBadge from '@/components/common/CartBadge.vue';
 import MobileDrawer from '@/components/common/MobileDrawer.vue';
-import { primaryNav } from '@/constants/navigation';
+import { primaryNav, shopNavChildren } from '@/constants/navigation';
 import { brandAssets } from '@/constants/assets';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
@@ -13,6 +13,8 @@ import { useWishlistStore } from '@/stores/wishlist';
 import { useThemeStore } from '@/stores/theme';
 
 const open = ref(false);
+const shopMenuOpen = ref(false);
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const cart = useCartStore();
@@ -26,6 +28,25 @@ const profileTo = computed(() => {
 
   return auth.isAdmin ? '/admin' : '/profile';
 });
+
+const shopActive = computed(
+  () => route.path === '/shop' || route.path.startsWith('/category/'),
+);
+
+function openShopMenu() {
+  shopMenuOpen.value = true;
+}
+
+function closeShopMenu() {
+  shopMenuOpen.value = false;
+}
+
+function onShopCategoryClick() {
+  shopMenuOpen.value = false;
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
 
 function openCart() {
   if (cart.isEmpty) {
@@ -48,15 +69,48 @@ function openCart() {
       </RouterLink>
 
       <nav class="desktop-nav" aria-label="Primary navigation">
-        <RouterLink
-          v-for="item in primaryNav"
-          :key="item.href"
-          :to="item.href"
-          :active-class="item.href === '/' ? '' : 'active'"
-          exact-active-class="active"
-        >
-          {{ item.label }}
-        </RouterLink>
+        <template v-for="item in primaryNav" :key="item.href">
+          <div
+            v-if="item.href === '/shop'"
+            class="nav-item nav-item--shop"
+            :class="{ 'is-active': shopActive, 'is-open': shopMenuOpen }"
+            @mouseenter="openShopMenu"
+            @mouseleave="closeShopMenu"
+            @focusin="openShopMenu"
+          >
+            <RouterLink
+              class="nav-item__trigger"
+              to="/shop"
+              :class="{ active: shopActive }"
+              :aria-haspopup="true"
+              :aria-expanded="shopMenuOpen"
+            >
+              <span>Shop</span>
+              <ChevronDown class="nav-item__chevron" :size="14" aria-hidden="true" />
+            </RouterLink>
+            <div class="nav-item__panel" role="menu" aria-label="Shop categories">
+              <RouterLink
+                v-for="child in shopNavChildren"
+                :key="child.href"
+                class="nav-item__link"
+                :to="child.href"
+                role="menuitem"
+                active-class="active"
+                @click="onShopCategoryClick"
+              >
+                {{ child.label }}
+              </RouterLink>
+            </div>
+          </div>
+          <RouterLink
+            v-else
+            :to="item.href"
+            :active-class="item.href === '/' ? '' : 'active'"
+            exact-active-class="active"
+          >
+            {{ item.label }}
+          </RouterLink>
+        </template>
       </nav>
 
       <div class="header-actions">

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\RazorpayWebhookController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
 use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/featured', [ProductController::class, 'featured']);
 Route::get('/products/sale', [ProductController::class, 'sale']);
+Route::get('/products/price-bounds', [ProductController::class, 'priceBounds']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
 Route::get('/products/{slug}/reviews', [ProductReviewController::class, 'index']);
 Route::post('/products/{slug}/reviews', [ProductReviewController::class, 'store']);
@@ -50,9 +52,14 @@ Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
 Route::post('/wishlist/add', [WishlistController::class, 'add']);
 Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
 
-Route::post('/orders', [OrderController::class, 'store']);
+Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle']);
+
 Route::get('/orders', [OrderController::class, 'index']);
-Route::get('/orders/{order}', [OrderController::class, 'show'])->middleware('auth:sanctum');
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/orders/{order}/payment/verify', [OrderController::class, 'verifyPayment']);
+    Route::get('/orders/{order}', [OrderController::class, 'show']);
+});
 
 Route::post('/contact', [ContactController::class, 'store']);
 

@@ -90,6 +90,12 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
+          path: 'orders/:id/confirmed',
+          name: 'order-confirmed',
+          component: () => import('@/pages/OrderConfirmationPage.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue'),

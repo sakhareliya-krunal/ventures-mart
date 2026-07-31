@@ -112,6 +112,12 @@
   padding-top: 0.75rem;
 }
 
+.summary-panel__gst-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted, #6b7280);
+}
+
 @media (max-width: 1040px) {
   .checkout-layout {
     grid-template-columns: 1fr;
@@ -328,22 +334,45 @@
   padding-top: 0.85rem;
 }
 
-.cart-tray__subtotal {
+.cart-tray__totals {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cart-tray__row {
   align-items: baseline;
   display: flex;
   justify-content: space-between;
 }
 
-.cart-tray__subtotal span {
+.cart-tray__row span {
   color: rgba(28, 44, 76, 0.65);
   font-size: 0.88rem;
   font-weight: 700;
 }
 
-.cart-tray__subtotal strong {
+.cart-tray__row strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.cart-tray__row--total {
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.2rem;
+  padding-top: 0.55rem;
+}
+
+.cart-tray__row--total span,
+.cart-tray__row--total strong {
   font-size: 1.1rem;
   font-weight: 900;
-  letter-spacing: -0.02em;
+}
+
+.cart-tray__gst-note {
+  color: rgba(28, 44, 76, 0.55);
+  font-size: 0.78rem;
+  margin: 0;
 }
 
 .cart-tray__cta {
@@ -386,6 +415,48 @@
 .cart-tray-enter-from .cart-tray__backdrop,
 .cart-tray-leave-to .cart-tray__backdrop {
   opacity: 0;
+}
+
+.checkout-payment {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem;
+}
+
+.checkout-payment__legend {
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0 0.25rem;
+}
+
+.checkout-payment__option {
+  align-items: flex-start;
+  cursor: pointer;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.35rem 0;
+}
+
+.checkout-payment__option input {
+  margin-top: 0.2rem;
+}
+
+.checkout-payment__option strong {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.checkout-payment__option small {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.86rem;
+  margin-top: 0.15rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

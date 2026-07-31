@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AddressResource;
 use App\Models\Address;
+use App\Support\GstState;
 use Illuminate\Http\Request;
 
 class AddressController extends Controller
@@ -93,6 +94,7 @@ class AddressController extends Controller
         ]);
 
         $validated['label'] = trim((string) ($validated['label'] ?? '')) ?: 'Home';
+        $validated['state'] = GstState::normalize($validated['state']) ?? $validated['state'];
 
         return $validated;
     }

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search, SlidersHorizontal, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import PriceRangeFilter from '@/components/shop/PriceRangeFilter.vue';
 
 const props = defineProps({
   query: {
@@ -13,7 +14,19 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  minPrice: {
+    type: Number,
+    default: 0,
+  },
   maxPrice: {
+    type: Number,
+    default: 2000,
+  },
+  priceFloor: {
+    type: Number,
+    default: 0,
+  },
+  priceCeiling: {
     type: Number,
     default: 2000,
   },
@@ -27,7 +40,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update:query', 'update:category', 'update:maxPrice', 'update:sort']);
+const emit = defineEmits([
+  'update:query',
+  'update:category',
+  'update:minPrice',
+  'update:maxPrice',
+  'update:sort',
+]);
 
 const filtersOpen = ref(false);
 
@@ -157,14 +176,13 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="filters-field">
-            <span class="filters-field__label">Max price: ₹{{ maxPrice }}</span>
-            <input
-              type="range"
-              min="500"
-              max="2000"
-              step="50"
-              :value="maxPrice"
-              @input="emit('update:maxPrice', Number($event.target.value))"
+            <PriceRangeFilter
+              :min-price="minPrice"
+              :max-price="maxPrice"
+              :price-floor="priceFloor"
+              :price-ceiling="priceCeiling"
+              @update:min-price="emit('update:minPrice', $event)"
+              @update:max-price="emit('update:maxPrice', $event)"
             />
           </div>
 

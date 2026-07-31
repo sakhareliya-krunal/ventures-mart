@@ -74,6 +74,72 @@ class ProductStorefrontAlignmentTest extends TestCase
             ->assertJsonMissing(['slug' => 'fake-sale']);
     }
 
+    public function test_price_bounds_reflects_active_catalog_min_and_max(): void
+    {
+        $this->makeProduct([
+            'slug' => 'cheap-box',
+            'sku' => 'CHEAP-1',
+            'price' => 599,
+            'is_active' => true,
+        ]);
+        $this->makeProduct([
+            'slug' => 'pricey-box',
+            'sku' => 'PRICE-1',
+            'price' => 1499,
+            'is_active' => true,
+        ]);
+        $this->makeProduct([
+            'slug' => 'hidden-pricey',
+            'sku' => 'HID-PRICE',
+            'price' => 9999,
+            'is_active' => false,
+        ]);
+
+        $this->getJson('/api/products/price-bounds')
+            ->assertOk()
+            ->assertJsonPath('min', 599)
+            ->assertJsonPath('max', 1499);
+    }
+
+    public function test_products_can_be_filtered_by_category_slug(): void
+    {
+        $lunch = Category::query()->create([
+            'name' => 'Lunch Box',
+            'slug' => 'lunch-box',
+            'description' => 'Lunch boxes',
+            'image' => '/products/lunch-box/delicious-steel-lunch-box/01.jpg',
+            'featured' => true,
+        ]);
+        $toys = Category::query()->create([
+            'name' => 'Toys',
+            'slug' => 'toys',
+            'description' => 'Toys',
+            'image' => '/products/toys/wooden-building-blocks/01.jpg',
+            'featured' => true,
+        ]);
+
+        $this->makeProduct([
+            'slug' => 'steel-lunch',
+            'sku' => 'LB-1',
+            'category_id' => $lunch->id,
+            'name' => 'Steel Lunch',
+        ]);
+        $this->makeProduct([
+            'slug' => 'wood-blocks',
+            'sku' => 'TY-1',
+            'category_id' => $toys->id,
+            'name' => 'Wood Blocks',
+        ]);
+
+        $response = $this->getJson('/api/products?category=lunch-box')
+            ->assertOk()
+            ->assertJsonFragment(['slug' => 'steel-lunch', 'category' => 'lunch-box'])
+            ->assertJsonMissing(['slug' => 'wood-blocks']);
+
+        $categories = collect($response->json('data'))->pluck('category')->unique()->values()->all();
+        $this->assertSame(['lunch-box'], $categories);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

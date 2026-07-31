@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    private const STATUSES = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+    private const STATUSES = ['AwaitingPayment', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
     public function index(Request $request)
     {
@@ -45,10 +45,45 @@ class OrderController extends Controller
     public function update(Request $request, Order $order)
     {
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(self::STATUSES)],
+            'status' => ['sometimes', 'required', 'string', Rule::in(self::STATUSES)],
+            'payment_status' => ['sometimes', 'required', 'string', Rule::in(['paid'])],
         ]);
 
-        $order->forceFill(['status' => $validated['status']])->save();
+        if ($validated === []) {
+            return response()->json([
+                'message' => 'Nothing to update.',
+            ], 422);
+        }
+
+        if (array_key_exists('payment_status', $validated) && $validated['payment_status'] === 'paid') {
+            if ($order->payment_method !== 'cod') {
+                return response()->json([
+                    'message' => 'Only COD orders can be marked paid manually.',
+                ], 422);
+            }
+
+            if ($order->payment_status !== 'paid') {
+                $order->forceFill([
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+            }
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $order->status = $validated['status'];
+
+            if (
+                $validated['status'] === 'Delivered'
+                && $order->payment_method === 'cod'
+                && $order->payment_status === 'pending'
+            ) {
+                $order->payment_status = 'paid';
+                $order->paid_at = now();
+            }
+        }
+
+        $order->save();
         $order->load(['items', 'user']);
 
         return new AdminOrderResource($order);

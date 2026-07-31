@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref } from 'vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
@@ -15,10 +15,17 @@ export const useProductsStore = defineStore('products', () => {
   const reviewError = ref(null);
   const loading = ref(false);
   const error = ref(null);
+  const priceBounds = ref({ min: 0, max: 0 });
+  const boundsLoaded = ref(false);
 
-  async function fetchList(params = {}) {
+  function beginListLoad() {
     loading.value = true;
     error.value = null;
+    list.value = [];
+  }
+
+  async function fetchList(params = {}) {
+    beginListLoad();
 
     try {
       const { data } = await api.get('/products', { params });
@@ -30,6 +37,26 @@ export const useProductsStore = defineStore('products', () => {
       return [];
     } finally {
       loading.value = false;
+    }
+  }
+
+  async function fetchPriceBounds() {
+    if (boundsLoaded.value) {
+      return priceBounds.value;
+    }
+
+    try {
+      const { data } = await api.get('/products/price-bounds');
+      priceBounds.value = {
+        min: Number(data?.min ?? 0),
+        max: Number(data?.max ?? 0),
+      };
+      boundsLoaded.value = true;
+      return priceBounds.value;
+    } catch {
+      priceBounds.value = { min: 0, max: 0 };
+      boundsLoaded.value = true;
+      return priceBounds.value;
     }
   }
 
@@ -126,7 +153,11 @@ export const useProductsStore = defineStore('products', () => {
     reviewError,
     loading,
     error,
+    priceBounds,
+    boundsLoaded,
+    beginListLoad,
     fetchList,
+    fetchPriceBounds,
     fetchFeatured,
     fetchSale,
     fetchBySlug,
@@ -134,3 +165,7 @@ export const useProductsStore = defineStore('products', () => {
     submitReview,
   };
 });
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useProductsStore, import.meta.hot));
+}

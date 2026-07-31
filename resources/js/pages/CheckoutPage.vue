@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import OrderSummary from '@/components/cart/OrderSummary.vue';
@@ -22,6 +22,7 @@ const router = useRouter();
 
 const error = ref('');
 const submitting = ref(false);
+const paymentMethod = ref('razorpay');
 const address = reactive({
   full_name: '',
   email: '',
@@ -32,9 +33,98 @@ const address = reactive({
   postal_code: '',
 });
 
+const submitLabel = computed(() => {
+  if (submitting.value) {
+    return paymentMethod.value === 'cod' ? 'Placing order…' : 'Opening Razorpay…';
+  }
+  return paymentMethod.value === 'cod' ? 'Place COD order' : 'Pay with Razorpay';
+});
+
 useHead({
   title: () => `Checkout | ${theme.brandName}`,
 });
+
+function loadRazorpayScript() {
+  if (typeof window !== 'undefined' && window.Razorpay) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-razorpay-checkout]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Unable to load Razorpay.')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.dataset.razorpayCheckout = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Unable to load Razorpay.'));
+    document.head.appendChild(script);
+  });
+}
+
+function openRazorpayCheckout(razorpay) {
+  return new Promise((resolve, reject) => {
+    if (!window.Razorpay) {
+      reject(new Error('Razorpay is not available.'));
+      return;
+    }
+
+    const options = {
+      key: razorpay.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: razorpay.amount,
+      currency: razorpay.currency || 'INR',
+      name: razorpay.name || theme.brandName,
+      description: razorpay.description,
+      order_id: razorpay.order_id,
+      prefill: razorpay.prefill || {},
+      theme: { color: '#0b2e8a' },
+      handler(response) {
+        resolve(response);
+      },
+      modal: {
+        ondismiss() {
+          reject(new Error('Payment cancelled. Your order is awaiting payment.'));
+        },
+      },
+    };
+
+    const checkout = new window.Razorpay(options);
+    checkout.on('payment.failed', (response) => {
+      const message =
+        response?.error?.description ||
+        response?.error?.reason ||
+        'Payment failed. Please try again.';
+      reject(new Error(message));
+    });
+    checkout.open();
+  });
+}
+
+async function goToConfirmation(orderId) {
+  await cart.fetch();
+  await router.push({ name: 'order-confirmed', params: { id: orderId } });
+}
+
+async function refreshTotalsForState() {
+  const state = String(address.state || '').trim();
+  if (!state) {
+    await cart.fetch();
+    return;
+  }
+  await cart.fetch({ state });
+}
+
+watch(
+  () => address.state,
+  () => {
+    refreshTotalsForState();
+  },
+);
 
 onMounted(async () => {
   await cart.fetch();
@@ -64,24 +154,65 @@ onMounted(async () => {
       // Keep name/email defaults when addresses cannot load.
     }
   }
+
+  await refreshTotalsForState();
 });
 
 async function submit() {
   error.value = '';
 
   if (Object.values(address).some((value) => !String(value).trim())) {
-    error.value = 'Complete every checkout field before placing the order.';
+    error.value = 'Complete every checkout field before placing your order.';
     return;
   }
 
   submitting.value = true;
 
   try {
-    await api.post('/orders', { ...address });
-    await cart.fetch();
-    await router.push('/orders');
+    if (paymentMethod.value === 'cod') {
+      const { data } = await api.post('/orders', {
+        ...address,
+        payment_method: 'cod',
+      });
+      const order = unwrapData(data) || data.data;
+
+      if (!order?.id) {
+        throw new Error('Unable to place COD order. Please try again.');
+      }
+
+      ui.showToast('Order placed. Pay cash on delivery.', { type: 'success' });
+      await goToConfirmation(order.id);
+      return;
+    }
+
+    await loadRazorpayScript();
+
+    const { data } = await api.post('/orders', {
+      ...address,
+      payment_method: 'razorpay',
+    });
+    const order = unwrapData(data) || data.data;
+    const razorpay = data.razorpay;
+
+    if (!order?.id || !razorpay?.order_id) {
+      throw new Error('Unable to start payment. Please try again.');
+    }
+
+    const payment = await openRazorpayCheckout(razorpay);
+
+    await api.post(`/orders/${order.id}/payment/verify`, {
+      razorpay_order_id: payment.razorpay_order_id,
+      razorpay_payment_id: payment.razorpay_payment_id,
+      razorpay_signature: payment.razorpay_signature,
+    });
+
+    ui.showToast('Payment successful. Your order is confirmed.', { type: 'success' });
+    await goToConfirmation(order.id);
   } catch (err) {
-    error.value = friendlyApiError(err, 'Unable to place the order.');
+    error.value =
+      err?.message && !err.response
+        ? String(err.message)
+        : friendlyApiError(err, 'Unable to complete checkout.');
     ui.showToast(error.value, { type: 'error' });
   } finally {
     submitting.value = false;
@@ -94,7 +225,7 @@ async function submit() {
     <PageHero
       eyebrow="Checkout"
       title="Shipping details"
-      lead="Share delivery details so we can pack and dispatch your order."
+      lead="Share delivery details, then pay online or choose cash on delivery."
       size="compact"
     />
     <div class="page-section">
@@ -110,8 +241,27 @@ async function submit() {
             <FormField v-model="address.state" label="State" required />
             <FormField v-model="address.postal_code" label="Postal code" required />
           </div>
+
+          <fieldset class="checkout-payment">
+            <legend class="checkout-payment__legend">Payment method</legend>
+            <label class="checkout-payment__option">
+              <input v-model="paymentMethod" type="radio" name="payment_method" value="razorpay" />
+              <span>
+                <strong>Pay online (Razorpay)</strong>
+                <small>Secure card, UPI, or netbanking</small>
+              </span>
+            </label>
+            <label class="checkout-payment__option">
+              <input v-model="paymentMethod" type="radio" name="payment_method" value="cod" />
+              <span>
+                <strong>Cash on Delivery</strong>
+                <small>Pay when your order arrives</small>
+              </span>
+            </label>
+          </fieldset>
+
           <AppButton size="lg" type="submit" :disabled="submitting">
-            {{ submitting ? 'Placing order…' : 'Place order' }}
+            {{ submitLabel }}
           </AppButton>
         </form>
         <OrderSummary :totals="cart.totals" />

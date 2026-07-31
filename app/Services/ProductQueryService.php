@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Support\GstState;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -49,6 +50,24 @@ class ProductQueryService
         };
 
         return $this->groupForListing($products);
+    }
+
+    /**
+     * @return array{min: float, max: float}
+     */
+    public function priceBounds(): array
+    {
+        $min = Product::query()->active()->min('price');
+        $max = Product::query()->active()->max('price');
+
+        if ($min === null || $max === null) {
+            return ['min' => 0.0, 'max' => 0.0];
+        }
+
+        return [
+            'min' => (float) $min,
+            'max' => (float) $max,
+        ];
     }
 
     public function findBySlug(string $slug): ?Product
@@ -113,7 +132,7 @@ class ProductQueryService
             ->values();
     }
 
-    public function calculateTotals(iterable $lines): array
+    public function calculateTotals(iterable $lines, ?string $destinationState = null): array
     {
         $subtotal = 0.0;
 
@@ -127,13 +146,34 @@ class ProductQueryService
             $subtotal += $price * $qty;
         }
 
+        $subtotal = round($subtotal, 2);
         $shipping = $subtotal > 0 && $subtotal < 999 ? 49.0 : 0.0;
-        $tax = round($subtotal * 0.05, 2);
+        $rate = (float) config('gst.rate', 0.05);
+        $tax = round($subtotal * $rate, 2);
+
+        $normalizedDestination = GstState::normalize($destinationState);
+        $hasDestination = $normalizedDestination !== null;
+
+        if (! $hasDestination || GstState::isSameAsSeller($normalizedDestination)) {
+            $cgst = round($subtotal * ($rate / 2), 2);
+            $sgst = round($tax - $cgst, 2);
+            $igst = 0.0;
+            $taxType = $hasDestination ? 'cgst_sgst' : 'estimate';
+        } else {
+            $cgst = 0.0;
+            $sgst = 0.0;
+            $igst = $tax;
+            $taxType = 'igst';
+        }
 
         return [
-            'subtotal' => round($subtotal, 2),
+            'subtotal' => $subtotal,
             'shipping' => $shipping,
+            'cgst' => $cgst,
+            'sgst' => $sgst,
+            'igst' => $igst,
             'tax' => $tax,
+            'tax_type' => $taxType,
             'total' => round($subtotal + $shipping + $tax, 2),
         ];
     }

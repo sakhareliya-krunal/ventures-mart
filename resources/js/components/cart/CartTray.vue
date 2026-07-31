@@ -22,9 +22,12 @@ const visible = computed(
 );
 
 const lineLabel = computed(() => {
-  const count = cart.lineCount;
+  const count = cart.quantityCount;
   return count === 1 ? '1 item' : `${count} items`;
 });
+
+const showIgst = computed(() => Number(cart.totals.igst || 0) > 0);
+const isEstimate = computed(() => cart.totals.tax_type === 'estimate');
 
 function lockScroll(locked) {
   document.body.style.overflow = locked ? 'hidden' : '';
@@ -163,9 +166,38 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="cart-tray__footer">
-            <div class="cart-tray__subtotal">
-              <span>Subtotal</span>
-              <strong>{{ formatCurrency(cart.totals.subtotal) }}</strong>
+            <div class="cart-tray__totals">
+              <div class="cart-tray__row">
+                <span>Subtotal</span>
+                <strong>{{ formatCurrency(cart.totals.subtotal) }}</strong>
+              </div>
+              <div class="cart-tray__row">
+                <span>Shipping</span>
+                <strong>{{ cart.totals.shipping ? formatCurrency(cart.totals.shipping) : 'Free' }}</strong>
+              </div>
+              <template v-if="showIgst">
+                <div class="cart-tray__row">
+                  <span>IGST (5%)</span>
+                  <strong>{{ formatCurrency(cart.totals.igst) }}</strong>
+                </div>
+              </template>
+              <template v-else>
+                <div class="cart-tray__row">
+                  <span>CGST (2.5%)</span>
+                  <strong>{{ formatCurrency(cart.totals.cgst ?? (cart.totals.tax || 0) / 2) }}</strong>
+                </div>
+                <div class="cart-tray__row">
+                  <span>SGST (2.5%)</span>
+                  <strong>{{ formatCurrency(cart.totals.sgst ?? (cart.totals.tax || 0) / 2) }}</strong>
+                </div>
+              </template>
+              <div class="cart-tray__row cart-tray__row--total">
+                <span>Total</span>
+                <strong>{{ formatCurrency(cart.totals.total) }}</strong>
+              </div>
+              <p v-if="isEstimate" class="cart-tray__gst-note">
+                Estimated until shipping state is set
+              </p>
             </div>
             <AppButton size="lg" class="cart-tray__cta" @click="goToCheckout">
               Checkout

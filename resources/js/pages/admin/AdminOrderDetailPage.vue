@@ -11,11 +11,13 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const saving = ref(false);
+const markingPaid = ref(false);
 const error = ref('');
 const order = ref(null);
 const status = ref('Processing');
 
 const statusOptions = [
+  { value: 'AwaitingPayment', label: 'Awaiting payment' },
   { value: 'Processing', label: 'Processing' },
   { value: 'Shipped', label: 'Shipped' },
   { value: 'Delivered', label: 'Delivered' },
@@ -23,6 +25,17 @@ const statusOptions = [
 ];
 
 const items = computed(() => order.value?.items || []);
+
+const paymentMethodLabel = computed(() => {
+  const method = order.value?.payment_method;
+  if (method === 'cod') return 'Cash on Delivery';
+  if (method === 'razorpay') return 'Razorpay';
+  return method || '—';
+});
+
+const canMarkPaid = computed(
+  () => order.value?.payment_method === 'cod' && order.value?.payment_status === 'pending',
+);
 
 onMounted(async () => {
   try {
@@ -49,6 +62,22 @@ async function saveStatus() {
     saving.value = false;
   }
 }
+
+async function markPaymentReceived() {
+  if (!order.value || !canMarkPaid.value) return;
+  markingPaid.value = true;
+  error.value = '';
+  try {
+    const { data } = await api.patch(`/admin/orders/${order.value.id}`, {
+      payment_status: 'paid',
+    });
+    order.value = unwrapData(data);
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Unable to mark payment received.';
+  } finally {
+    markingPaid.value = false;
+  }
+}
 </script>
 
 <template>
@@ -67,6 +96,15 @@ async function saveStatus() {
         <p class="admin-muted">
           Placed {{ order.created_at ? new Date(order.created_at).toLocaleString() : '—' }}
         </p>
+        <p class="admin-muted">
+          Payment method: <strong>{{ paymentMethodLabel }}</strong>
+        </p>
+        <p class="admin-muted">
+          Payment status: <strong>{{ order.payment_status || '—' }}</strong>
+          <template v-if="order.paid_at">
+            · paid {{ new Date(order.paid_at).toLocaleString() }}
+          </template>
+        </p>
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="admin-form admin-order-status">
@@ -81,6 +119,15 @@ async function saveStatus() {
           </label>
           <AppButton type="button" :disabled="saving" @click="saveStatus">
             {{ saving ? 'Saving…' : 'Update status' }}
+          </AppButton>
+          <AppButton
+            v-if="canMarkPaid"
+            type="button"
+            variant="secondary"
+            :disabled="markingPaid"
+            @click="markPaymentReceived"
+          >
+            {{ markingPaid ? 'Saving…' : 'Mark payment received' }}
           </AppButton>
         </div>
 
@@ -131,7 +178,14 @@ async function saveStatus() {
           <h3>Totals</h3>
           <p>Subtotal: {{ formatCurrency(order.subtotal) }}</p>
           <p>Shipping: {{ formatCurrency(order.shipping) }}</p>
-          <p>Tax: {{ formatCurrency(order.tax) }}</p>
+          <template v-if="Number(order.igst || 0) > 0">
+            <p>IGST (5%): {{ formatCurrency(order.igst) }}</p>
+          </template>
+          <template v-else>
+            <p>CGST (2.5%): {{ formatCurrency(order.cgst) }}</p>
+            <p>SGST (2.5%): {{ formatCurrency(order.sgst) }}</p>
+          </template>
+          <p v-if="order.seller_state">Seller state: {{ order.seller_state }}</p>
           <p><strong>Total: {{ formatCurrency(order.total) }}</strong></p>
         </div>
       </div>

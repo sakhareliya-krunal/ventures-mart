@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import FilterSidebar from '@/components/shop/FilterSidebar.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
@@ -23,6 +24,8 @@ const props = defineProps({
   },
 });
 
+const route = useRoute();
+const router = useRouter();
 const theme = useThemeStore();
 const categories = useCategoriesStore();
 const products = useProductsStore();
@@ -30,21 +33,73 @@ const products = useProductsStore();
 const query = ref(props.searchQuery ?? '');
 const category = ref(props.categorySlug ?? '');
 const sort = ref('featured');
+const priceFloor = ref(0);
+const priceCeiling = ref(2000);
+const minPrice = ref(0);
 const maxPrice = ref(2000);
+const boundsReady = ref(false);
+const pageLoading = ref(true);
+const syncingFromRoute = ref(false);
+
+const catalogLoading = computed(() => pageLoading.value || products.loading);
+const productCountLabel = computed(() =>
+  catalogLoading.value ? '—' : String(products.list.length),
+);
 
 useHead({
   title: () => `${props.title} | ${theme.brandName}`,
 });
 
-const params = computed(() => ({
-  q: query.value || undefined,
-  category: category.value || undefined,
-  max_price: maxPrice.value,
-  sort: sort.value,
-}));
+function applyBounds(bounds) {
+  const rawMin = Number(bounds?.min ?? 0);
+  const rawMax = Number(bounds?.max ?? 0);
+
+  if (!rawMax) {
+    priceFloor.value = 0;
+    priceCeiling.value = 2000;
+  } else {
+    priceFloor.value = Math.floor(rawMin);
+    priceCeiling.value = Math.max(Math.ceil(rawMax / 50) * 50, Math.ceil(rawMax));
+  }
+
+  minPrice.value = priceFloor.value;
+  maxPrice.value = priceCeiling.value;
+}
+
+const params = computed(() => {
+  const next = {
+    q: query.value || undefined,
+    category: category.value || undefined,
+    sort: sort.value,
+  };
+
+  if (minPrice.value > priceFloor.value) {
+    next.min_price = minPrice.value;
+  }
+
+  if (maxPrice.value < priceCeiling.value) {
+    next.max_price = maxPrice.value;
+  }
+
+  return next;
+});
 
 async function load() {
+  if (!boundsReady.value) {
+    return;
+  }
   await products.fetchList(params.value);
+}
+
+function syncCategoryToRoute(value) {
+  if (syncingFromRoute.value) {
+    return;
+  }
+
+  const target = value ? `/category/${value}` : '/shop';
+  if (route.path !== target) {
+    router.push(target);
+  }
 }
 
 watch(params, load, { deep: true });
@@ -59,15 +114,42 @@ watch(
 watch(
   () => props.categorySlug,
   (value) => {
+    syncingFromRoute.value = true;
     category.value = value ?? '';
+    nextTick(() => {
+      syncingFromRoute.value = false;
+    });
   },
+  { immediate: true },
 );
 
+watch(category, (value) => {
+  syncCategoryToRoute(value);
+});
+
 onMounted(async () => {
-  if (!categories.list.length) {
-    await categories.fetchAll();
+  pageLoading.value = true;
+
+  if (typeof products.beginListLoad === 'function') {
+    products.beginListLoad();
+  } else {
+    products.loading = true;
+    products.error = null;
+    products.list = [];
   }
-  await load();
+
+  try {
+    if (!categories.list.length) {
+      await categories.fetchAll();
+    }
+
+    const bounds = await products.fetchPriceBounds();
+    applyBounds(bounds);
+    boundsReady.value = true;
+    await load();
+  } finally {
+    pageLoading.value = false;
+  }
 });
 </script>
 
@@ -75,7 +157,7 @@ onMounted(async () => {
   <section class="shop-page">
     <PageHero eyebrow="Catalog" :title="title" size="catalog">
       <template #aside>
-        <strong>{{ products.list.length }}</strong>
+        <strong>{{ productCountLabel }}</strong>
         products
       </template>
     </PageHero>
@@ -85,13 +167,16 @@ onMounted(async () => {
         <FilterSidebar
           v-model:query="query"
           v-model:category="category"
+          v-model:min-price="minPrice"
           v-model:max-price="maxPrice"
           v-model:sort="sort"
+          :price-floor="priceFloor"
+          :price-ceiling="priceCeiling"
           :categories="categories.list"
         />
         <ProductGrid
           :products="products.list"
-          :loading="products.loading"
+          :loading="catalogLoading"
         />
       </div>
     </div>

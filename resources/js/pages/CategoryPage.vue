@@ -47,5 +47,5 @@ onMounted(resolveCategory);
 
 <template>
   <LoadingSpinner v-if="!ready" page label="Loading category" />
-  <ShopPage v-else :category-slug="slug" :title="title" />
+  <ShopPage v-else :key="slug" :category-slug="slug" :title="title" />
 </template>

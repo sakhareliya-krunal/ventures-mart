@@ -40,7 +40,7 @@ class CartService
             ->get();
     }
 
-    public function payload(Request $request): array
+    public function payload(Request $request, ?string $destinationState = null): array
     {
         $items = $this->items($request);
         $lines = $items->map(fn (CartItem $item) => [
@@ -48,11 +48,13 @@ class CartService
             'quantity' => $item->quantity,
         ]);
 
+        $state = $destinationState ?? $request->query('state') ?? $request->input('state');
+
         return [
             'items' => $items,
             'item_count' => $items->count(),
             'quantity_count' => $items->sum('quantity'),
-            'totals' => $this->products->calculateTotals($lines),
+            'totals' => $this->products->calculateTotals($lines, is_string($state) ? $state : null),
         ];
     }
 

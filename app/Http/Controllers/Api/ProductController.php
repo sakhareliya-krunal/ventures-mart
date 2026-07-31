@@ -20,6 +20,11 @@ class ProductController extends Controller
         return ProductResource::collection($items);
     }
 
+    public function priceBounds()
+    {
+        return response()->json($this->products->priceBounds());
+    }
+
     public function featured()
     {
         return ProductResource::collection($this->products->featured());

@@ -48,6 +48,14 @@
   margin: 0.4rem 0 0;
 }
 
+.order-card__payment {
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.35rem 0 0;
+}
+
 .order-card__items {
   color: var(--color-ink);
   display: grid;
@@ -81,6 +89,46 @@
   line-height: 1.2;
   text-align: right;
   white-space: nowrap;
+}
+
+.order-confirm-page {
+  padding-bottom: 3.5rem;
+}
+
+.order-confirm-card {
+  max-width: 36rem;
+}
+
+.order-confirm-facts {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.order-confirm-facts div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.order-confirm-facts dt {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.order-confirm-facts dd {
+  color: var(--color-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.order-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 @media (max-width: 720px) {

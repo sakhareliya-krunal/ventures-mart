@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\GstState;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CheckoutRequest extends FormRequest
@@ -21,6 +22,16 @@ class CheckoutRequest extends FormRequest
             'city' => ['required', 'string', 'max:120'],
             'state' => ['required', 'string', 'max:120'],
             'postal_code' => ['required', 'string', 'max:30'],
+            'payment_method' => ['required', 'string', 'in:razorpay,cod'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('state')) {
+            $this->merge([
+                'state' => GstState::normalize((string) $this->input('state')) ?? $this->input('state'),
+            ]);
+        }
     }
 }

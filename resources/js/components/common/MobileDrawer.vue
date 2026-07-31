@@ -1,10 +1,10 @@
 <script setup>
-import { onBeforeUnmount, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { X } from '@lucide/vue';
+import { ChevronDown, X } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
-import { primaryNav } from '@/constants/navigation';
+import { primaryNav, shopNavChildren } from '@/constants/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
@@ -21,9 +21,15 @@ const router = useRouter();
 const auth = useAuthStore();
 const cart = useCartStore();
 const theme = useThemeStore();
+const shopExpanded = ref(false);
 
 function close() {
   emit('close');
+}
+
+function closeShopAndDrawer() {
+  shopExpanded.value = false;
+  close();
 }
 
 function openCart() {
@@ -56,6 +62,7 @@ watch(
       window.addEventListener('keydown', onKeydown);
     } else {
       window.removeEventListener('keydown', onKeydown);
+      shopExpanded.value = false;
     }
   },
 );
@@ -91,16 +98,47 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <nav aria-label="Mobile navigation">
-            <RouterLink
-              v-for="item in primaryNav"
-              :key="item.href"
-              :to="item.href"
-              :active-class="item.href === '/' ? '' : 'active'"
-              exact-active-class="active"
-              @click="close"
-            >
-              {{ item.label }}
-            </RouterLink>
+            <template v-for="item in primaryNav" :key="item.href">
+              <div v-if="item.href === '/shop'" class="mobile-shop">
+                <button
+                  class="mobile-shop__toggle"
+                  type="button"
+                  :aria-expanded="shopExpanded"
+                  aria-label="Shop categories"
+                  @click="shopExpanded = !shopExpanded"
+                >
+                  <span>Shop</span>
+                  <ChevronDown
+                    class="mobile-shop__chevron"
+                    :class="{ 'is-open': shopExpanded }"
+                    :size="18"
+                    aria-hidden="true"
+                  />
+                </button>
+                <Transition name="mobile-shop-panel">
+                  <div v-if="shopExpanded" class="mobile-shop__children">
+                    <RouterLink
+                      v-for="child in shopNavChildren"
+                      :key="child.href"
+                      :to="child.href"
+                      active-class="active"
+                      @click="closeShopAndDrawer"
+                    >
+                      {{ child.label }}
+                    </RouterLink>
+                  </div>
+                </Transition>
+              </div>
+              <RouterLink
+                v-else
+                :to="item.href"
+                :active-class="item.href === '/' ? '' : 'active'"
+                exact-active-class="active"
+                @click="close"
+              >
+                {{ item.label }}
+              </RouterLink>
+            </template>
             <RouterLink to="/wishlist" active-class="active" @click="close">Wishlist</RouterLink>
             <RouterLink v-if="auth.isAdmin" to="/admin" active-class="active" @click="close">
               Admin

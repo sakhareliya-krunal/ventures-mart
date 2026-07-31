@@ -17,6 +17,7 @@ const status = ref(typeof route.query.status === 'string' ? route.query.status :
 
 const statusOptions = [
   { value: '', label: 'All statuses' },
+  { value: 'AwaitingPayment', label: 'Awaiting payment' },
   { value: 'Processing', label: 'Processing' },
   { value: 'Shipped', label: 'Shipped' },
   { value: 'Delivered', label: 'Delivered' },
@@ -75,6 +76,7 @@ watch([search, status], load);
             <th>Date</th>
             <th>Customer</th>
             <th>Status</th>
+            <th>Payment</th>
             <th>Total</th>
             <th />
           </tr>
@@ -92,6 +94,12 @@ watch([search, status], load);
               <div class="admin-muted">{{ order.address?.email }}</div>
             </td>
             <td data-label="Status"><span class="admin-badge">{{ order.status }}</span></td>
+            <td data-label="Payment">
+              <span class="admin-badge">{{ order.payment_status || '—' }}</span>
+              <div class="admin-muted">
+                {{ order.payment_method === 'cod' ? 'COD' : (order.payment_method || '—') }}
+              </div>
+            </td>
             <td data-label="Total">{{ formatCurrency(order.total) }}</td>
             <td data-label="Actions">
               <div class="admin-actions">

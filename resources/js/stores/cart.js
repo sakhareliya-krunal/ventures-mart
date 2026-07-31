@@ -7,7 +7,11 @@ import { friendlyApiError } from '@/utils/apiError';
 const emptyTotals = {
   subtotal: 0,
   shipping: 0,
+  cgst: 0,
+  sgst: 0,
+  igst: 0,
   tax: 0,
+  tax_type: 'estimate',
   total: 0,
 };
 
@@ -34,11 +38,17 @@ function calculateLocalTotals(lines) {
   subtotal = Math.round(subtotal * 100) / 100;
   const shipping = subtotal > 0 && subtotal < 999 ? 49 : 0;
   const tax = Math.round(subtotal * 0.05 * 100) / 100;
+  const cgst = Math.round(subtotal * 0.025 * 100) / 100;
+  const sgst = Math.round((tax - cgst) * 100) / 100;
 
   return {
     subtotal,
     shipping,
+    cgst,
+    sgst,
+    igst: 0,
     tax,
+    tax_type: 'estimate',
     total: Math.round((subtotal + shipping + tax) * 100) / 100,
   };
 }
@@ -114,12 +124,16 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  async function fetch() {
+  async function fetch(options = {}) {
     loading.value = true;
     error.value = null;
 
     try {
-      const { data } = await api.get('/cart');
+      const params = {};
+      if (options.state) {
+        params.state = options.state;
+      }
+      const { data } = await api.get('/cart', { params });
       applyPayload({ items, itemCount, quantityCount, totals }, data);
     } catch (err) {
       error.value = friendlyApiError(err, 'Unable to load cart.');
