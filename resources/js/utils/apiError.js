@@ -30,6 +30,20 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
     return 'Please check the highlighted fields and try again.';
   }
 
+  if (data.code === 'payment_init_failed') {
+    if (typeof data.message === 'string' && data.message && !looksTechnical(data.message)) {
+      return data.message;
+    }
+    return 'Unable to start payment. Please try again.';
+  }
+
+  if (data.code === 'error_logs_unavailable') {
+    if (typeof data.message === 'string' && data.message && !looksTechnical(data.message)) {
+      return data.message;
+    }
+    return 'Error logs are not ready. Run database migrations.';
+  }
+
   const mapped = {
     401: 'Please sign in to continue.',
     403: "You don't have permission to do that.",
@@ -41,13 +55,6 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
 
   if (mapped[status]) {
     return mapped[status];
-  }
-
-  if (data.code === 'payment_init_failed') {
-    if (typeof data.message === 'string' && data.message && !looksTechnical(data.message)) {
-      return data.message;
-    }
-    return 'Unable to start payment. Please try again.';
   }
 
   if (status >= 500) {

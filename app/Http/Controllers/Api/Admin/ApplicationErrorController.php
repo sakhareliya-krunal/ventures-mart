@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ApplicationError;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -12,28 +13,32 @@ class ApplicationErrorController extends Controller
 {
     public function summary()
     {
-        $todayStart = Carbon::today();
+        try {
+            $todayStart = Carbon::today();
 
-        $top = ApplicationError::query()
-            ->orderByDesc('occurrence_count')
-            ->orderByDesc('last_seen_at')
-            ->limit(5)
-            ->get(['uuid', 'message', 'category', 'status', 'occurrence_count', 'last_seen_at']);
+            $top = ApplicationError::query()
+                ->orderByDesc('occurrence_count')
+                ->orderByDesc('last_seen_at')
+                ->limit(5)
+                ->get(['uuid', 'message', 'category', 'status', 'occurrence_count', 'last_seen_at']);
 
-        return response()->json([
-            'total' => ApplicationError::query()->count(),
-            'unresolved' => ApplicationError::query()->unresolved()->count(),
-            'today' => ApplicationError::query()->where('last_seen_at', '>=', $todayStart)->count(),
-            'new' => ApplicationError::query()->where('status', 'new')->count(),
-            'top' => $top->map(fn (ApplicationError $error) => [
-                'uuid' => $error->uuid,
-                'message' => $error->message,
-                'category' => $error->category,
-                'status' => $error->status,
-                'occurrence_count' => $error->occurrence_count,
-                'last_seen_at' => $error->last_seen_at?->toIso8601String(),
-            ]),
-        ]);
+            return response()->json([
+                'total' => ApplicationError::query()->count(),
+                'unresolved' => ApplicationError::query()->unresolved()->count(),
+                'today' => ApplicationError::query()->where('last_seen_at', '>=', $todayStart)->count(),
+                'new' => ApplicationError::query()->where('status', 'new')->count(),
+                'top' => $top->map(fn (ApplicationError $error) => [
+                    'uuid' => $error->uuid,
+                    'message' => $error->message,
+                    'category' => $error->category,
+                    'status' => $error->status,
+                    'occurrence_count' => $error->occurrence_count,
+                    'last_seen_at' => $error->last_seen_at?->toIso8601String(),
+                ]),
+            ]);
+        } catch (QueryException) {
+            return $this->unavailableResponse();
+        }
     }
 
     public function index(Request $request)
@@ -52,68 +57,72 @@ class ApplicationErrorController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $status = $validated['status'] ?? $validated['resolved'] ?? 'unresolved';
-        $sort = $validated['sort'] ?? 'last_seen_at';
-        $direction = $validated['direction'] ?? 'desc';
+        try {
+            $status = $validated['status'] ?? $validated['resolved'] ?? 'unresolved';
+            $sort = $validated['sort'] ?? 'last_seen_at';
+            $direction = $validated['direction'] ?? 'desc';
 
-        $query = ApplicationError::query()->with('user:id,name,email');
+            $query = ApplicationError::query()->with('user');
 
-        if ($status === 'open' || $status === 'unresolved') {
-            $query->unresolved();
-        } elseif ($status !== 'all') {
-            $query->where('status', $status);
+            if ($status === 'open' || $status === 'unresolved') {
+                $query->unresolved();
+            } elseif ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            if (! empty($validated['category'])) {
+                $query->where('category', $validated['category']);
+            }
+
+            if (! empty($validated['level'])) {
+                $query->where('level', $validated['level']);
+            }
+
+            if (! empty($validated['user_id'])) {
+                $query->where('user_id', $validated['user_id']);
+            }
+
+            if (! empty($validated['from'])) {
+                $query->where('last_seen_at', '>=', Carbon::parse($validated['from'])->startOfDay());
+            }
+
+            if (! empty($validated['to'])) {
+                $query->where('last_seen_at', '<=', Carbon::parse($validated['to'])->endOfDay());
+            }
+
+            if (! empty($validated['q'])) {
+                $term = '%'.$validated['q'].'%';
+                $query->where(function ($builder) use ($term) {
+                    $builder
+                        ->where('message', 'like', $term)
+                        ->orWhere('exception_class', 'like', $term)
+                        ->orWhere('file', 'like', $term)
+                        ->orWhere('url', 'like', $term)
+                        ->orWhere('route', 'like', $term)
+                        ->orWhere('uuid', 'like', $term);
+                });
+            }
+
+            $errors = $query->orderBy($sort, $direction)->paginate($validated['per_page'] ?? 20);
+
+            return response()->json([
+                'data' => $errors->getCollection()->map(fn (ApplicationError $error) => $this->summaryRow($error)),
+                'meta' => [
+                    'current_page' => $errors->currentPage(),
+                    'last_page' => $errors->lastPage(),
+                    'per_page' => $errors->perPage(),
+                    'total' => $errors->total(),
+                    'open_count' => ApplicationError::query()->unresolved()->count(),
+                ],
+            ]);
+        } catch (QueryException) {
+            return $this->unavailableResponse();
         }
-
-        if (! empty($validated['category'])) {
-            $query->where('category', $validated['category']);
-        }
-
-        if (! empty($validated['level'])) {
-            $query->where('level', $validated['level']);
-        }
-
-        if (! empty($validated['user_id'])) {
-            $query->where('user_id', $validated['user_id']);
-        }
-
-        if (! empty($validated['from'])) {
-            $query->where('last_seen_at', '>=', Carbon::parse($validated['from'])->startOfDay());
-        }
-
-        if (! empty($validated['to'])) {
-            $query->where('last_seen_at', '<=', Carbon::parse($validated['to'])->endOfDay());
-        }
-
-        if (! empty($validated['q'])) {
-            $term = '%'.$validated['q'].'%';
-            $query->where(function ($builder) use ($term) {
-                $builder
-                    ->where('message', 'like', $term)
-                    ->orWhere('exception_class', 'like', $term)
-                    ->orWhere('file', 'like', $term)
-                    ->orWhere('url', 'like', $term)
-                    ->orWhere('route', 'like', $term)
-                    ->orWhere('uuid', 'like', $term);
-            });
-        }
-
-        $errors = $query->orderBy($sort, $direction)->paginate($validated['per_page'] ?? 20);
-
-        return response()->json([
-            'data' => $errors->getCollection()->map(fn (ApplicationError $error) => $this->summaryRow($error)),
-            'meta' => [
-                'current_page' => $errors->currentPage(),
-                'last_page' => $errors->lastPage(),
-                'per_page' => $errors->perPage(),
-                'total' => $errors->total(),
-                'open_count' => ApplicationError::query()->unresolved()->count(),
-            ],
-        ]);
     }
 
     public function show(ApplicationError $error)
     {
-        $error->loadMissing('user:id,name,email');
+        $error->loadMissing('user');
 
         return response()->json([
             'data' => $this->detail($error),
@@ -134,7 +143,7 @@ class ApplicationErrorController extends Controller
         }
 
         return response()->json([
-            'data' => $this->detail($error->fresh()->loadMissing('user:id,name,email')),
+            'data' => $this->detail($error->fresh()->loadMissing('user')),
         ]);
     }
 
@@ -152,29 +161,44 @@ class ApplicationErrorController extends Controller
             'older_than_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ]);
 
-        $query = ApplicationError::query();
+        try {
+            $query = ApplicationError::query();
 
-        $scope = $validated['scope'] ?? null;
-        if ($scope === 'resolved') {
-            $query->where('status', 'resolved');
-        } elseif ($scope === 'ignored') {
-            $query->where('status', 'ignored');
+            $scope = $validated['scope'] ?? null;
+            if ($scope === 'resolved') {
+                $query->where('status', 'resolved');
+            } elseif ($scope === 'ignored') {
+                $query->where('status', 'ignored');
+            }
+
+            if (! empty($validated['older_than_days'])) {
+                $query->where('last_seen_at', '<', now()->subDays($validated['older_than_days']));
+            }
+
+            if ($scope === null && empty($validated['older_than_days'])) {
+                $query->where('status', 'resolved');
+            }
+
+            $deleted = $query->delete();
+
+            return response()->json([
+                'ok' => true,
+                'deleted' => $deleted,
+            ]);
+        } catch (QueryException) {
+            return $this->unavailableResponse();
         }
+    }
 
-        if (! empty($validated['older_than_days'])) {
-            $query->where('last_seen_at', '<', now()->subDays($validated['older_than_days']));
-        }
-
-        if ($scope === null && empty($validated['older_than_days'])) {
-            $query->where('status', 'resolved');
-        }
-
-        $deleted = $query->delete();
-
+    /**
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function unavailableResponse()
+    {
         return response()->json([
-            'ok' => true,
-            'deleted' => $deleted,
-        ]);
+            'message' => 'Error logs are not ready. Run database migrations.',
+            'code' => 'error_logs_unavailable',
+        ], 503);
     }
 
     /**

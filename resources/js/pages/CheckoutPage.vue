@@ -196,7 +196,7 @@ async function submit() {
     const razorpay = data.razorpay;
 
     if (!order?.id || !razorpay?.order_id) {
-      throw new Error('Unable to start payment. Please try again.');
+      throw new Error('Payment session missing. Please try again.');
     }
 
     const payment = await openRazorpayCheckout(razorpay);

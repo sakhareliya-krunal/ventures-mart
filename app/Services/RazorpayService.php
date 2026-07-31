@@ -57,7 +57,7 @@ class RazorpayService
                 $e,
             );
 
-            throw new RuntimeException('Unable to start Razorpay payment. Please try again.');
+            throw new RuntimeException($this->customerMessageForCreateFailure($e));
         }
 
         return [
@@ -131,5 +131,43 @@ class RazorpayService
         }
 
         return new Api($key, $secret);
+    }
+
+    /**
+     * Safe customer-facing copy derived from Razorpay / SDK errors (no secrets or stack traces).
+     */
+    private function customerMessageForCreateFailure(Throwable $e): string
+    {
+        $raw = strtolower($e->getMessage());
+
+        if (
+            str_contains($raw, 'authentication')
+            || str_contains($raw, 'auth failed')
+            || str_contains($raw, 'invalid key')
+            || str_contains($raw, 'invalid api key')
+            || str_contains($raw, 'access denied')
+            || str_contains($raw, 'unauthorized')
+            || str_contains($raw, 'bad request') && str_contains($raw, 'key')
+        ) {
+            return 'Razorpay authentication failed. Check live API keys on the server.';
+        }
+
+        if (str_contains($raw, 'amount') && (str_contains($raw, 'minimum') || str_contains($raw, 'less'))) {
+            return 'Order total is too small for online payment.';
+        }
+
+        if (str_contains($raw, 'currency')) {
+            return 'Unable to start payment due to a currency configuration issue.';
+        }
+
+        if (
+            str_contains($raw, 'not activated')
+            || str_contains($raw, 'account') && str_contains($raw, 'activ')
+            || str_contains($raw, 'under review')
+        ) {
+            return 'Razorpay live payments are not activated for this account yet.';
+        }
+
+        return 'Unable to start Razorpay payment. Please try again.';
     }
 }

@@ -6,9 +6,11 @@ import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { friendlyApiError } from '@/utils/apiError';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
+const loadError = ref('');
 const errors = ref([]);
 const selected = ref(null);
 const openCount = ref(0);
@@ -51,6 +53,7 @@ const levelOptions = [
 
 async function load({ silent = false } = {}) {
   if (!silent) loading.value = true;
+  loadError.value = '';
   try {
     const { data } = await api.get('/admin/errors', {
       params: {
@@ -60,9 +63,17 @@ async function load({ silent = false } = {}) {
         q: search.value || undefined,
         sort: 'last_seen_at',
       },
+      skipErrorToast: true,
     });
     errors.value = unwrapData(data) || data.data || [];
     openCount.value = data.meta?.open_count ?? 0;
+  } catch (err) {
+    errors.value = [];
+    openCount.value = 0;
+    loadError.value = friendlyApiError(
+      err,
+      'Unable to load error logs. Please try again.',
+    );
   } finally {
     if (!silent) loading.value = false;
   }
@@ -172,6 +183,7 @@ watch([search, status, category, level], () => load({ silent: true }));
       </div>
 
       <LoadingSpinner v-if="loading" page label="Loading errors" />
+      <p v-else-if="loadError" class="form-error">{{ loadError }}</p>
       <div v-else class="admin-table-wrap">
         <table class="admin-table">
           <thead>
