@@ -43,6 +43,13 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
     return mapped[status];
   }
 
+  if (data.code === 'payment_init_failed') {
+    if (typeof data.message === 'string' && data.message && !looksTechnical(data.message)) {
+      return data.message;
+    }
+    return 'Unable to start payment. Please try again.';
+  }
+
   if (status >= 500) {
     return 'Something went wrong. Please try again.';
   }

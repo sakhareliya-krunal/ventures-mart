@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\ApplicationErrorRecorder;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -41,6 +42,16 @@ class OrderController extends Controller
         try {
             $order = $this->orders->create($request, $validated);
         } catch (RuntimeException $e) {
+            app(ApplicationErrorRecorder::class)->recordPaymentFailure(
+                $e->getMessage(),
+                [
+                    'phase' => 'payment_init',
+                    'code' => 'payment_init_failed',
+                    'payment_method' => $validated['payment_method'] ?? null,
+                ],
+                $e,
+            );
+
             return response()->json([
                 'message' => $e->getMessage(),
                 'code' => 'payment_init_failed',

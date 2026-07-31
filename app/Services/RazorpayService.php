@@ -16,7 +16,13 @@ class RazorpayService
         $key = (string) config('services.razorpay.key_id', '');
 
         if ($key === '') {
-            throw new RuntimeException('Razorpay key id is not configured.');
+            $message = 'Razorpay key id is not configured.';
+            app(ApplicationErrorRecorder::class)->recordPaymentFailure(
+                $message,
+                ['phase' => 'config', 'missing' => 'key_id'],
+            );
+
+            throw new RuntimeException($message);
         }
 
         return $key;
@@ -115,7 +121,13 @@ class RazorpayService
         $secret = (string) config('services.razorpay.key_secret', '');
 
         if ($secret === '') {
-            throw new RuntimeException('Razorpay key secret is not configured.');
+            $message = 'Razorpay key secret is not configured.';
+            app(ApplicationErrorRecorder::class)->recordPaymentFailure(
+                $message,
+                ['phase' => 'config', 'missing' => 'key_secret'],
+            );
+
+            throw new RuntimeException($message);
         }
 
         return new Api($key, $secret);
