@@ -13,7 +13,7 @@ useHead({
     {
       name: 'description',
       content:
-        'How delivery across India, free shipping over ₹999, 7-day replacement, and secure payments work at Ventures Mart.',
+        'How delivery across India, free shipping on all orders, 7-day replacement, and secure payments work at Ventures Mart.',
     },
   ],
 });
@@ -31,8 +31,8 @@ const sections = [
   {
     id: 'free-shipping',
     eyebrow: 'Shipping',
-    title: 'Free shipping on orders over ₹999',
-    text: 'When your cart clears ₹999, shipping is free. A simple threshold designed for stocking up on a focused catalog—without pushing clutter you do not need.',
+    title: 'Free shipping on all orders',
+    text: 'Shipping is free on every order—no minimum spend. Stock up on a focused catalog without an extra delivery fee.',
     link: { to: '/shop', label: 'Browse the shop' },
     icon: Truck,
     tone: 'plain',

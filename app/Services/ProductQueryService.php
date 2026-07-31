@@ -147,7 +147,7 @@ class ProductQueryService
         }
 
         $subtotal = round($subtotal, 2);
-        $shipping = $subtotal > 0 && $subtotal < 999 ? 49.0 : 0.0;
+        $shipping = 0.0;
         $rate = (float) config('gst.rate', 0.05);
         $tax = round($subtotal * $rate, 2);
 

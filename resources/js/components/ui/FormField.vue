@@ -32,13 +32,17 @@ defineProps({
     type: String,
     default: undefined,
   },
+  error: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
 </script>
 
 <template>
-  <label>
+  <label :class="{ 'has-error': Boolean(error) }">
     {{ label }}
     <textarea
       v-if="type === 'textarea'"
@@ -47,6 +51,8 @@ const emit = defineEmits(['update:modelValue']);
       :disabled="disabled"
       :rows="rows"
       :placeholder="placeholder"
+      :aria-invalid="error ? 'true' : undefined"
+      :class="{ 'is-invalid': Boolean(error) }"
       @input="emit('update:modelValue', $event.target.value)"
     />
     <input
@@ -57,7 +63,10 @@ const emit = defineEmits(['update:modelValue']);
       :disabled="disabled"
       :placeholder="placeholder"
       :autocomplete="autocomplete"
+      :aria-invalid="error ? 'true' : undefined"
+      :class="{ 'is-invalid': Boolean(error) }"
       @input="emit('update:modelValue', $event.target.value)"
     />
+    <small v-if="error" class="form-field-error">{{ error }}</small>
   </label>
 </template>

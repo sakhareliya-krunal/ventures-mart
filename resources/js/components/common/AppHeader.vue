@@ -61,7 +61,7 @@ function openCart() {
 <template>
   <header class="site-header">
     <div class="top-strip">
-      Free shipping on orders over ₹999. Carefully curated for kids and families.
+      Free shipping on all orders. Carefully curated for kids and families.
     </div>
     <div class="header-main">
       <RouterLink class="brand" to="/" :aria-label="`${theme.brandName} home`">

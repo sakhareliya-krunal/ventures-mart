@@ -26,10 +26,24 @@ textarea {
   width: 100%;
 }
 
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid {
+  border-color: var(--color-danger-border);
+}
+
 .form-grid {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(3, 1fr);
+}
+
+.form-field-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
 }
 
 .form-error {

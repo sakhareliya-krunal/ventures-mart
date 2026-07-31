@@ -36,7 +36,7 @@ function calculateLocalTotals(lines) {
   }
 
   subtotal = Math.round(subtotal * 100) / 100;
-  const shipping = subtotal > 0 && subtotal < 999 ? 49 : 0;
+  const shipping = 0;
   const tax = Math.round(subtotal * 0.05 * 100) / 100;
   const cgst = Math.round(subtotal * 0.025 * 100) / 100;
   const sgst = Math.round((tax - cgst) * 100) / 100;

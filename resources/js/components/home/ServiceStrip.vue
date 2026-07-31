@@ -4,7 +4,7 @@ import { brandAssets } from '@/constants/assets';
 const services = [
   {
     title: 'Free Shipping',
-    text: 'On orders over ₹999',
+    text: 'On every order',
     image: brandAssets.serviceShipping,
   },
   {

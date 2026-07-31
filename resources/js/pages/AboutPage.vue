@@ -21,7 +21,7 @@ const values = [
   },
   {
     title: 'Delivery across India',
-    text: 'Practical packing and shipping nationwide, with free shipping on orders over ₹999.',
+    text: 'Practical packing and shipping nationwide, with free shipping on all orders.',
     icon: Truck,
   },
   {

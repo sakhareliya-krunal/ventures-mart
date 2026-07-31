@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import { Banknote, CreditCard } from '@lucide/vue';
@@ -21,7 +21,28 @@ const cart = useCartStore();
 const ui = useUiStore();
 const router = useRouter();
 
+const FIELD_KEYS = ['full_name', 'email', 'phone', 'address', 'city', 'state', 'postal_code'];
+
+const FIELD_LABELS = {
+  full_name: 'Full name',
+  email: 'Email',
+  phone: 'Phone',
+  address: 'Address',
+  city: 'City',
+  state: 'State',
+  postal_code: 'Postal code',
+};
+
 const error = ref('');
+const fieldErrors = reactive({
+  full_name: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  postal_code: '',
+});
 const submitting = ref(false);
 const paymentMethod = ref('razorpay');
 const address = reactive({
@@ -34,6 +55,8 @@ const address = reactive({
   postal_code: '',
 });
 
+let bannerTimer = null;
+
 const submitLabel = computed(() => {
   if (submitting.value) {
     return paymentMethod.value === 'cod' ? 'Placing order…' : 'Processing…';
@@ -44,6 +67,69 @@ const submitLabel = computed(() => {
 useHead({
   title: () => `Checkout | ${theme.brandName}`,
 });
+
+function clearBannerTimer() {
+  if (bannerTimer != null) {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+  }
+}
+
+function clearFieldErrors() {
+  for (const key of FIELD_KEYS) {
+    fieldErrors[key] = '';
+  }
+}
+
+function setBanner(message, { transient = false } = {}) {
+  clearBannerTimer();
+  error.value = message || '';
+  if (transient && message) {
+    bannerTimer = setTimeout(() => {
+      error.value = '';
+      bannerTimer = null;
+    }, 5000);
+  }
+}
+
+function isPaymentCancelledMessage(message) {
+  return /payment cancelled/i.test(String(message || ''));
+}
+
+function validateAddress() {
+  clearFieldErrors();
+  let ok = true;
+
+  for (const key of FIELD_KEYS) {
+    if (!String(address[key] || '').trim()) {
+      fieldErrors[key] = `${FIELD_LABELS[key]} is required.`;
+      ok = false;
+    }
+  }
+
+  const email = String(address.email || '').trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fieldErrors.email = 'Enter a valid email address.';
+    ok = false;
+  }
+
+  return ok;
+}
+
+function applyApiFieldErrors(errors) {
+  clearFieldErrors();
+  let applied = false;
+
+  for (const key of FIELD_KEYS) {
+    const messages = errors?.[key];
+    if (Array.isArray(messages) && messages[0]) {
+      fieldErrors[key] = String(messages[0]);
+      applied = true;
+    }
+  }
+
+  return applied;
+}
 
 function loadRazorpayScript() {
   if (typeof window !== 'undefined' && window.Razorpay) {
@@ -127,6 +213,17 @@ watch(
   },
 );
 
+for (const key of FIELD_KEYS) {
+  watch(
+    () => address[key],
+    () => {
+      if (fieldErrors[key]) {
+        fieldErrors[key] = '';
+      }
+    },
+  );
+}
+
 onMounted(async () => {
   await cart.fetch();
 
@@ -159,11 +256,15 @@ onMounted(async () => {
   await refreshTotalsForState();
 });
 
-async function submit() {
-  error.value = '';
+onUnmounted(() => {
+  clearBannerTimer();
+});
 
-  if (Object.values(address).some((value) => !String(value).trim())) {
-    error.value = 'Complete every checkout field before placing your order.';
+async function submit() {
+  setBanner('');
+  clearFieldErrors();
+
+  if (!validateAddress()) {
     return;
   }
 
@@ -210,11 +311,23 @@ async function submit() {
     ui.showToast('Payment successful. Your order is confirmed.', { type: 'success' });
     await goToConfirmation(order.id);
   } catch (err) {
-    error.value =
-      err?.message && !err.response
-        ? String(err.message)
-        : friendlyApiError(err, 'Unable to complete checkout.');
-    ui.showToast(error.value, { type: 'error' });
+    const isClientError = Boolean(err?.message) && !err.response;
+
+    if (err?.response?.status === 422) {
+      const applied = applyApiFieldErrors(err.response.data?.errors || {});
+      setBanner(applied ? '' : 'Please check the highlighted fields and try again.');
+      return;
+    }
+
+    const message = isClientError
+      ? String(err.message)
+      : friendlyApiError(err, 'Unable to complete checkout.');
+
+    setBanner(message, { transient: isClientError });
+
+    if (!isPaymentCancelledMessage(message)) {
+      ui.showToast(message, { type: 'error' });
+    }
   } finally {
     submitting.value = false;
   }
@@ -231,16 +344,52 @@ async function submit() {
     />
     <div class="page-section">
       <div class="checkout-layout">
-        <form class="form-panel" @submit.prevent="submit">
+        <form class="form-panel" @submit.prevent="submit" novalidate>
           <p v-if="error" class="form-error">{{ error }}</p>
-          <FormField v-model="address.full_name" label="Full name" required />
-          <FormField v-model="address.email" label="Email" type="email" required />
-          <FormField v-model="address.phone" label="Phone" required />
-          <FormField v-model="address.address" label="Address" required />
+          <FormField
+            v-model="address.full_name"
+            label="Full name"
+            required
+            :error="fieldErrors.full_name"
+          />
+          <FormField
+            v-model="address.email"
+            label="Email"
+            type="email"
+            required
+            :error="fieldErrors.email"
+          />
+          <FormField
+            v-model="address.phone"
+            label="Phone"
+            required
+            :error="fieldErrors.phone"
+          />
+          <FormField
+            v-model="address.address"
+            label="Address"
+            required
+            :error="fieldErrors.address"
+          />
           <div class="form-grid">
-            <FormField v-model="address.city" label="City" required />
-            <FormField v-model="address.state" label="State" required />
-            <FormField v-model="address.postal_code" label="Postal code" required />
+            <FormField
+              v-model="address.city"
+              label="City"
+              required
+              :error="fieldErrors.city"
+            />
+            <FormField
+              v-model="address.state"
+              label="State"
+              required
+              :error="fieldErrors.state"
+            />
+            <FormField
+              v-model="address.postal_code"
+              label="Postal code"
+              required
+              :error="fieldErrors.postal_code"
+            />
           </div>
 
           <fieldset class="checkout-payment">
