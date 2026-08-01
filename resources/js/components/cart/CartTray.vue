@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
                 <strong>{{ formatCurrency(cart.totals.subtotal) }}</strong>
               </div>
               <div class="cart-tray__row">
-                <span>Shipping</span>
+                <span>Delivery</span>
                 <strong>{{ cart.totals.shipping ? formatCurrency(cart.totals.shipping) : 'Free' }}</strong>
               </div>
               <template v-if="showIgst">

@@ -55,10 +55,13 @@ Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle']);
 
 Route::get('/orders', [OrderController::class, 'index']);
+Route::get('/orders/track/{number}', [\App\Http\Controllers\Api\OrderTrackController::class, 'show']);
+Route::get('/orders/track/{number}/invoice', [\App\Http\Controllers\Api\OrderTrackController::class, 'invoice']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment/verify', [OrderController::class, 'verifyPayment']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
+    Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice']);
 });
 
 Route::post('/contact', [ContactController::class, 'store']);
@@ -89,7 +92,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
+    Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'invoice']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
+    Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
 
     Route::apiResource('products', AdminProductController::class);
     Route::post('/uploads/images', [AdminUploadController::class, 'images']);

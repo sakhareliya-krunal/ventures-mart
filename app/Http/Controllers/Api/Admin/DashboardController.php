@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $todayStart = Carbon::today();
         $weekStart = Carbon::today()->subDays(6);
 
-        $statuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+        $statuses = ['Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
         $statusCounts = Order::query()
             ->select('status', DB::raw('count(*) as aggregate'))
             ->groupBy('status')

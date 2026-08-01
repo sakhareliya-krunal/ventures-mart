@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { apiErrorMessage } from '@/utils/adminPostForm';
+import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +23,7 @@ const deleting = ref(false);
 
 let searchTimer = null;
 let successTimer = null;
+let networkRetryTimer = null;
 
 function flashSuccess(message) {
   successMessage.value = message;
@@ -48,16 +50,23 @@ function consumeNotice() {
 async function load({ silent = false } = {}) {
   if (!silent) loading.value = true;
   listError.value = '';
+  let holdLoader = false;
   try {
     const { data } = await api.get('/admin/posts', {
       params: { search: search.value || undefined },
     });
     posts.value = unwrapData(data) || [];
   } catch (err) {
+    if (isNetworkOrTimeoutError(err)) {
+      holdLoader = !silent;
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
+      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
+      return;
+    }
     posts.value = [];
     listError.value = apiErrorMessage(err, 'Unable to load posts.');
   } finally {
-    if (!silent) loading.value = false;
+    if (!silent && !holdLoader) loading.value = false;
   }
 }
 
@@ -105,6 +114,7 @@ watch(search, () => {
 onBeforeUnmount(() => {
   if (searchTimer) clearTimeout(searchTimer);
   if (successTimer) clearTimeout(successTimer);
+  if (networkRetryTimer) clearTimeout(networkRetryTimer);
 });
 </script>
 

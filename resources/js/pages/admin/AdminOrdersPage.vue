@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { formatCurrency, unwrapData } from '@/utils/format';
@@ -14,11 +15,16 @@ const loading = ref(true);
 const orders = ref([]);
 const search = ref('');
 const status = ref(typeof route.query.status === 'string' ? route.query.status : '');
+const listError = ref('');
+const confirmOpen = ref(false);
+const pendingDeleteId = ref(null);
+const deleting = ref(false);
 
 const statusOptions = [
   { value: '', label: 'All statuses' },
   { value: 'AwaitingPayment', label: 'Awaiting payment' },
-  { value: 'Processing', label: 'Processing' },
+  { value: 'Processing', label: 'Confirmed' },
+  { value: 'Packed', label: 'Packed' },
   { value: 'Shipped', label: 'Shipped' },
   { value: 'Delivered', label: 'Delivered' },
   { value: 'Cancelled', label: 'Cancelled' },
@@ -26,6 +32,7 @@ const statusOptions = [
 
 async function load() {
   loading.value = true;
+  listError.value = '';
   try {
     const { data } = await api.get('/admin/orders', {
       params: {
@@ -41,6 +48,30 @@ async function load() {
 
 function openOrder(order) {
   router.push({ name: 'admin-order-detail', params: { id: order.id } });
+}
+
+function requestRemove(id) {
+  listError.value = '';
+  pendingDeleteId.value = id;
+  confirmOpen.value = true;
+}
+
+async function remove() {
+  if (!pendingDeleteId.value || deleting.value) return;
+  const id = pendingDeleteId.value;
+  deleting.value = true;
+  try {
+    await api.delete(`/admin/orders/${id}`);
+    pendingDeleteId.value = null;
+    confirmOpen.value = false;
+    await load();
+  } catch (err) {
+    listError.value = err.response?.data?.message || 'Unable to delete order.';
+    pendingDeleteId.value = null;
+    confirmOpen.value = false;
+  } finally {
+    deleting.value = false;
+  }
 }
 
 onMounted(load);
@@ -63,10 +94,10 @@ watch([search, status], load);
           placeholder="All statuses"
           aria-label="Filter by status"
         />
-
       </div>
     </div>
 
+    <p v-if="listError" class="form-error">{{ listError }}</p>
     <LoadingSpinner v-if="loading" page label="Loading orders" />
     <div v-else-if="orders.length" class="admin-table-wrap">
       <table class="admin-table">
@@ -106,6 +137,9 @@ watch([search, status], load);
                 <AppButton type="button" variant="secondary" size="sm" @click="openOrder(order)">
                   View
                 </AppButton>
+                <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(order.id)">
+                  Delete
+                </AppButton>
               </div>
             </td>
           </tr>
@@ -113,5 +147,17 @@ watch([search, status], load);
       </table>
     </div>
     <p v-else class="admin-empty">No orders found.</p>
+
+    <ConfirmDialog
+      v-model:open="confirmOpen"
+      title="Delete order?"
+      message="This order will be permanently removed. Stock will be restored when applicable."
+      confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      :close-on-confirm="false"
+      danger
+      @confirm="remove"
+    />
   </div>
 </template>

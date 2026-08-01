@@ -96,6 +96,11 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
+          path: 'orders/:number',
+          name: 'order-track',
+          component: () => import('@/pages/OrderTrackPage.vue'),
+        },
+        {
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue'),

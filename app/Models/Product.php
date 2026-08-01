@@ -15,6 +15,7 @@ class Product extends Model
         'slug',
         'name',
         'sku',
+        'hsn',
         'category_id',
         'price',
         'compare_at_price',

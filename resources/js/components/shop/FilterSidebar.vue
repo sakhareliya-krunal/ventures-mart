@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search, SlidersHorizontal, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
-import PriceRangeFilter from '@/components/shop/PriceRangeFilter.vue';
+
+const PRICE_BUCKET_STEP = 500;
 
 const props = defineProps({
   query: {
@@ -50,14 +51,6 @@ const emit = defineEmits([
 
 const filtersOpen = ref(false);
 
-const categoryOptions = computed(() => [
-  { value: '', label: 'All categories' },
-  ...props.categories.map((item) => ({
-    value: item.slug,
-    label: item.name,
-  })),
-]);
-
 const categoryChips = computed(() => [
   { value: '', label: 'All' },
   ...props.categories.map((item) => ({
@@ -66,6 +59,40 @@ const categoryChips = computed(() => [
   })),
 ]);
 
+const priceBuckets = computed(() => {
+  const ceiling = Math.max(Number(props.priceCeiling) || 0, PRICE_BUCKET_STEP - 1);
+  const buckets = [];
+
+  for (let start = 0; start <= ceiling; start += PRICE_BUCKET_STEP) {
+    const end = start + PRICE_BUCKET_STEP - 1;
+    buckets.push({
+      id: `${start}-${end}`,
+      min: start,
+      max: end,
+      label: `${start}–${end}`,
+    });
+  }
+
+  return buckets;
+});
+
+const isFullPriceRange = computed(
+  () =>
+    Number(props.minPrice) === Number(props.priceFloor) &&
+    Number(props.maxPrice) === Number(props.priceCeiling),
+);
+
+const activePriceBucketId = computed(() => {
+  if (isFullPriceRange.value) return 'any';
+
+  const match = priceBuckets.value.find(
+    (bucket) =>
+      Number(props.minPrice) === bucket.min && Number(props.maxPrice) === bucket.max,
+  );
+
+  return match?.id || null;
+});
+
 const sortOptions = [
   { value: 'featured', label: 'Featured' },
   { value: 'newest', label: 'Newest' },
@@ -73,6 +100,16 @@ const sortOptions = [
   { value: 'price-asc', label: 'Price: low to high' },
   { value: 'price-desc', label: 'Price: high to low' },
 ];
+
+function selectAnyPrice() {
+  emit('update:minPrice', props.priceFloor);
+  emit('update:maxPrice', props.priceCeiling);
+}
+
+function selectPriceBucket(bucket) {
+  emit('update:minPrice', bucket.min);
+  emit('update:maxPrice', bucket.max);
+}
 
 function openFilters() {
   filtersOpen.value = true;
@@ -166,24 +203,32 @@ onBeforeUnmount(() => {
                 {{ chip.label }}
               </button>
             </div>
-            <AppSelect
-              :model-value="category"
-              :options="categoryOptions"
-              aria-label="Category"
-              placeholder="All categories"
-              @update:model-value="emit('update:category', $event)"
-            />
           </div>
 
           <div class="filters-field">
-            <PriceRangeFilter
-              :min-price="minPrice"
-              :max-price="maxPrice"
-              :price-floor="priceFloor"
-              :price-ceiling="priceCeiling"
-              @update:min-price="emit('update:minPrice', $event)"
-              @update:max-price="emit('update:maxPrice', $event)"
-            />
+            <span class="filters-field__label">Price</span>
+            <div class="filter-chips" role="list" aria-label="Price range">
+              <button
+                type="button"
+                class="filter-chip"
+                :class="{ 'is-active': activePriceBucketId === 'any' }"
+                role="listitem"
+                @click="selectAnyPrice"
+              >
+                Any
+              </button>
+              <button
+                v-for="bucket in priceBuckets"
+                :key="bucket.id"
+                type="button"
+                class="filter-chip"
+                :class="{ 'is-active': activePriceBucketId === bucket.id }"
+                role="listitem"
+                @click="selectPriceBucket(bucket)"
+              >
+                {{ bucket.label }}
+              </button>
+            </div>
           </div>
 
           <div class="filters-field">

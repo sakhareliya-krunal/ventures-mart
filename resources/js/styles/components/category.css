@@ -21,9 +21,16 @@
 }
 
 .category-card img {
-  height: 92px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: block;
+  height: auto;
   justify-self: center;
-  object-fit: contain;
+  max-width: 120px;
+  object-fit: cover;
+  object-position: center;
+  overflow: hidden;
+  width: 100%;
 }
 
 .category-card span {

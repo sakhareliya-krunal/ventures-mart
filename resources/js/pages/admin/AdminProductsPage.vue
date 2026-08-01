@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { formatCurrency, unwrapData } from '@/utils/format';
 import { apiErrorMessage } from '@/utils/adminProductForm';
+import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -21,6 +22,7 @@ const listError = ref('');
 const successMessage = ref('');
 
 let successTimer = null;
+let networkRetryTimer = null;
 
 function flashSuccess(message) {
   successMessage.value = message;
@@ -53,16 +55,23 @@ function openEdit(product) {
 async function load({ silent = false } = {}) {
   if (!silent) loading.value = true;
   listError.value = '';
+  let holdLoader = false;
   try {
     const { data } = await api.get('/admin/products', {
       params: { search: search.value || undefined },
     });
     products.value = unwrapData(data) || [];
   } catch (err) {
+    if (isNetworkOrTimeoutError(err)) {
+      holdLoader = !silent;
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
+      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
+      return;
+    }
     products.value = [];
     listError.value = apiErrorMessage(err, 'Unable to load products.');
   } finally {
-    if (!silent) loading.value = false;
+    if (!silent && !holdLoader) loading.value = false;
   }
 }
 
@@ -99,6 +108,7 @@ watch(search, load);
 
 onBeforeUnmount(() => {
   if (successTimer) clearTimeout(successTimer);
+  if (networkRetryTimer) clearTimeout(networkRetryTimer);
 });
 </script>
 

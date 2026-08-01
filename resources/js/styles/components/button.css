@@ -66,12 +66,28 @@
   transform: none;
 }
 
+.button--busy-sm,
+.button--busy-lg {
+  position: relative;
+}
+
 .button--busy-sm {
   min-width: 4.5rem;
 }
 
 .button--busy-lg {
   min-width: 9rem;
+}
+
+.button__busy-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.button__busy-label.is-loading {
+  visibility: hidden;
 }
 
 .button-spinner {
@@ -84,6 +100,12 @@
   flex-shrink: 0;
   height: 16px;
   width: 16px;
+}
+
+.button-spinner--center {
+  inset: 0;
+  margin: auto;
+  position: absolute;
 }
 
 @media (prefers-reduced-motion: reduce) {

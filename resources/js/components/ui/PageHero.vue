@@ -25,8 +25,8 @@ defineProps({
 </script>
 
 <template>
-  <section class="page-hero page-section" :class="`page-hero--${size}`">
-    <div class="page-hero__inner">
+  <section class="page-hero" :class="`page-hero--${size}`">
+    <div class="page-hero__inner page-section">
       <div class="page-hero__copy">
         <span v-if="eyebrow" class="eyebrow">{{ eyebrow }}</span>
         <h1>{{ title }}</h1>

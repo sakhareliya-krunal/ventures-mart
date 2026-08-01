@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
-import { Banknote, CreditCard } from '@lucide/vue';
+import { Banknote, CreditCard, MapPin, Pencil, Plus } from '@lucide/vue';
 import OrderSummary from '@/components/cart/OrderSummary.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -55,7 +55,58 @@ const address = reactive({
   postal_code: '',
 });
 
+const savedAddresses = ref([]);
+const selectedAddressId = ref(null);
+const showAddForm = ref(false);
+const editingAddressId = ref(null);
+const savingAddress = ref(false);
+const addError = ref('');
+const addForm = reactive({
+  label: 'Home',
+  full_name: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  is_default: false,
+});
+
 let bannerTimer = null;
+
+const isLoggedIn = computed(() => Boolean(auth.user));
+const showShippingFields = computed(() => !isLoggedIn.value || savedAddresses.value.length === 0);
+const addressFormTitle = computed(() => (editingAddressId.value ? 'Edit address' : 'Add address'));
+const addressFormSubmitLabel = computed(() => {
+  if (savingAddress.value) return 'Saving…';
+  return editingAddressId.value ? 'Save changes' : 'Save & use address';
+});
+
+const COD_FEE = 100;
+
+const displayTotals = computed(() => {
+  const base = cart.totals || {};
+  const subtotal = Number(base.subtotal || 0);
+  const shipping = Number(base.shipping || 0);
+  const tax = Number(base.tax || 0);
+  const cgst = Number(base.cgst || 0);
+  const sgst = Number(base.sgst || 0);
+  const igst = Number(base.igst || 0);
+  const baseTotal = Number(base.total ?? subtotal + shipping + tax);
+  const codFee = paymentMethod.value === 'cod' ? COD_FEE : 0;
+
+  return {
+    ...base,
+    subtotal,
+    shipping,
+    tax,
+    cgst,
+    sgst,
+    igst,
+    cod_fee: codFee,
+    total: Math.round((baseTotal + codFee) * 100) / 100,
+  };
+});
 
 const submitLabel = computed(() => {
   if (submitting.value) {
@@ -129,6 +180,150 @@ function applyApiFieldErrors(errors) {
   }
 
   return applied;
+}
+
+function applySavedAddress(item) {
+  if (!item) return;
+  address.full_name = item.full_name || address.full_name || auth.user?.name || '';
+  address.email = auth.user?.email || address.email;
+  address.phone = item.phone || '';
+  address.address = item.address || '';
+  address.city = item.city || '';
+  address.state = item.state || '';
+  address.postal_code = item.postal_code || '';
+  selectedAddressId.value = item.id;
+  clearFieldErrors();
+}
+
+function selectAddress(id) {
+  const item = savedAddresses.value.find((entry) => entry.id === id);
+  if (!item) return;
+  applySavedAddress(item);
+  showAddForm.value = false;
+  editingAddressId.value = null;
+  addError.value = '';
+}
+
+function resetAddForm() {
+  editingAddressId.value = null;
+  addForm.label = 'Home';
+  addForm.full_name = auth.user?.name || address.full_name || '';
+  addForm.phone = '';
+  addForm.address = '';
+  addForm.city = '';
+  addForm.state = '';
+  addForm.postal_code = '';
+  addForm.is_default = savedAddresses.value.length === 0;
+  addError.value = '';
+}
+
+function openAddForm() {
+  resetAddForm();
+  showAddForm.value = true;
+}
+
+function openEditForm(item, event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  if (!item) return;
+
+  editingAddressId.value = item.id;
+  addForm.label = item.label || 'Home';
+  addForm.full_name = item.full_name || '';
+  addForm.phone = item.phone || '';
+  addForm.address = item.address || '';
+  addForm.city = item.city || '';
+  addForm.state = item.state || '';
+  addForm.postal_code = item.postal_code || '';
+  addForm.is_default = Boolean(item.is_default);
+  addError.value = '';
+  showAddForm.value = true;
+}
+
+function cancelAddForm() {
+  showAddForm.value = false;
+  editingAddressId.value = null;
+  addError.value = '';
+}
+
+async function loadAddresses({ selectId = null } = {}) {
+  if (!auth.user) {
+    savedAddresses.value = [];
+    selectedAddressId.value = null;
+    return;
+  }
+
+  try {
+    const { data } = await api.get('/addresses');
+    const list = unwrapData(data) || [];
+    savedAddresses.value = list;
+
+    const preferred =
+      (selectId && list.find((item) => item.id === selectId)) ||
+      list.find((item) => item.is_default) ||
+      list[0] ||
+      null;
+
+    if (preferred) {
+      applySavedAddress(preferred);
+    } else {
+      selectedAddressId.value = null;
+      address.full_name = auth.user.name || address.full_name;
+      address.email = auth.user.email || address.email;
+    }
+  } catch {
+    savedAddresses.value = [];
+  }
+}
+
+async function saveAddressForm() {
+  if (savingAddress.value || !auth.user) return;
+
+  const required = ['full_name', 'phone', 'address', 'city', 'state', 'postal_code'];
+  for (const key of required) {
+    if (!String(addForm[key] || '').trim()) {
+      addError.value = 'Complete every address field before saving.';
+      return;
+    }
+  }
+
+  savingAddress.value = true;
+  addError.value = '';
+
+  const payload = {
+    label: addForm.label || 'Home',
+    full_name: addForm.full_name,
+    phone: addForm.phone,
+    address: addForm.address,
+    city: addForm.city,
+    state: addForm.state,
+    postal_code: addForm.postal_code,
+    is_default: Boolean(addForm.is_default) || savedAddresses.value.length === 0,
+  };
+
+  try {
+    let selectId = editingAddressId.value;
+
+    if (editingAddressId.value) {
+      const { data } = await api.patch(`/addresses/${editingAddressId.value}`, payload);
+      const updated = unwrapData(data) || data.data;
+      selectId = updated?.id || editingAddressId.value;
+      ui.showToast('Address updated.', { type: 'success' });
+    } else {
+      const { data } = await api.post('/addresses', payload);
+      const created = unwrapData(data) || data.data;
+      selectId = created?.id || null;
+      ui.showToast('Address saved.', { type: 'success' });
+    }
+
+    showAddForm.value = false;
+    editingAddressId.value = null;
+    await loadAddresses({ selectId });
+  } catch (err) {
+    addError.value = friendlyApiError(err, 'Unable to save address.');
+  } finally {
+    savingAddress.value = false;
+  }
 }
 
 function loadRazorpayScript() {
@@ -235,22 +430,7 @@ onMounted(async () => {
   if (auth.user) {
     address.full_name = auth.user.name || '';
     address.email = auth.user.email || '';
-
-    try {
-      const { data } = await api.get('/addresses');
-      const list = unwrapData(data) || [];
-      const preferred = list.find((item) => item.is_default) || list[0];
-      if (preferred) {
-        address.full_name = preferred.full_name || address.full_name;
-        address.phone = preferred.phone || '';
-        address.address = preferred.address || '';
-        address.city = preferred.city || '';
-        address.state = preferred.state || '';
-        address.postal_code = preferred.postal_code || '';
-      }
-    } catch {
-      // Keep name/email defaults when addresses cannot load.
-    }
+    await loadAddresses();
   }
 
   await refreshTotalsForState();
@@ -346,51 +526,131 @@ async function submit() {
       <div class="checkout-layout">
         <form class="form-panel" @submit.prevent="submit" novalidate>
           <p v-if="error" class="form-error">{{ error }}</p>
-          <FormField
-            v-model="address.full_name"
-            label="Full name"
-            required
-            :error="fieldErrors.full_name"
-          />
-          <FormField
-            v-model="address.email"
-            label="Email"
-            type="email"
-            required
-            :error="fieldErrors.email"
-          />
-          <FormField
-            v-model="address.phone"
-            label="Phone"
-            required
-            :error="fieldErrors.phone"
-          />
-          <FormField
-            v-model="address.address"
-            label="Address"
-            required
-            :error="fieldErrors.address"
-          />
-          <div class="form-grid">
-            <FormField
-              v-model="address.city"
-              label="City"
-              required
-              :error="fieldErrors.city"
-            />
-            <FormField
-              v-model="address.state"
-              label="State"
-              required
-              :error="fieldErrors.state"
-            />
-            <FormField
-              v-model="address.postal_code"
-              label="Postal code"
-              required
-              :error="fieldErrors.postal_code"
-            />
+
+          <div v-if="isLoggedIn" class="checkout-addresses">
+            <div class="checkout-addresses__header">
+              <h3 class="checkout-addresses__title">Delivery address</h3>
+              <button type="button" class="checkout-addresses__add-btn" @click="openAddForm">
+                <Plus :size="16" aria-hidden="true" />
+                Add address
+              </button>
+            </div>
+
+            <div v-if="savedAddresses.length" class="checkout-addresses__list" role="radiogroup" aria-label="Saved addresses">
+              <label
+                v-for="item in savedAddresses"
+                :key="item.id"
+                class="checkout-addresses__option"
+                :class="{ 'is-selected': selectedAddressId === item.id }"
+              >
+                <input
+                  type="radio"
+                  name="checkout_address"
+                  :value="item.id"
+                  :checked="selectedAddressId === item.id"
+                  @change="selectAddress(item.id)"
+                />
+                <span class="checkout-addresses__icon" aria-hidden="true">
+                  <MapPin :size="18" />
+                </span>
+                <span class="checkout-addresses__copy">
+                  <span class="checkout-addresses__label-row">
+                    <strong>{{ item.label || 'Address' }}</strong>
+                    <span v-if="item.is_default" class="checkout-addresses__badge">Default</span>
+                  </span>
+                  <small>{{ item.full_name }} · {{ item.phone }}</small>
+                  <small>
+                    {{ item.address }}, {{ item.city }}, {{ item.state }} {{ item.postal_code }}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  class="checkout-addresses__edit"
+                  aria-label="Edit address"
+                  @click="openEditForm(item, $event)"
+                >
+                  <Pencil :size="16" aria-hidden="true" />
+                </button>
+              </label>
+            </div>
+            <p v-else class="checkout-addresses__empty">
+              No saved addresses yet. Add one or fill in the form below.
+            </p>
+
+            <div v-if="showAddForm" class="checkout-addresses__add">
+              <h4 class="checkout-addresses__add-title">{{ addressFormTitle }}</h4>
+              <p v-if="addError" class="form-error">{{ addError }}</p>
+              <FormField v-model="addForm.label" label="Label" placeholder="Home, Work…" />
+              <FormField v-model="addForm.full_name" label="Full name" required />
+              <FormField v-model="addForm.phone" label="Phone" required />
+              <FormField v-model="addForm.address" label="Address" required />
+              <div class="form-grid">
+                <FormField v-model="addForm.city" label="City" required />
+                <FormField v-model="addForm.state" label="State" required />
+                <FormField v-model="addForm.postal_code" label="Postal code" required />
+              </div>
+              <label class="checkout-addresses__default">
+                <input v-model="addForm.is_default" type="checkbox" />
+                Set as default shipping address
+              </label>
+              <div class="checkout-addresses__add-actions">
+                <AppButton type="button" :disabled="savingAddress" @click="saveAddressForm">
+                  {{ addressFormSubmitLabel }}
+                </AppButton>
+                <AppButton type="button" variant="ghost" :disabled="savingAddress" @click="cancelAddForm">
+                  Cancel
+                </AppButton>
+              </div>
+            </div>
           </div>
+
+          <template v-if="showShippingFields">
+            <FormField
+              v-model="address.full_name"
+              label="Full name"
+              required
+              :error="fieldErrors.full_name"
+            />
+            <FormField
+              v-model="address.email"
+              label="Email"
+              type="email"
+              required
+              :error="fieldErrors.email"
+            />
+            <FormField
+              v-model="address.phone"
+              label="Phone"
+              required
+              :error="fieldErrors.phone"
+            />
+            <FormField
+              v-model="address.address"
+              label="Address"
+              required
+              :error="fieldErrors.address"
+            />
+            <div class="form-grid">
+              <FormField
+                v-model="address.city"
+                label="City"
+                required
+                :error="fieldErrors.city"
+              />
+              <FormField
+                v-model="address.state"
+                label="State"
+                required
+                :error="fieldErrors.state"
+              />
+              <FormField
+                v-model="address.postal_code"
+                label="Postal code"
+                required
+                :error="fieldErrors.postal_code"
+              />
+            </div>
+          </template>
 
           <fieldset class="checkout-payment">
             <legend class="checkout-payment__legend">Payment method</legend>
@@ -426,7 +686,7 @@ async function submit() {
             {{ submitLabel }}
           </AppButton>
         </form>
-        <OrderSummary :totals="cart.totals" />
+        <OrderSummary :totals="displayTotals" />
       </div>
     </div>
   </section>

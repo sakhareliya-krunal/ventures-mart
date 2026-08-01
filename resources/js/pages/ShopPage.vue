@@ -73,11 +73,12 @@ const params = computed(() => {
     sort: sort.value,
   };
 
-  if (minPrice.value > priceFloor.value) {
-    next.min_price = minPrice.value;
-  }
+  const fullRange =
+    Number(minPrice.value) === Number(priceFloor.value) &&
+    Number(maxPrice.value) === Number(priceCeiling.value);
 
-  if (maxPrice.value < priceCeiling.value) {
+  if (!fullRange) {
+    next.min_price = minPrice.value;
     next.max_price = maxPrice.value;
   }
 

@@ -67,6 +67,112 @@ class AdminPanelTest extends TestCase
             ->assertJsonPath('data.status', 'Shipped');
     }
 
+    public function test_admin_can_update_order_address_and_delete_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $category = \App\Models\Category::query()->create([
+            'name' => 'Toys',
+            'slug' => 'toys-admin-order',
+            'description' => 'Toys',
+            'image' => '/products/toys/demo.jpg',
+            'featured' => true,
+        ]);
+        $product = \App\Models\Product::query()->create([
+            'external_id' => 'ext-admin-order-1',
+            'category_id' => $category->id,
+            'name' => 'Plush',
+            'slug' => 'plush-admin-order',
+            'sku' => 'PLUSH-ADMIN-1',
+            'price' => 100,
+            'stock' => 2,
+            'is_active' => true,
+            'image' => '/images/products/demo.jpg',
+            'description' => 'Test product',
+            'tags' => [],
+            'details' => [],
+            'gallery' => [],
+        ]);
+
+        $order = Order::query()->create([
+            'number' => 'VM-TEST-DEL',
+            'user_id' => $admin->id,
+            'full_name' => 'Admin Buyer',
+            'email' => $admin->email,
+            'phone' => '9999999999',
+            'address' => '1 Admin Street',
+            'city' => 'Ahmedabad',
+            'state' => 'Gujarat',
+            'postal_code' => '380001',
+            'subtotal' => 100,
+            'shipping' => 0,
+            'tax' => 0,
+            'total' => 100,
+            'status' => 'Processing',
+            'payment_method' => 'cod',
+            'payment_status' => 'pending',
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_sku' => $product->sku,
+            'product_slug' => $product->slug,
+            'product_image' => null,
+            'unit_price' => 100,
+            'quantity' => 3,
+            'line_total' => 300,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/admin/orders/{$order->id}", [
+            'full_name' => 'Updated Buyer',
+            'email' => 'updated@example.com',
+            'phone' => '9888777666',
+            'address' => '22 New Road',
+            'city' => 'Surat',
+            'state' => 'Gujarat',
+            'postal_code' => '395001',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.address.full_name', 'Updated Buyer')
+            ->assertJsonPath('data.address.city', 'Surat')
+            ->assertJsonPath('data.address.postal_code', '395001');
+
+        $this->deleteJson("/api/admin/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('orders', ['id' => $order->id]);
+        $this->assertSame(5, $product->fresh()->stock);
+    }
+
+    public function test_non_admin_cannot_delete_orders(): void
+    {
+        $user = User::factory()->create();
+        $order = Order::query()->create([
+            'number' => 'VM-TEST-FORBIDDEN',
+            'user_id' => $user->id,
+            'full_name' => 'Buyer',
+            'email' => $user->email,
+            'phone' => '9999999999',
+            'address' => '1 Street',
+            'city' => 'Ahmedabad',
+            'state' => 'Gujarat',
+            'postal_code' => '380001',
+            'subtotal' => 50,
+            'shipping' => 0,
+            'tax' => 0,
+            'total' => 50,
+            'status' => 'Processing',
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->deleteJson("/api/admin/orders/{$order->id}")->assertForbidden();
+        $this->assertDatabaseHas('orders', ['id' => $order->id]);
+    }
+
     public function test_non_admin_cannot_access_admin_apis(): void
     {
         $user = User::factory()->create();

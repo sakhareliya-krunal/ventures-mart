@@ -1,12 +1,12 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
-import { friendlyApiError } from '@/utils/apiError';
+import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -24,6 +24,8 @@ const pendingDeleteUuid = ref(null);
 const deleting = ref(false);
 const clearing = ref(false);
 const updating = ref(false);
+
+let networkRetryTimer = null;
 
 const statusOptions = [
   { value: 'unresolved', label: 'Unresolved' },
@@ -54,6 +56,7 @@ const levelOptions = [
 async function load({ silent = false } = {}) {
   if (!silent) loading.value = true;
   loadError.value = '';
+  let holdLoader = false;
   try {
     const { data } = await api.get('/admin/errors', {
       params: {
@@ -68,6 +71,12 @@ async function load({ silent = false } = {}) {
     errors.value = unwrapData(data) || data.data || [];
     openCount.value = data.meta?.open_count ?? 0;
   } catch (err) {
+    if (isNetworkOrTimeoutError(err)) {
+      holdLoader = !silent;
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
+      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
+      return;
+    }
     errors.value = [];
     openCount.value = 0;
     loadError.value = friendlyApiError(
@@ -75,7 +84,7 @@ async function load({ silent = false } = {}) {
       'Unable to load error logs. Please try again.',
     );
   } finally {
-    if (!silent) loading.value = false;
+    if (!silent && !holdLoader) loading.value = false;
   }
 }
 
@@ -147,6 +156,10 @@ function formatWhen(value) {
 
 onMounted(load);
 watch([search, status, category, level], () => load({ silent: true }));
+
+onBeforeUnmount(() => {
+  if (networkRetryTimer) clearTimeout(networkRetryTimer);
+});
 </script>
 
 <template>

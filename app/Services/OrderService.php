@@ -74,6 +74,7 @@ class OrderService
             ]), $normalizedState);
 
             $isCod = $paymentMethod === 'cod';
+            $codFee = $isCod ? (float) config('checkout.cod_fee', 100) : 0.0;
 
             $order = Order::query()->create([
                 'number' => 'VM-'.Str::upper(Str::random(8)),
@@ -88,11 +89,12 @@ class OrderService
                 'seller_state' => GstState::sellerState(),
                 'subtotal' => $totals['subtotal'],
                 'shipping' => $totals['shipping'],
+                'cod_fee' => $codFee,
                 'cgst' => $totals['cgst'],
                 'sgst' => $totals['sgst'],
                 'igst' => $totals['igst'],
                 'tax' => $totals['tax'],
-                'total' => $totals['total'],
+                'total' => round($totals['total'] + $codFee, 2),
                 'status' => $isCod ? 'Processing' : 'AwaitingPayment',
                 'payment_status' => 'pending',
                 'payment_method' => $paymentMethod,
@@ -104,6 +106,7 @@ class OrderService
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'product_sku' => $product->sku,
+                    'hsn' => $product->hsn ?: config('invoice.default_hsn'),
                     'product_slug' => $product->slug,
                     'product_image' => $product->image,
                     'unit_price' => $product->price,

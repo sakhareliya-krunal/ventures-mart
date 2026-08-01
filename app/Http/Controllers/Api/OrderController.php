@@ -7,14 +7,17 @@ use App\Http\Requests\CheckoutRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\ApplicationErrorRecorder;
+use App\Services\InvoiceService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use RuntimeException;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly OrderService $orders)
-    {
+    public function __construct(
+        private readonly OrderService $orders,
+        private readonly InvoiceService $invoices,
+    ) {
     }
 
     public function index(Request $request)
@@ -89,6 +92,13 @@ class OrderController extends Controller
         $this->authorizeOrder($request, $order);
 
         return new OrderResource($order->load('items'));
+    }
+
+    public function invoice(Request $request, Order $order)
+    {
+        $this->authorizeOrder($request, $order);
+
+        return $this->invoices->streamPdf($order);
     }
 
     private function authorizeOrder(Request $request, Order $order): void

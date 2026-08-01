@@ -10,6 +10,8 @@ class Order extends Model
 {
     protected $fillable = [
         'number',
+        'invoice_number',
+        'invoice_issued_at',
         'user_id',
         'full_name',
         'email',
@@ -21,6 +23,7 @@ class Order extends Model
         'seller_state',
         'subtotal',
         'shipping',
+        'cod_fee',
         'cgst',
         'sgst',
         'igst',
@@ -33,6 +36,11 @@ class Order extends Model
         'razorpay_payment_id',
         'razorpay_signature',
         'paid_at',
+        'courier_partner',
+        'awb_number',
+        'tracking_number',
+        'dispatched_at',
+        'expected_delivery_at',
     ];
 
     protected function casts(): array
@@ -40,12 +48,16 @@ class Order extends Model
         return [
             'subtotal' => 'float',
             'shipping' => 'float',
+            'cod_fee' => 'float',
             'cgst' => 'float',
             'sgst' => 'float',
             'igst' => 'float',
             'tax' => 'float',
             'total' => 'float',
             'paid_at' => 'datetime',
+            'invoice_issued_at' => 'datetime',
+            'dispatched_at' => 'datetime',
+            'expected_delivery_at' => 'datetime',
         ];
     }
 

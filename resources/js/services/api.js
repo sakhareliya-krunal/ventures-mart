@@ -1,5 +1,8 @@
 import axios from 'axios';
-import { friendlyApiError } from '@/utils/apiError';
+import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
+
+const ADMIN_NETWORK_MAX_RETRIES = 20;
+const ADMIN_NETWORK_RETRY_DELAY_MS = 1500;
 
 const api = axios.create({
   baseURL: '/api',
@@ -61,6 +64,14 @@ function isQuietUnauthRequest(config = {}) {
   return url.includes('/user') && (config.method || 'get').toLowerCase() === 'get';
 }
 
+function isAdminRequest(config = {}) {
+  return String(config.url || '').includes('/admin');
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 api.interceptors.request.use(async (config) => {
   const method = (config.method || 'get').toLowerCase();
   const isMutating = !['get', 'head', 'options'].includes(method);
@@ -98,6 +109,20 @@ api.interceptors.response.use(
       } catch {
         // Fall through to friendly handling.
       }
+    }
+
+    if (isNetworkOrTimeoutError(error) && isAdminRequest(config)) {
+      const method = (config.method || 'get').toLowerCase();
+      if (method === 'get') {
+        const attempt = config.__adminNetworkRetries || 0;
+        if (attempt < ADMIN_NETWORK_MAX_RETRIES) {
+          config.__adminNetworkRetries = attempt + 1;
+          await sleep(ADMIN_NETWORK_RETRY_DELAY_MS);
+          return api.request(config);
+        }
+      }
+
+      return Promise.reject(error);
     }
 
     if (!shouldSkipGlobalToast(config)) {

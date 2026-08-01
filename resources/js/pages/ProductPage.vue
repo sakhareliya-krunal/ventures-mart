@@ -386,11 +386,17 @@ onBeforeUnmount(() => {
               :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
               @click="inStock && cart.addItem(product.id)"
             >
-              <span v-if="adding" class="button-spinner" aria-hidden="true" />
-              <template v-else-if="!inStock">Out of stock</template>
+              <template v-if="!inStock">Out of stock</template>
               <template v-else>
-                <ShoppingBag :size="18" />
-                Add to cart
+                <span class="button__busy-label" :class="{ 'is-loading': adding }">
+                  <ShoppingBag :size="18" />
+                  Add to cart
+                </span>
+                <span
+                  v-if="adding"
+                  class="button-spinner button-spinner--center"
+                  aria-hidden="true"
+                />
               </template>
             </AppButton>
             <AppButton

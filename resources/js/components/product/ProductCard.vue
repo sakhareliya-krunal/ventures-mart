@@ -149,11 +149,17 @@ async function toggleWish() {
           :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
           @click="addToCart"
         >
-          <span v-if="adding" class="button-spinner" aria-hidden="true" />
-          <template v-else-if="!inStock">Out of stock</template>
+          <template v-if="!inStock">Out of stock</template>
           <template v-else>
-            <ShoppingBag :size="16" />
-            Add
+            <span class="button__busy-label" :class="{ 'is-loading': adding }">
+              <ShoppingBag :size="16" />
+              Add
+            </span>
+            <span
+              v-if="adding"
+              class="button-spinner button-spinner--center"
+              aria-hidden="true"
+            />
           </template>
         </AppButton>
       </div>

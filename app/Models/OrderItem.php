@@ -12,6 +12,7 @@ class OrderItem extends Model
         'product_id',
         'product_name',
         'product_sku',
+        'hsn',
         'product_slug',
         'product_image',
         'unit_price',

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminProductForm from '@/components/admin/AdminProductForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -14,6 +14,7 @@ import {
   fillProductForm,
   validateProductForm,
 } from '@/utils/adminProductForm';
+import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +26,8 @@ const fieldErrors = ref({});
 const categories = ref([]);
 const form = reactive(blankProductForm());
 
+let networkRetryTimer = null;
+
 const categoryOptions = computed(() => categoryOptionsFromList(categories.value));
 
 function goBack() {
@@ -34,6 +37,7 @@ function goBack() {
 async function load() {
   loading.value = true;
   loadError.value = '';
+  let holdLoader = false;
   try {
     const [{ data: productData }, { data: categoryData }] = await Promise.all([
       api.get(`/admin/products/${route.params.id}`),
@@ -42,9 +46,15 @@ async function load() {
     categories.value = unwrapData(categoryData) || [];
     fillProductForm(form, unwrapData(productData) || {});
   } catch (err) {
+    if (isNetworkOrTimeoutError(err)) {
+      holdLoader = true;
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
+      networkRetryTimer = setTimeout(load, 1500);
+      return;
+    }
     loadError.value = apiErrorMessage(err, 'Unable to load product.');
   } finally {
-    loading.value = false;
+    if (!holdLoader) loading.value = false;
   }
 }
 
@@ -74,6 +84,10 @@ async function save() {
 }
 
 onMounted(load);
+
+onBeforeUnmount(() => {
+  if (networkRetryTimer) clearTimeout(networkRetryTimer);
+});
 </script>
 
 <template>

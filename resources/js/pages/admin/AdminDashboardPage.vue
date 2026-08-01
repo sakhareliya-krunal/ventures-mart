@@ -30,6 +30,7 @@ const stats = ref({
   revenue_total: 0,
   orders_by_status: {
     Processing: 0,
+    Packed: 0,
     Shipped: 0,
     Delivered: 0,
     Cancelled: 0,
@@ -41,7 +42,7 @@ const stats = ref({
   recent_orders: [],
 });
 
-const statusOrder = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+const statusOrder = ['Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 
 const maxRevenueDay = computed(() =>
   Math.max(1, ...stats.value.revenue_last_7_days.map((day) => Number(day.total) || 0)),

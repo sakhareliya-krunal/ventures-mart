@@ -11,6 +11,7 @@ const props = defineProps({
 
 const showIgst = computed(() => Number(props.totals.igst || 0) > 0);
 const isEstimate = computed(() => props.totals.tax_type === 'estimate');
+const showCodFee = computed(() => Number(props.totals.cod_fee || 0) > 0);
 </script>
 
 <template>
@@ -22,7 +23,7 @@ const isEstimate = computed(() => props.totals.tax_type === 'estimate');
         <dd>{{ formatCurrency(totals.subtotal) }}</dd>
       </div>
       <div>
-        <dt>Shipping</dt>
+        <dt>Delivery</dt>
         <dd>{{ totals.shipping ? formatCurrency(totals.shipping) : 'Free' }}</dd>
       </div>
       <template v-if="showIgst">
@@ -41,6 +42,10 @@ const isEstimate = computed(() => props.totals.tax_type === 'estimate');
           <dd>{{ formatCurrency(totals.sgst ?? (totals.tax || 0) / 2) }}</dd>
         </div>
       </template>
+      <div v-if="showCodFee">
+        <dt>COD charge</dt>
+        <dd>{{ formatCurrency(totals.cod_fee) }}</dd>
+      </div>
       <div class="summary-panel__total">
         <dt>Total</dt>
         <dd>{{ formatCurrency(totals.total) }}</dd>

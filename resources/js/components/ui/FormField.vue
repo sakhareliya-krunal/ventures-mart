@@ -1,5 +1,8 @@
 <script setup>
-defineProps({
+import { computed, ref } from 'vue';
+import { Eye, EyeOff } from '@lucide/vue';
+
+const props = defineProps({
   label: {
     type: String,
     required: true,
@@ -39,6 +42,17 @@ defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+
+const revealed = ref(false);
+const isPassword = computed(() => props.type === 'password');
+const inputType = computed(() => {
+  if (!isPassword.value) return props.type;
+  return revealed.value ? 'text' : 'password';
+});
+
+function toggleReveal() {
+  revealed.value = !revealed.value;
+}
 </script>
 
 <template>
@@ -55,18 +69,32 @@ const emit = defineEmits(['update:modelValue']);
       :class="{ 'is-invalid': Boolean(error) }"
       @input="emit('update:modelValue', $event.target.value)"
     />
-    <input
-      v-else
-      :type="type"
-      :value="modelValue"
-      :required="required"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      :autocomplete="autocomplete"
-      :aria-invalid="error ? 'true' : undefined"
-      :class="{ 'is-invalid': Boolean(error) }"
-      @input="emit('update:modelValue', $event.target.value)"
-    />
+    <span v-else class="form-field__control" :class="{ 'has-toggle': isPassword }">
+      <input
+        :type="inputType"
+        :value="modelValue"
+        :required="required"
+        :disabled="disabled"
+        :placeholder="placeholder"
+        :autocomplete="autocomplete"
+        :aria-invalid="error ? 'true' : undefined"
+        :class="{ 'is-invalid': Boolean(error) }"
+        @input="emit('update:modelValue', $event.target.value)"
+      />
+      <button
+        v-if="isPassword"
+        type="button"
+        class="form-field__toggle"
+        :class="{ 'is-revealed': revealed }"
+        :aria-label="revealed ? 'Hide password' : 'Show password'"
+        :aria-pressed="revealed ? 'true' : 'false'"
+        :disabled="disabled"
+        @click="toggleReveal"
+      >
+        <EyeOff v-if="revealed" :size="20" :stroke-width="1.75" aria-hidden="true" />
+        <Eye v-else :size="20" :stroke-width="1.75" aria-hidden="true" />
+      </button>
+    </span>
     <small v-if="error" class="form-field-error">{{ error }}</small>
   </label>
 </template>

@@ -69,6 +69,21 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
 }
 
 /**
+ * True for offline, DNS, CORS-blocked, and axios timeout failures (no HTTP response).
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isNetworkOrTimeoutError(err) {
+  if (!err || err.response) {
+    return false;
+  }
+
+  // No HTTP response: timeout, offline, DNS, aborted request, etc.
+  return true;
+}
+
+/**
  * @param {string} message
  * @returns {boolean}
  */

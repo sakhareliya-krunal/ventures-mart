@@ -26,6 +26,58 @@ textarea {
   width: 100%;
 }
 
+.form-field__control {
+  display: block;
+  position: relative;
+}
+
+.form-field__control.has-toggle input {
+  padding-right: 3.15rem;
+}
+
+.form-field__toggle {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  border-radius: 10px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.15rem;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  width: 2.15rem;
+}
+
+.form-field__toggle:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-ink);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.form-field__toggle.is-revealed {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  color: var(--color-ink);
+}
+
+.form-field__toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.form-field__toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
 input.is-invalid,
 select.is-invalid,
 textarea.is-invalid {

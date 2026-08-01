@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminPostForm from '@/components/admin/AdminPostForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -13,6 +13,7 @@ import {
   toDatetimeLocal,
   validatePostForm,
 } from '@/utils/adminPostForm';
+import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +24,8 @@ const loadError = ref('');
 const fieldErrors = ref({});
 const form = reactive(blankPostForm());
 
+let networkRetryTimer = null;
+
 function goBack() {
   router.push({ name: 'admin-posts' });
 }
@@ -30,6 +33,7 @@ function goBack() {
 async function load() {
   loading.value = true;
   loadError.value = '';
+  let holdLoader = false;
   try {
     const { data } = await api.get(`/admin/posts/${route.params.id}`);
     const full = unwrapData(data);
@@ -42,9 +46,15 @@ async function load() {
       published_at: toDatetimeLocal(full.published_at),
     });
   } catch (err) {
+    if (isNetworkOrTimeoutError(err)) {
+      holdLoader = true;
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
+      networkRetryTimer = setTimeout(load, 1500);
+      return;
+    }
     loadError.value = apiErrorMessage(err, 'Unable to load post.');
   } finally {
-    loading.value = false;
+    if (!holdLoader) loading.value = false;
   }
 }
 
@@ -77,6 +87,10 @@ async function save() {
 }
 
 onMounted(load);
+
+onBeforeUnmount(() => {
+  if (networkRetryTimer) clearTimeout(networkRetryTimer);
+});
 </script>
 
 <template>
