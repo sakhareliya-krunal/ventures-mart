@@ -49,7 +49,7 @@ class CopySqliteToMysql extends Command
      * @var array<string, list<string>>
      */
     private array $jsonColumns = [
-        'products' => ['tags', 'details', 'gallery'],
+        'products' => ['tags', 'details', 'specifications', 'gallery'],
     ];
 
     public function handle(): int

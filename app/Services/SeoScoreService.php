@@ -99,10 +99,10 @@ class SeoScoreService
             ],
             [
                 'id' => 'faqs',
-                'label' => 'At least one FAQ',
-                'pass' => $visibleFaqs > 0,
+                'label' => 'At least 3 FAQs',
+                'pass' => $visibleFaqs >= 3,
                 'weight' => 8,
-                'hint' => 'Add 1–2 FAQs to unlock FAQ rich results where relevant.',
+                'hint' => 'Add 3–5 FAQs to support rich results and answer shopper questions.',
             ],
             [
                 'id' => 'custom_schema',
@@ -125,6 +125,9 @@ class SeoScoreService
             }
             if ($check['id'] === 'description_length' && $description !== '') {
                 $score += 8;
+            }
+            if ($check['id'] === 'faqs' && $visibleFaqs > 0) {
+                $score += 4;
             }
         }
 

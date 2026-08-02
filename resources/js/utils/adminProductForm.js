@@ -13,6 +13,8 @@ export function blankProductForm() {
     images: [],
     description: '',
     badge: '',
+    details: [''],
+    specifications: [{ label: '', value: '' }],
     seo: blankSeoFields(),
     faqs: [],
     seo_score: 0,
@@ -28,6 +30,16 @@ export function productImagesFromRecord(product) {
 }
 
 export function fillProductForm(form, product) {
+  const details = Array.isArray(product.details) && product.details.length
+    ? product.details.map(String)
+    : [''];
+  const specifications = Array.isArray(product.specifications) && product.specifications.length
+    ? product.specifications.map((row) => ({
+        label: String(row?.label ?? ''),
+        value: String(row?.value ?? ''),
+      }))
+    : [{ label: '', value: '' }];
+
   Object.assign(form, {
     name: product.name || '',
     slug: product.slug || '',
@@ -40,12 +52,24 @@ export function fillProductForm(form, product) {
     images: productImagesFromRecord(product),
     description: product.description || '',
     badge: product.badge || '',
+    details,
+    specifications,
   });
   fillSeoFields(form, product);
 }
 
 export function buildProductPayload(form) {
   const images = (form.images || []).filter(Boolean);
+  const details = (form.details || [])
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+  const specifications = (form.specifications || [])
+    .map((row) => ({
+      label: String(row?.label || '').trim(),
+      value: String(row?.value || '').trim(),
+    }))
+    .filter((row) => row.label && row.value);
+
   return {
     name: form.name,
     slug: form.slug || null,
@@ -60,6 +84,8 @@ export function buildProductPayload(form) {
     gallery: images.slice(1),
     description: form.description || '',
     badge: form.badge || null,
+    details,
+    specifications,
     ...buildSeoPayload(form),
   };
 }

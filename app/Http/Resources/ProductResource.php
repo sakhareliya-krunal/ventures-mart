@@ -31,6 +31,7 @@ class ProductResource extends JsonResource
             'tags' => $this->tags ?? [],
             'description' => $this->description,
             'details' => $this->details ?? [],
+            'specifications' => $this->specifications ?? [],
             'stock' => (int) $this->stock,
             'is_active' => (bool) $this->is_active,
             'variant_group_id' => $this->variant_group_id,

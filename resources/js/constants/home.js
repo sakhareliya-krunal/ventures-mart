@@ -38,6 +38,11 @@ export const homeRails = {
     description: 'Select toys and lunch boxes with clear, time-bound prices.',
     action: { label: 'Shop all deals', href: '/shop' },
   },
+  blog: {
+    title: 'From the blog',
+    description: 'Practical guides on school lunches, creative play, and shopping with confidence.',
+    action: { label: 'Read the blog', href: '/blog' },
+  },
 };
 
 export const homeServices = [

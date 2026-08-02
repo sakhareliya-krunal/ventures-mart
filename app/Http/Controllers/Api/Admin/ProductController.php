@@ -107,6 +107,10 @@ class ProductController extends Controller
             'featured' => ['sometimes', 'boolean'],
             'tags' => ['nullable', 'array'],
             'details' => ['nullable', 'array'],
+            'details.*' => ['nullable', 'string', 'max:500'],
+            'specifications' => ['nullable', 'array'],
+            'specifications.*.label' => ['nullable', 'string', 'max:120'],
+            'specifications.*.value' => ['nullable', 'string', 'max:255'],
             'gallery' => ['nullable', 'array'],
             'gallery.*' => ['string', 'max:500'],
             'color_name' => ['nullable', 'string', 'max:80'],
@@ -167,6 +171,32 @@ class ProductController extends Controller
             $validated['gallery'] = array_values(array_filter(
                 $validated['gallery'],
                 fn ($path) => is_string($path) && $path !== ''
+            ));
+        }
+
+        if (array_key_exists('details', $validated) && is_array($validated['details'])) {
+            $validated['details'] = array_values(array_filter(
+                array_map(fn ($item) => is_string($item) ? trim($item) : '', $validated['details']),
+                fn ($item) => $item !== ''
+            ));
+        }
+
+        if (array_key_exists('specifications', $validated) && is_array($validated['specifications'])) {
+            $validated['specifications'] = array_values(array_filter(
+                array_map(function ($row) {
+                    if (! is_array($row)) {
+                        return null;
+                    }
+
+                    $label = trim((string) ($row['label'] ?? ''));
+                    $value = trim((string) ($row['value'] ?? ''));
+
+                    if ($label === '' || $value === '') {
+                        return null;
+                    }
+
+                    return ['label' => $label, 'value' => $value];
+                }, $validated['specifications']),
             ));
         }
 

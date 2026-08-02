@@ -270,8 +270,39 @@ class SeoService
             ['label' => 'Returns and replacement', 'url' => '/returns'],
         ]);
 
-        if ($subject instanceof Product && $subject->category) {
-            $links->prepend(['label' => $subject->category->name, 'url' => '/category/'.$subject->category->slug]);
+        if ($subject instanceof Product) {
+            if ($subject->category) {
+                $links->prepend([
+                    'label' => $subject->category->name,
+                    'url' => '/category/'.$subject->category->slug,
+                ]);
+
+                Product::query()
+                    ->active()
+                    ->where('category_id', $subject->category_id)
+                    ->where('id', '!=', $subject->id)
+                    ->when(
+                        $subject->variant_group_id,
+                        fn ($query) => $query->where(function ($inner) use ($subject) {
+                            $inner->whereNull('variant_group_id')
+                                ->orWhere('variant_group_id', '!=', $subject->variant_group_id);
+                        })
+                    )
+                    ->orderByDesc('rating')
+                    ->orderByDesc('id')
+                    ->limit(3)
+                    ->get(['name', 'slug'])
+                    ->each(fn (Product $product) => $links->push([
+                        'label' => $product->name,
+                        'url' => '/product/'.$product->slug,
+                    ]));
+            }
+
+            $this->relatedBlogPostsForProduct($subject)
+                ->each(fn (Post $post) => $links->push([
+                    'label' => $post->title,
+                    'url' => '/blog/'.$post->slug,
+                ]));
         }
 
         if ($subject instanceof Category) {
@@ -285,9 +316,110 @@ class SeoService
                     'label' => $product->name,
                     'url' => '/product/'.$product->slug,
                 ]));
+
+            $links->push(['label' => 'Ventures Mart blog', 'url' => '/blog']);
+        }
+
+        if ($subject instanceof Post) {
+            $category = $this->categoryHintForPost($subject);
+
+            if ($category) {
+                $links->prepend([
+                    'label' => $category->name,
+                    'url' => '/category/'.$category->slug,
+                ]);
+
+                Product::query()
+                    ->active()
+                    ->where('category_id', $category->id)
+                    ->orderByDesc('rating')
+                    ->orderByDesc('id')
+                    ->limit(3)
+                    ->get(['name', 'slug'])
+                    ->each(fn (Product $product) => $links->push([
+                        'label' => $product->name,
+                        'url' => '/product/'.$product->slug,
+                    ]));
+            } else {
+                Product::query()
+                    ->active()
+                    ->orderByDesc('rating')
+                    ->orderByDesc('id')
+                    ->limit(3)
+                    ->get(['name', 'slug'])
+                    ->each(fn (Product $product) => $links->push([
+                        'label' => $product->name,
+                        'url' => '/product/'.$product->slug,
+                    ]));
+            }
+
+            $links->push(['label' => 'Ventures Mart blog', 'url' => '/blog']);
         }
 
         return $links->unique('url')->values()->all();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Post>
+     */
+    private function relatedBlogPostsForProduct(Product $product): \Illuminate\Support\Collection
+    {
+        $terms = collect([
+            $product->seoMetadata?->focus_keyword,
+            $product->category?->name,
+            $product->category?->slug,
+            $product->name,
+        ])
+            ->filter(fn ($term) => filled($term))
+            ->map(fn ($term) => Str::lower(trim((string) $term)))
+            ->unique()
+            ->values();
+
+        $query = Post::query()->published()->latest('published_at');
+
+        if ($terms->isNotEmpty()) {
+            $matched = (clone $query)
+                ->where(function ($builder) use ($terms) {
+                    foreach ($terms as $term) {
+                        $like = '%'.$term.'%';
+                        $builder->orWhereRaw('LOWER(title) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(excerpt) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(body) LIKE ?', [$like]);
+                    }
+                })
+                ->limit(2)
+                ->get(['title', 'slug']);
+
+            if ($matched->isNotEmpty()) {
+                return $matched;
+            }
+        }
+
+        return $query->limit(2)->get(['title', 'slug']);
+    }
+
+    private function categoryHintForPost(Post $post): ?Category
+    {
+        $haystack = Str::lower(trim(
+            implode(' ', array_filter([
+                $post->title,
+                $post->excerpt,
+                strip_tags((string) $post->body),
+            ]))
+        ));
+
+        $slug = null;
+        if (Str::contains($haystack, ['lunch', 'tiffin', 'steel lunch', 'school lunch'])) {
+            $slug = 'lunch-box';
+        } elseif (Str::contains($haystack, ['toy', 'play', 'blocks', 'plush', 'kitchen play'])) {
+            $slug = 'toys';
+        }
+
+        if (! $slug) {
+            return null;
+        }
+
+        return Category::query()->where('slug', $slug)->first();
     }
 
     private function metadataFor(Model|string|null $subject, ?string $pageKey = null, ?string $locale = null): ?SeoMetadata

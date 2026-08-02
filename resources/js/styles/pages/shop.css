@@ -8,6 +8,16 @@
   padding-top: 0.75rem;
 }
 
+.shop-page__explore {
+  margin-top: 1.5rem;
+}
+
+.shop-page__explore h2 {
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  letter-spacing: -0.03em;
+  margin: 0 0 0.85rem;
+}
+
 .shop-toolbar {
   align-items: center;
   display: flex;

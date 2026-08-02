@@ -298,6 +298,100 @@ function addPath() {
               {{ fieldError('description') }}
             </small>
           </div>
+          <div class="admin-field admin-field--full">
+            <div class="admin-toolbar">
+              <span>Feature bullets</span>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                :disabled="busy"
+                @click="form.details.push('')"
+              >
+                Add feature
+              </AppButton>
+            </div>
+            <div
+              v-for="(detail, index) in form.details"
+              :key="`detail-${index}`"
+              class="admin-image-path"
+            >
+              <label class="admin-field admin-field--grow">
+                <span>Feature {{ index + 1 }}</span>
+                <input
+                  v-model="form.details[index]"
+                  type="text"
+                  :placeholder="`Feature ${index + 1}`"
+                  autocomplete="off"
+                  :disabled="busy"
+                />
+              </label>
+              <AppButton
+                type="button"
+                variant="ghost"
+                :disabled="busy || form.details.length <= 1"
+                @click="form.details.splice(index, 1)"
+              >
+                Remove
+              </AppButton>
+            </div>
+            <small v-if="fieldError('details')" class="admin-field__error">{{ fieldError('details') }}</small>
+          </div>
+          <div class="admin-field admin-field--full">
+            <div class="admin-toolbar">
+              <span>Specifications</span>
+              <AppButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                :disabled="busy"
+                @click="form.specifications.push({ label: '', value: '' })"
+              >
+                Add specification
+              </AppButton>
+            </div>
+            <div
+              v-for="(row, index) in form.specifications"
+              :key="`spec-${index}`"
+              class="admin-product-form__grid"
+              style="margin-bottom: 0.75rem"
+            >
+              <label class="admin-field">
+                <span>Label</span>
+                <input
+                  v-model="row.label"
+                  type="text"
+                  placeholder="e.g. Material"
+                  autocomplete="off"
+                  :disabled="busy"
+                />
+              </label>
+              <label class="admin-field">
+                <span>Value</span>
+                <input
+                  v-model="row.value"
+                  type="text"
+                  placeholder="e.g. Food-grade stainless steel"
+                  autocomplete="off"
+                  :disabled="busy"
+                />
+              </label>
+              <div class="admin-field">
+                <span>&nbsp;</span>
+                <AppButton
+                  type="button"
+                  variant="ghost"
+                  :disabled="busy || form.specifications.length <= 1"
+                  @click="form.specifications.splice(index, 1)"
+                >
+                  Remove
+                </AppButton>
+              </div>
+            </div>
+            <small v-if="fieldError('specifications')" class="admin-field__error">
+              {{ fieldError('specifications') }}
+            </small>
+          </div>
         </div>
       </section>
 

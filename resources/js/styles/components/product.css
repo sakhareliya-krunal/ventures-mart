@@ -690,12 +690,16 @@
 }
 
 .product-detail__description,
+.product-detail__specs,
+.product-detail__faqs,
 .product-detail__reviews {
   display: grid;
   gap: 1.25rem;
 }
 
 .product-detail__description h2,
+.product-detail__specs h2,
+.product-detail__faqs h2,
 .product-detail__reviews h2 {
   font-size: clamp(1.45rem, 2.5vw, 1.85rem);
   letter-spacing: -0.03em;
@@ -759,6 +763,73 @@
 
 .product-detail__prose a:hover {
   text-decoration: underline;
+}
+
+.product-specs {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  max-width: 48rem;
+  border-top: 1px solid rgba(28, 44, 76, 0.12);
+}
+
+.product-specs__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(28, 44, 76, 0.12);
+}
+
+.product-specs__row dt {
+  color: rgba(28, 44, 76, 0.72);
+  font-weight: 600;
+  margin: 0;
+}
+
+.product-specs__row dd {
+  color: rgba(28, 44, 76, 0.9);
+  margin: 0;
+}
+
+.product-faq-list {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.product-faq {
+  border: 1px solid rgba(28, 44, 76, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 1rem;
+}
+
+.product-faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  padding: 1rem 0;
+}
+
+.product-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.product-faq summary::after {
+  content: '+';
+  float: right;
+  font-weight: 700;
+}
+
+.product-faq[open] summary::after {
+  content: '–';
+}
+
+.product-faq p {
+  color: rgba(28, 44, 76, 0.82);
+  line-height: 1.7;
+  margin: 0 0 1rem;
 }
 
 .product-detail__prose blockquote {

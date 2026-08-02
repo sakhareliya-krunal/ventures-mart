@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import FilterSidebar from '@/components/shop/FilterSidebar.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
@@ -47,6 +47,13 @@ const catalogLoading = computed(() => pageLoading.value || products.loading);
 const productCountLabel = computed(() =>
   catalogLoading.value ? '—' : String(products.list.length),
 );
+const activeCategory = computed(() => {
+  if (!props.categorySlug) {
+    return null;
+  }
+  return categories.list.find((item) => item.slug === props.categorySlug) || null;
+});
+const exploreLinks = computed(() => activeCategory.value?.seo?.suggested_links || []);
 const breadcrumbItems = computed(() => {
   if (props.categorySlug) {
     return [
@@ -208,6 +215,19 @@ onMounted(async () => {
           :loading="catalogLoading"
         />
       </div>
+
+      <section
+        v-if="exploreLinks.length"
+        class="page-section shop-page__explore"
+        aria-labelledby="shop-explore-title"
+      >
+        <h2 id="shop-explore-title">Explore more</h2>
+        <ul class="check-list">
+          <li v-for="link in exploreLinks" :key="link.url">
+            <RouterLink :to="link.url">{{ link.label }}</RouterLink>
+          </li>
+        </ul>
+      </section>
     </div>
   </section>
 </template>

@@ -53,6 +53,10 @@ const display = computed(() => {
 });
 
 const wished = computed(() => wishlist.isWishlisted(display.value.id));
+const imageAlt = computed(() => {
+  const alt = String(display.value.image_alt || props.product.image_alt || '').trim();
+  return alt || display.value.name;
+});
 const adding = computed(() => cart.isAdding(display.value.id));
 const inStock = computed(() => Number(display.value.stock ?? 0) > 0);
 const hasHover = computed(() => Boolean(display.value.hover_image));
@@ -88,14 +92,14 @@ async function toggleWish() {
           class="is-primary"
           :class="{ 'has-hover': hasHover }"
           :src="display.image"
-          :alt="display.name"
+          :alt="imageAlt"
           loading="lazy"
         />
         <img
           v-if="hasHover"
           class="is-hover"
           :src="display.hover_image"
-          :alt="display.name"
+          :alt="imageAlt"
           loading="lazy"
         />
       </RouterLink>

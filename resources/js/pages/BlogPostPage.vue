@@ -168,6 +168,22 @@ watch(slug, load, { immediate: true });
     </section>
 
     <section
+      v-if="post.seo?.suggested_links?.length"
+      class="article-premium__section article-premium__section--plain"
+      aria-labelledby="blog-explore-title"
+    >
+      <div class="page-section article-premium__section-inner">
+        <span class="eyebrow">Keep shopping</span>
+        <h2 id="blog-explore-title">Explore more</h2>
+        <ul class="check-list">
+          <li v-for="link in post.seo.suggested_links" :key="link.url">
+            <RouterLink :to="link.url">{{ link.label }}</RouterLink>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section
       v-if="relatedPosts.length"
       class="article-premium__section article-premium__section--soft"
       aria-labelledby="blog-related-title"

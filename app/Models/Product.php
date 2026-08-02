@@ -30,6 +30,7 @@ class Product extends Model
         'tags',
         'description',
         'details',
+        'specifications',
         'stock',
         'is_active',
         'variant_group_id',
@@ -46,6 +47,7 @@ class Product extends Model
             'rating' => 'float',
             'tags' => 'array',
             'details' => 'array',
+            'specifications' => 'array',
             'gallery' => 'array',
             'is_active' => 'boolean',
         ];

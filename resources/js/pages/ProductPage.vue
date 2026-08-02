@@ -79,6 +79,20 @@ const reviewCountLabel = computed(() => {
 const saleOff = computed(() =>
   product.value ? discountPercent(product.value.price, product.value.compare_at_price) : null,
 );
+
+function productImageAlt(index = 0) {
+  const alt = String(product.value?.seo?.metadata?.image_alt_text || '').trim();
+  if (alt) {
+    return index > 0 ? `${alt} — photo ${index + 1}` : alt;
+  }
+  const keyword = String(product.value?.seo?.metadata?.focus_keyword || '').trim();
+  const category = String(product.value?.category_name || product.value?.category || '').trim();
+  const hint = keyword || category;
+  if (hint) {
+    return `${product.value.name} — ${hint} photo ${index + 1}`;
+  }
+  return `${product.value.name} photo ${index + 1}`;
+}
 const reviewSnippets = computed(() => (products.productReviews || []).slice(0, 2));
 const lowStock = computed(() => {
   const stock = Number(product.value?.stock ?? 0);
@@ -314,6 +328,7 @@ onBeforeUnmount(() => {
       <Breadcrumb
         class="product-detail__crumb"
         :items="[
+          { label: 'Home', to: '/' },
           { label: 'Shop', to: '/shop' },
           ...(product.category
             ? [{ label: product.category_name || product.category, to: `/category/${product.category}` }]
@@ -345,7 +360,7 @@ onBeforeUnmount(() => {
               >
                 <img
                   :src="image"
-                  :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`"
+                  :alt="productImageAlt(index)"
                   :loading="index === 0 ? 'eager' : 'lazy'"
                   :fetchpriority="index === 0 ? 'high' : undefined"
                 />
@@ -374,7 +389,7 @@ onBeforeUnmount(() => {
           <div class="product-detail__stage">
             <img
               :src="displayImage"
-              :alt="product.seo?.metadata?.image_alt_text || product.name"
+              :alt="productImageAlt(Math.max(0, gallery.indexOf(displayImage)))"
               fetchpriority="high"
             />
           </div>
@@ -390,7 +405,7 @@ onBeforeUnmount(() => {
             >
               <img
                 :src="image"
-                :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`"
+                :alt="productImageAlt(index)"
                 loading="lazy"
               />
             </button>
@@ -537,21 +552,48 @@ onBeforeUnmount(() => {
         <li v-for="highlight in product.seo.metadata.ai_highlights" :key="highlight">{{ highlight }}</li>
       </ul>
       <div class="product-detail__prose" v-html="safeHtml(product.description)" />
-      <ul v-if="product.details?.length" class="check-list">
-        <li v-for="detail in product.details" :key="`desc-${detail}`">{{ detail }}</li>
-      </ul>
+      <template v-if="product.details?.length">
+        <h2 id="product-features-title">Features</h2>
+        <ul class="check-list" aria-labelledby="product-features-title">
+          <li v-for="detail in product.details" :key="`desc-${detail}`">{{ detail }}</li>
+        </ul>
+      </template>
+    </section>
+
+    <section
+      v-if="product.specifications?.length"
+      class="page-section product-detail__specs"
+      aria-labelledby="product-specs-title"
+    >
+      <h2 id="product-specs-title">Specifications</h2>
+      <dl class="product-specs">
+        <div
+          v-for="row in product.specifications"
+          :key="`${row.label}-${row.value}`"
+          class="product-specs__row"
+        >
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
+        </div>
+      </dl>
     </section>
 
     <section
       v-if="product.seo?.faqs?.length"
-      class="page-section"
+      class="page-section product-detail__faqs"
       aria-labelledby="product-faq-title"
     >
       <h2 id="product-faq-title">Frequently asked questions</h2>
-      <article v-for="faq in product.seo.faqs" :key="faq.question" class="product-review-card">
-        <h3>{{ faq.question }}</h3>
-        <p>{{ faq.answer }}</p>
-      </article>
+      <div class="product-faq-list">
+        <details
+          v-for="faq in product.seo.faqs"
+          :key="faq.question"
+          class="product-faq"
+        >
+          <summary>{{ faq.question }}</summary>
+          <p>{{ faq.answer }}</p>
+        </details>
+      </div>
     </section>
 
     <section
@@ -606,7 +648,7 @@ onBeforeUnmount(() => {
       class="page-section product-detail__links"
       aria-labelledby="product-links-title"
     >
-      <h2 id="product-links-title">Helpful links</h2>
+      <h2 id="product-links-title">Explore more</h2>
       <ul class="check-list">
         <li v-for="link in product.seo.suggested_links" :key="link.url">
           <RouterLink :to="link.url">{{ link.label }}</RouterLink>

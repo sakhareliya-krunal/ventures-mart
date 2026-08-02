@@ -12,6 +12,8 @@ class ProductCardResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $seo = app(SeoService::class)->serializeForResource($this->resource);
+
         return [
             'id' => $this->id,
             'slug' => $this->slug,
@@ -30,7 +32,8 @@ class ProductCardResource extends JsonResource
             'color_name' => $this->color_name,
             'color_hex' => $this->color_hex,
             'variants' => $this->variantPayload(),
-            'seo_score' => app(SeoService::class)->serializeForResource($this->resource)['score'] ?? 0,
+            'image_alt' => $seo['metadata']['image_alt_text'] ?? null,
+            'seo_score' => $seo['score'] ?? 0,
         ];
     }
 
