@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import FilterSidebar from '@/components/shop/FilterSidebar.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import { useCategoriesStore } from '@/stores/categories';
 import { useProductsStore } from '@/stores/products';
@@ -46,6 +47,19 @@ const catalogLoading = computed(() => pageLoading.value || products.loading);
 const productCountLabel = computed(() =>
   catalogLoading.value ? '—' : String(products.list.length),
 );
+const breadcrumbItems = computed(() => {
+  if (props.categorySlug) {
+    return [
+      { label: 'Home', to: '/' },
+      { label: 'Shop', to: '/shop' },
+      { label: props.title || 'Category' },
+    ];
+  }
+  return [
+    { label: 'Home', to: '/' },
+    { label: 'Shop' },
+  ];
+});
 
 useHead(() =>
   seoHeadFromServer({
@@ -169,6 +183,7 @@ onMounted(async () => {
     </PageHero>
 
     <div class="page-section shop-layout-wrap">
+      <Breadcrumb class="shop-page__crumb" :items="breadcrumbItems" />
       <div class="shop-layout">
         <FilterSidebar
           v-model:query="query"

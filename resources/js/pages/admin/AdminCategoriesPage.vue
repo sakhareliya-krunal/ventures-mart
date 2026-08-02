@@ -28,6 +28,7 @@ const form = reactive({
   seo: blankSeoFields(),
   faqs: [],
   seo_score: 0,
+  seo_checks: [],
   suggested_links: [],
 });
 
@@ -44,6 +45,7 @@ function resetForm() {
     seo: blankSeoFields(),
     faqs: [],
     seo_score: 0,
+    seo_checks: [],
     suggested_links: [],
   });
 }
@@ -84,6 +86,7 @@ async function save() {
     }
     const payload = { ...form, ...buildSeoPayload(form) };
     delete payload.seo_score;
+    delete payload.seo_checks;
     delete payload.suggested_links;
     if (editingId.value) {
       await api.put(`/admin/categories/${editingId.value}`, payload);

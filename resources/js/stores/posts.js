@@ -6,6 +6,7 @@ import { unwrapData } from '@/utils/format';
 export const usePostsStore = defineStore('posts', () => {
   const list = ref([]);
   const current = ref(null);
+  const related = ref([]);
   const loading = ref(false);
   const error = ref(null);
 
@@ -30,14 +31,17 @@ export const usePostsStore = defineStore('posts', () => {
     loading.value = true;
     error.value = null;
     current.value = null;
+    related.value = [];
 
     try {
       const { data } = await api.get(`/posts/${slug}`);
       current.value = unwrapData(data) || data;
+      related.value = unwrapData(data?.related) || data?.related || [];
       return current.value;
     } catch (err) {
       error.value = err.response?.data?.message || 'Unable to load this post.';
       current.value = null;
+      related.value = [];
       throw err;
     } finally {
       loading.value = false;
@@ -47,6 +51,7 @@ export const usePostsStore = defineStore('posts', () => {
   return {
     list,
     current,
+    related,
     loading,
     error,
     fetchList,

@@ -4,6 +4,7 @@ import { ChevronRight } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
 import { RouterLink } from 'vue-router';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import { usePostsStore } from '@/stores/posts';
@@ -45,6 +46,13 @@ onMounted(() => posts.fetchList());
     />
 
     <section class="page-section blog-index" aria-labelledby="blog-index-title">
+      <Breadcrumb
+        class="blog-page__crumb"
+        :items="[
+          { label: 'Home', to: '/' },
+          { label: 'Blog' },
+        ]"
+      />
       <h2 id="blog-index-title" class="sr-only">Latest posts</h2>
 
       <LoadingSpinner v-if="posts.loading" page label="Loading posts" />

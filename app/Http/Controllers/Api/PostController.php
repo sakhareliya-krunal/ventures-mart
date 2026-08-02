@@ -25,6 +25,22 @@ class PostController extends Controller
             ->where('slug', $slug)
             ->firstOrFail();
 
-        return new PostResource($post);
+        $related = Post::query()
+            ->published()
+            ->where('id', '!=', $post->id)
+            ->latest('published_at')
+            ->limit(3)
+            ->get(['id', 'slug', 'title', 'excerpt', 'cover_image', 'published_at']);
+
+        return (new PostResource($post))->additional([
+            'related' => $related->map(fn (Post $item) => [
+                'id' => $item->id,
+                'slug' => $item->slug,
+                'title' => $item->title,
+                'excerpt' => $item->excerpt,
+                'cover_image' => $item->cover_image,
+                'published_at' => $item->published_at?->toIso8601String(),
+            ])->values(),
+        ]);
     }
 }

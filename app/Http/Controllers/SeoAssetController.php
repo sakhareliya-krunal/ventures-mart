@@ -19,17 +19,17 @@ class SeoAssetController extends Controller
 
         $base = rtrim((string) config('app.url'), '/') ?: rtrim((string) url('/'), '/');
         $urls = collect([
-            ['loc' => $base.'/', 'priority' => '1.0'],
-            ['loc' => $base.'/shop', 'priority' => '0.8'],
-            ['loc' => $base.'/blog', 'priority' => '0.6'],
-            ['loc' => $base.'/about', 'priority' => '0.5'],
-            ['loc' => $base.'/contact', 'priority' => '0.5'],
-            ['loc' => $base.'/shipping', 'priority' => '0.4'],
-            ['loc' => $base.'/returns', 'priority' => '0.4'],
-            ['loc' => $base.'/payments', 'priority' => '0.4'],
-            ['loc' => $base.'/privacy-policy', 'priority' => '0.3'],
-            ['loc' => $base.'/terms', 'priority' => '0.3'],
-            ['loc' => $base.'/shopping-confidence-shipping-replacement', 'priority' => '0.4'],
+            ['loc' => $base.'/', 'priority' => '1.0', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/shop', 'priority' => '0.8', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/blog', 'priority' => '0.6', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/about', 'priority' => '0.5', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/contact', 'priority' => '0.5', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/shipping', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/returns', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/payments', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/privacy-policy', 'priority' => '0.3', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/terms', 'priority' => '0.3', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/shopping-confidence-shipping-replacement', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
         ]);
 
         try {

@@ -1,11 +1,29 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import api from '@/services/api';
 import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
 import { unwrapData } from '@/utils/format';
+
+const STATIC_SEO_PAGES = [
+  { key: 'home', label: 'Home', url: '/' },
+  { key: 'shop', label: 'Shop', url: '/shop' },
+  { key: 'about', label: 'About', url: '/about' },
+  { key: 'contact', label: 'Contact', url: '/contact' },
+  { key: 'blog', label: 'Blog', url: '/blog' },
+  { key: 'shipping', label: 'Shipping', url: '/shipping' },
+  { key: 'returns', label: 'Returns', url: '/returns' },
+  { key: 'payments', label: 'Payments', url: '/payments' },
+  { key: 'privacy-policy', label: 'Privacy policy', url: '/privacy-policy' },
+  { key: 'terms', label: 'Terms', url: '/terms' },
+  {
+    key: 'shopping-confidence-shipping-replacement',
+    label: 'Shopping confidence',
+    url: '/shopping-confidence-shipping-replacement',
+  },
+];
 
 const passwordError = ref('');
 const passwordSuccess = ref('');
@@ -15,6 +33,9 @@ const seoSuccess = ref('');
 const savingSeo = ref(false);
 const redirectError = ref('');
 const redirects = ref([]);
+const selectedPageKey = ref('home');
+const loadingPageSeo = ref(false);
+const editingRedirectId = ref(null);
 
 const passwordForm = reactive({
   current_password: '',
@@ -48,10 +69,11 @@ const seoSettings = reactive({
   },
 });
 
-const homeSeoForm = reactive({
+const pageSeoForm = reactive({
   seo: blankSeoFields(),
   faqs: [],
   seo_score: 0,
+  seo_checks: [],
   suggested_links: [],
 });
 
@@ -61,6 +83,10 @@ const redirectForm = reactive({
   status_code: 301,
   is_active: true,
 });
+
+const selectedPage = computed(
+  () => STATIC_SEO_PAGES.find((page) => page.key === selectedPageKey.value) || STATIC_SEO_PAGES[0],
+);
 
 async function savePassword() {
   passwordError.value = '';
@@ -83,12 +109,29 @@ async function savePassword() {
   }
 }
 
+async function loadPageSeo(key = selectedPageKey.value) {
+  loadingPageSeo.value = true;
+  try {
+    const { data } = await api.get(`/admin/seo/pages/${key}`);
+    fillSeoFields(pageSeoForm, { seo: data });
+  } catch (err) {
+    seoError.value = err.response?.data?.message || 'Unable to load page SEO.';
+  } finally {
+    loadingPageSeo.value = false;
+  }
+}
+
+async function loadRedirects() {
+  const { data } = await api.get('/admin/seo/redirects');
+  redirects.value = unwrapData(data) || data.data || [];
+}
+
 async function loadSeo() {
   try {
-    const [{ data: settingsData }, { data: homeData }, { data: redirectData }] = await Promise.all([
+    const [{ data: settingsData }] = await Promise.all([
       api.get('/admin/seo/settings'),
-      api.get('/admin/seo/pages/home'),
-      api.get('/admin/seo/redirects'),
+      loadPageSeo('home'),
+      loadRedirects(),
     ]);
     const settings = settingsData || {};
     Object.assign(seoSettings.site, settings.site || {});
@@ -97,19 +140,15 @@ async function loadSeo() {
     seoSettings.robots.enabled = settings.robots?.enabled !== false;
     seoSettings.robots.disallow_text = (settings.robots?.disallow || []).join('\n');
     seoSettings.sitemap.enabled = settings.sitemap?.enabled !== false;
-    fillSeoFields(homeSeoForm, { seo: homeData });
-    redirects.value = unwrapData(redirectData) || redirectData.data || [];
   } catch (err) {
-    seoError.value =
-      err.response?.data?.message ||
-      'Unable to load SEO settings.';
+    seoError.value = err.response?.data?.message || 'Unable to load SEO settings.';
   }
 }
 
 async function saveSeoSettings() {
   seoError.value = '';
   seoSuccess.value = '';
-  const seoErrors = validateSeoFields(homeSeoForm);
+  const seoErrors = validateSeoFields(pageSeoForm);
   if (Object.keys(seoErrors).length) {
     seoError.value = Object.values(seoErrors)[0][0];
     return;
@@ -132,8 +171,12 @@ async function saveSeoSettings() {
       },
       sitemap: seoSettings.sitemap,
     });
-    await api.patch('/admin/seo/pages/home', buildSeoPayload(homeSeoForm));
-    seoSuccess.value = 'SEO settings updated.';
+    const { data } = await api.patch(
+      `/admin/seo/pages/${selectedPageKey.value}`,
+      buildSeoPayload(pageSeoForm),
+    );
+    fillSeoFields(pageSeoForm, { seo: data });
+    seoSuccess.value = `SEO settings updated (${selectedPage.value.label}).`;
   } catch (err) {
     seoError.value =
       err.response?.data?.message ||
@@ -144,14 +187,32 @@ async function saveSeoSettings() {
   }
 }
 
+function resetRedirectForm() {
+  editingRedirectId.value = null;
+  redirectForm.old_path = '';
+  redirectForm.target_path = '';
+  redirectForm.status_code = 301;
+  redirectForm.is_active = true;
+}
+
+function editRedirect(redirect) {
+  editingRedirectId.value = redirect.id;
+  redirectForm.old_path = redirect.old_path || '';
+  redirectForm.target_path = redirect.target_path || '';
+  redirectForm.status_code = redirect.status_code || 301;
+  redirectForm.is_active = redirect.is_active !== false;
+}
+
 async function saveRedirect() {
   redirectError.value = '';
   try {
-    await api.post('/admin/seo/redirects', { ...redirectForm });
-    redirectForm.old_path = '';
-    redirectForm.target_path = '';
-    const { data } = await api.get('/admin/seo/redirects');
-    redirects.value = unwrapData(data) || data.data || [];
+    if (editingRedirectId.value) {
+      await api.patch(`/admin/seo/redirects/${editingRedirectId.value}`, { ...redirectForm });
+    } else {
+      await api.post('/admin/seo/redirects', { ...redirectForm });
+    }
+    resetRedirectForm();
+    await loadRedirects();
   } catch (err) {
     redirectError.value =
       err.response?.data?.message ||
@@ -160,13 +221,48 @@ async function saveRedirect() {
   }
 }
 
+async function toggleRedirect(redirect) {
+  redirectError.value = '';
+  try {
+    await api.patch(`/admin/seo/redirects/${redirect.id}`, {
+      old_path: redirect.old_path,
+      target_path: redirect.target_path,
+      status_code: redirect.status_code,
+      is_active: !redirect.is_active,
+    });
+    await loadRedirects();
+  } catch (err) {
+    redirectError.value = err.response?.data?.message || 'Unable to update redirect.';
+  }
+}
+
+async function deleteRedirect(redirect) {
+  if (!window.confirm(`Delete redirect ${redirect.old_path} → ${redirect.target_path}?`)) {
+    return;
+  }
+  redirectError.value = '';
+  try {
+    await api.delete(`/admin/seo/redirects/${redirect.id}`);
+    if (editingRedirectId.value === redirect.id) {
+      resetRedirectForm();
+    }
+    await loadRedirects();
+  } catch (err) {
+    redirectError.value = err.response?.data?.message || 'Unable to delete redirect.';
+  }
+}
+
+watch(selectedPageKey, (key) => {
+  loadPageSeo(key);
+});
+
 onMounted(loadSeo);
 </script>
 
 <template>
   <div class="admin-panel">
     <h2>SEO settings</h2>
-    <p class="admin-muted">Manage site metadata, homepage SEO, analytics, robots, sitemap, and redirects.</p>
+    <p class="admin-muted">Manage site metadata, page SEO, analytics, robots, sitemap, and redirects.</p>
     <p v-if="seoError" class="form-error">{{ seoError }}</p>
     <p v-if="seoSuccess" class="form-success">{{ seoSuccess }}</p>
     <form class="admin-form" @submit.prevent="saveSeoSettings">
@@ -184,13 +280,29 @@ onMounted(loadSeo);
         <label class="checkbox-row"><input v-model="seoSettings.sitemap.enabled" type="checkbox" /> Enable sitemap.xml</label>
       </div>
       <label>Robots disallow paths <textarea v-model="seoSettings.robots.disallow_text" rows="5" /></label>
+
+      <div class="admin-toolbar">
+        <div>
+          <h3>Page SEO</h3>
+          <p class="admin-muted">{{ loadingPageSeo ? 'Loading page SEO…' : selectedPage.url }}</p>
+        </div>
+        <label>
+          Page
+          <select v-model="selectedPageKey">
+            <option v-for="page in STATIC_SEO_PAGES" :key="page.key" :value="page.key">
+              {{ page.label }}
+            </option>
+          </select>
+        </label>
+      </div>
+
       <AdminSeoTab
-        :form="homeSeoForm"
-        fallback-title="Ventures Mart | Toys & lunch boxes"
+        :form="pageSeoForm"
+        :fallback-title="`${seoSettings.site.brand_name} | ${selectedPage.label}`"
         fallback-description="Shop toys, lunch boxes, and family essentials online at Ventures Mart."
-        fallback-url="/"
+        :fallback-url="selectedPage.url"
       />
-      <AppButton type="submit" :disabled="savingSeo">
+      <AppButton type="submit" :disabled="savingSeo || loadingPageSeo">
         {{ savingSeo ? 'Saving SEO...' : 'Save SEO settings' }}
       </AppButton>
     </form>
@@ -206,19 +318,47 @@ onMounted(loadSeo);
         <label>Status <input v-model.number="redirectForm.status_code" type="number" min="301" max="308" /></label>
         <label class="checkbox-row"><input v-model="redirectForm.is_active" type="checkbox" /> Active</label>
       </div>
-      <AppButton type="submit">Add redirect</AppButton>
+      <div class="admin-toolbar">
+        <AppButton type="submit">
+          {{ editingRedirectId ? 'Update redirect' : 'Add redirect' }}
+        </AppButton>
+        <AppButton v-if="editingRedirectId" type="button" variant="secondary" @click="resetRedirectForm">
+          Cancel edit
+        </AppButton>
+      </div>
     </form>
     <div v-if="redirects.length" class="admin-table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Old path</th><th>Target</th><th>Status</th><th>Hits</th></tr>
+          <tr>
+            <th>Old path</th>
+            <th>Target</th>
+            <th>Status</th>
+            <th>Active</th>
+            <th>Hits</th>
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="redirect in redirects" :key="redirect.id">
             <td>{{ redirect.old_path }}</td>
             <td>{{ redirect.target_path }}</td>
             <td>{{ redirect.status_code }}</td>
+            <td>{{ redirect.is_active ? 'Yes' : 'No' }}</td>
             <td>{{ redirect.hit_count }}</td>
+            <td>
+              <div class="admin-toolbar">
+                <AppButton type="button" size="sm" variant="secondary" @click="editRedirect(redirect)">
+                  Edit
+                </AppButton>
+                <AppButton type="button" size="sm" variant="secondary" @click="toggleRedirect(redirect)">
+                  {{ redirect.is_active ? 'Disable' : 'Enable' }}
+                </AppButton>
+                <AppButton type="button" size="sm" variant="danger" @click="deleteRedirect(redirect)">
+                  Delete
+                </AppButton>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>

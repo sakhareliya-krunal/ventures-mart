@@ -12,6 +12,7 @@ export function blankPostForm() {
     seo: blankSeoFields(),
     faqs: [],
     seo_score: 0,
+    seo_checks: [],
     suggested_links: [],
   };
 }

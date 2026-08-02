@@ -28,6 +28,7 @@ const props = defineProps({
 });
 
 const score = computed(() => Number(props.form.seo_score || 0));
+const checks = computed(() => (Array.isArray(props.form.seo_checks) ? props.form.seo_checks : []));
 const previewTitle = computed(() => props.form.seo.title || props.fallbackTitle || 'Ventures Mart');
 const previewDescription = computed(() =>
   props.form.seo.meta_description || props.fallbackDescription || 'SEO description fallback will be generated automatically.',
@@ -56,6 +57,24 @@ function removeFaq(index) {
         <p class="admin-muted">Leave fields empty to use generated defaults from page content.</p>
       </div>
       <strong class="admin-muted">Score {{ score }}/100</strong>
+    </div>
+
+    <div v-if="checks.length" class="admin-seo-checklist">
+      <h4>SEO checklist</h4>
+      <ul class="admin-seo-checklist__list">
+        <li
+          v-for="check in checks"
+          :key="check.id"
+          class="admin-seo-checklist__item"
+          :data-pass="check.pass ? '1' : '0'"
+        >
+          <span class="admin-seo-checklist__status">{{ check.pass ? 'Pass' : 'Fix' }}</span>
+          <div>
+            <strong>{{ check.label }}</strong>
+            <p class="admin-muted">{{ check.hint }}</p>
+          </div>
+        </li>
+      </ul>
     </div>
 
     <div class="admin-product-form__grid">

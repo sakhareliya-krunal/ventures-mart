@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { ChevronRight } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
@@ -18,6 +19,7 @@ const posts = usePostsStore();
 
 const slug = computed(() => String(route.params.slug || ''));
 const post = computed(() => posts.current);
+const relatedPosts = computed(() => posts.related || []);
 
 const bodyParts = computed(() => splitPostBody(safeHtml(post.value?.body || '')));
 
@@ -26,6 +28,12 @@ const lead = computed(() => {
   if (post.value.excerpt) return post.value.excerpt;
   return stripHtml(bodyParts.value.introHtml, 160);
 });
+
+const breadcrumbItems = computed(() => [
+  { label: 'Home', to: '/' },
+  { label: 'Blog', to: '/blog' },
+  { label: post.value?.title || 'Article' },
+]);
 
 useHead(() =>
   post.value
@@ -68,13 +76,20 @@ watch(slug, load, { immediate: true });
 <template>
   <LoadingSpinner v-if="posts.loading" page label="Loading post" />
   <div v-else-if="post" class="article-premium">
+    <div class="page-section article-premium__crumb-wrap">
+      <Breadcrumb :items="breadcrumbItems" />
+    </div>
     <section
       class="article-premium__hero"
       :class="{ 'article-premium__hero--fallback': !post.cover_image }"
       aria-labelledby="blog-hero-title"
     >
-      <div v-if="post.cover_image" class="article-premium__hero-media" aria-hidden="true">
-        <img :src="post.cover_image" alt="" />
+      <div v-if="post.cover_image" class="article-premium__hero-media">
+        <img
+          :src="post.cover_image"
+          :alt="post.seo?.metadata?.image_alt_text || post.title"
+          fetchpriority="high"
+        />
       </div>
       <div class="article-premium__hero-scrim" aria-hidden="true" />
       <div class="article-premium__hero-inner page-section">
@@ -148,6 +163,35 @@ watch(slug, load, { immediate: true });
             <ChevronRight :size="18" />
           </AppButton>
           <AppButton to="/blog" variant="secondary" size="lg">More articles</AppButton>
+        </div>
+      </div>
+    </section>
+
+    <section
+      v-if="relatedPosts.length"
+      class="article-premium__section article-premium__section--soft"
+      aria-labelledby="blog-related-title"
+    >
+      <div class="page-section article-premium__section-inner">
+        <span class="eyebrow">Keep reading</span>
+        <h2 id="blog-related-title">Related articles</h2>
+        <div class="blog-grid">
+          <article v-for="item in relatedPosts" :key="item.id" class="blog-card">
+            <RouterLink :to="`/blog/${item.slug}`" class="blog-card__media">
+              <img
+                v-if="item.cover_image"
+                :src="item.cover_image"
+                :alt="item.title"
+                loading="lazy"
+              />
+            </RouterLink>
+            <div class="blog-card__copy">
+              <h3>
+                <RouterLink :to="`/blog/${item.slug}`">{{ item.title }}</RouterLink>
+              </h3>
+              <p>{{ item.excerpt }}</p>
+            </div>
+          </article>
         </div>
       </div>
     </section>

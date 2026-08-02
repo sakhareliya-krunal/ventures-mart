@@ -37,8 +37,80 @@ class SchemaBuilder
         ];
     }
 
-    public function product(Product $product, string $url, string $baseUrl, ?string $description = null): array
+    public function product(Product $product, string $url, string $baseUrl, ?string $description = null, array $settings = []): array
     {
+        $brand = $settings['site']['brand_name'] ?? 'Ventures Mart';
+        $price = number_format((float) $product->price, 2, '.', '');
+        $compareAt = (float) ($product->compare_at_price ?? 0);
+
+        $offer = [
+            '@type' => 'Offer',
+            'url' => $url,
+            'priceCurrency' => 'INR',
+            'price' => $price,
+            'priceValidUntil' => now()->addYear()->toDateString(),
+            'availability' => ((int) $product->stock > 0)
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+            'itemCondition' => 'https://schema.org/NewCondition',
+            'seller' => [
+                '@type' => 'Organization',
+                'name' => $brand,
+            ],
+            'shippingDetails' => [
+                '@type' => 'OfferShippingDetails',
+                'shippingRate' => [
+                    '@type' => 'MonetaryAmount',
+                    'value' => '0',
+                    'currency' => 'INR',
+                ],
+                'shippingDestination' => [
+                    '@type' => 'DefinedRegion',
+                    'addressCountry' => 'IN',
+                ],
+                'deliveryTime' => [
+                    '@type' => 'ShippingDeliveryTime',
+                    'handlingTime' => [
+                        '@type' => 'QuantitativeValue',
+                        'minValue' => 1,
+                        'maxValue' => 3,
+                        'unitCode' => 'DAY',
+                    ],
+                    'transitTime' => [
+                        '@type' => 'QuantitativeValue',
+                        'minValue' => 2,
+                        'maxValue' => 7,
+                        'unitCode' => 'DAY',
+                    ],
+                ],
+            ],
+            'hasMerchantReturnPolicy' => [
+                '@type' => 'MerchantReturnPolicy',
+                'applicableCountry' => 'IN',
+                'returnPolicyCategory' => 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                'merchantReturnDays' => 7,
+                'returnMethod' => 'https://schema.org/ReturnByMail',
+                'returnFees' => 'https://schema.org/FreeReturn',
+            ],
+        ];
+
+        if ($compareAt > (float) $product->price) {
+            $offer['priceSpecification'] = [
+                [
+                    '@type' => 'UnitPriceSpecification',
+                    'priceType' => 'https://schema.org/ListPrice',
+                    'price' => number_format($compareAt, 2, '.', ''),
+                    'priceCurrency' => 'INR',
+                ],
+                [
+                    '@type' => 'UnitPriceSpecification',
+                    'priceType' => 'https://schema.org/SalePrice',
+                    'price' => $price,
+                    'priceCurrency' => 'INR',
+                ],
+            ];
+        }
+
         $schema = [
             '@context' => 'https://schema.org',
             '@type' => 'Product',
@@ -50,18 +122,9 @@ class SchemaBuilder
             'category' => $product->category?->name,
             'brand' => [
                 '@type' => 'Brand',
-                'name' => 'Ventures Mart',
+                'name' => $brand,
             ],
-            'offers' => [
-                '@type' => 'Offer',
-                'url' => $url,
-                'priceCurrency' => 'INR',
-                'price' => number_format((float) $product->price, 2, '.', ''),
-                'availability' => ((int) $product->stock > 0)
-                    ? 'https://schema.org/InStock'
-                    : 'https://schema.org/OutOfStock',
-                'itemCondition' => 'https://schema.org/NewCondition',
-            ],
+            'offers' => $offer,
         ];
 
         if ((int) $product->reviews > 0 && (float) $product->rating > 0) {
@@ -115,8 +178,11 @@ class SchemaBuilder
         ];
     }
 
-    public function blogPosting(Post $post, string $url, string $baseUrl): array
+    public function blogPosting(Post $post, string $url, string $baseUrl, array $settings = []): array
     {
+        $brand = $settings['site']['brand_name'] ?? 'Ventures Mart';
+        $orgId = $baseUrl.'/#organization';
+
         return array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'BlogPosting',
@@ -127,6 +193,20 @@ class SchemaBuilder
             'datePublished' => $post->published_at?->toIso8601String(),
             'dateModified' => $post->updated_at?->toIso8601String(),
             'mainEntityOfPage' => $url,
+            'author' => [
+                '@type' => 'Organization',
+                'name' => $brand,
+                '@id' => $orgId,
+            ],
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => $brand,
+                '@id' => $orgId,
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => $this->absoluteUrl($settings['site']['logo'] ?? null, $baseUrl),
+                ],
+            ],
         ]);
     }
 

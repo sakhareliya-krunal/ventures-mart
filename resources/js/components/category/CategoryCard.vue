@@ -11,7 +11,7 @@ defineProps({
 
 <template>
   <RouterLink class="category-card" :to="`/category/${category.slug}`">
-    <img :src="category.image" alt="" loading="lazy" />
+    <img :src="category.image" :alt="category.name" loading="lazy" />
     <span>{{ category.name }}</span>
     <p>{{ category.description }}</p>
   </RouterLink>

@@ -956,6 +956,64 @@
   margin-top: 0.15rem;
 }
 
+.admin-seo-checklist {
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary-dark) 12%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff 88%, var(--color-primary-light, #eef3fb));
+}
+
+.admin-seo-checklist h4 {
+  margin: 0 0 0.65rem;
+}
+
+.admin-seo-checklist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-seo-checklist__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.admin-seo-checklist__status {
+  display: inline-flex;
+  min-width: 2.6rem;
+  justify-content: center;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-seo-checklist__item[data-pass='1'] .admin-seo-checklist__status {
+  color: #0f6b3a;
+  background: color-mix(in srgb, #16a34a 16%, white);
+}
+
+.admin-seo-checklist__item[data-pass='0'] .admin-seo-checklist__status {
+  color: #9a3412;
+  background: color-mix(in srgb, #ea580c 16%, white);
+}
+
+.admin-seo-checklist__item strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.admin-seo-checklist__item .admin-muted {
+  margin: 0.15rem 0 0;
+}
+
 .admin-status-cell,
 .admin-payment-cell {
   align-items: center;

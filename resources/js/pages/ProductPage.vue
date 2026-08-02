@@ -339,7 +339,12 @@ onBeforeUnmount(() => {
                 aria-roledescription="slide"
                 :aria-label="`${index + 1} of ${gallery.length}`"
               >
-                <img :src="image" :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`" />
+                <img
+                  :src="image"
+                  :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`"
+                  :loading="index === 0 ? 'eager' : 'lazy'"
+                  :fetchpriority="index === 0 ? 'high' : undefined"
+                />
               </div>
             </div>
             <div
@@ -363,7 +368,11 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="product-detail__stage">
-            <img :src="displayImage" :alt="product.seo?.metadata?.image_alt_text || product.name" />
+            <img
+              :src="displayImage"
+              :alt="product.seo?.metadata?.image_alt_text || product.name"
+              fetchpriority="high"
+            />
           </div>
           <div v-if="gallery.length > 1" class="product-detail__thumbs" role="list">
             <button
@@ -375,7 +384,11 @@ onBeforeUnmount(() => {
               :aria-label="`View image ${index + 1}`"
               @click="selectThumb(image)"
             >
-              <img :src="image" :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`" />
+              <img
+                :src="image"
+                :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`"
+                loading="lazy"
+              />
             </button>
           </div>
         </div>
@@ -582,6 +595,19 @@ onBeforeUnmount(() => {
           <p>{{ review.body }}</p>
         </article>
       </div>
+    </section>
+
+    <section
+      v-if="product.seo?.suggested_links?.length"
+      class="page-section product-detail__links"
+      aria-labelledby="product-links-title"
+    >
+      <h2 id="product-links-title">Helpful links</h2>
+      <ul class="check-list">
+        <li v-for="link in product.seo.suggested_links" :key="link.url">
+          <RouterLink :to="link.url">{{ link.label }}</RouterLink>
+        </li>
+      </ul>
     </section>
 
     <section class="page-section product-detail__related">

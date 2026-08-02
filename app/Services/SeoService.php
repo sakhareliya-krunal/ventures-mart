@@ -25,10 +25,13 @@ class SeoService
         $seo = $this->metadataFor($subject, $pageKey);
         $faqs = $this->faqsFor($subject);
 
+        $evaluation = $this->score->evaluate($seo, $subject, $faqs);
+
         return [
             'metadata' => $this->metadataPayload($seo),
             'faqs' => $faqs,
-            'score' => $this->score->score($seo, $subject, $faqs),
+            'score' => $evaluation['score'],
+            'checks' => $evaluation['checks'],
             'suggested_links' => $this->internalLinks($subject),
         ];
     }
@@ -53,7 +56,8 @@ class SeoService
         }
 
         $faqs = $faqsPayload !== null ? $this->syncFaqs($subject, $faqsPayload) : $this->faqsFor($subject);
-        $seo->score = $this->score->score($seo, $subject, $faqs);
+        $evaluation = $this->score->evaluate($seo, $subject, $faqs);
+        $seo->score = $evaluation['score'];
         $seo->scored_at = now();
         $seo->save();
 
@@ -72,7 +76,7 @@ class SeoService
         $faqs = $subject ? $this->faqsFor($subject) : $this->faqsFor($pageKey);
         $fallback = $this->fallback($subject, $pageKey, $type, $normalized);
         $title = $this->first($seo?->title, $fallback['title']);
-        $description = $this->limit($this->first($seo?->meta_description, $fallback['description']), 165);
+        $description = $this->limit($this->first($seo?->meta_description, $seo?->ai_summary, $fallback['description']), 165);
         $canonical = $this->canonical($seo?->canonical_url, $normalized);
         $defaultRobots = $type === 'private' || $type === 'not-found'
             ? 'noindex,follow'
@@ -88,7 +92,7 @@ class SeoService
             $this->schema->organization($settings, $baseUrl),
             $this->schema->website($settings, $baseUrl),
             $this->schema->breadcrumb($breadcrumbs),
-            $this->schemaForSubject($subject, $type, $canonical, $description),
+            $this->schemaForSubject($subject, $type, $canonical, $description, $title, $settings),
             $this->schema->faq($faqs),
             $seo?->custom_schema,
         ];
@@ -506,10 +510,16 @@ class SeoService
         return [$home, ['label' => Str::headline(trim($path, '/') ?: 'Home'), 'url' => $this->absoluteUrl($path)]];
     }
 
-    private function schemaForSubject(Model|string|null $subject, string $type, string $url, string $description): ?array
-    {
+    private function schemaForSubject(
+        Model|string|null $subject,
+        string $type,
+        string $url,
+        string $description,
+        string $title = '',
+        array $settings = [],
+    ): ?array {
         if ($subject instanceof Product) {
-            return $this->schema->product($subject, $url, $this->baseUrl(), $description);
+            return $this->schema->product($subject, $url, $this->baseUrl(), $description, $settings);
         }
 
         if ($subject instanceof Category) {
@@ -517,11 +527,13 @@ class SeoService
         }
 
         if ($subject instanceof Post) {
-            return $this->schema->blogPosting($subject, $url, $this->baseUrl());
+            return $this->schema->blogPosting($subject, $url, $this->baseUrl(), $settings);
         }
 
         if (in_array($type, ['home', 'static'], true)) {
-            return $this->schema->collectionPage(Str::headline($type), $url, $description);
+            $name = $title !== '' ? preg_replace('/\s*\|\s*.*$/', '', $title) : Str::headline((string) ($type === 'home' ? 'Home' : trim(parse_url($url, PHP_URL_PATH) ?: 'Page', '/')));
+
+            return $this->schema->collectionPage($name ?: 'Ventures Mart', $url, $description);
         }
 
         return null;

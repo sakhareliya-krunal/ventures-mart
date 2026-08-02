@@ -18,14 +18,19 @@ export function seoHeadFromRecord(record, fallback = {}) {
   const canonical = absoluteSeoUrl(metadata.canonical_url || fallback.canonical || '');
   const image = absoluteSeoUrl(metadata.og_image || metadata.twitter_image || fallback.image || '');
   const robots = metadata.meta_robots || fallback.robots || 'index,follow';
+  const siteName = fallback.siteName || 'Ventures Mart';
 
   return {
     title,
     meta: [
       description ? { name: 'description', content: description } : null,
       { name: 'robots', content: robots },
+      { property: 'og:site_name', content: siteName },
+      { property: 'og:type', content: fallback.ogType || 'website' },
+      { property: 'og:locale', content: fallback.ogLocale || 'en_IN' },
       { property: 'og:title', content: metadata.og_title || title },
       description ? { property: 'og:description', content: metadata.og_description || description } : null,
+      canonical ? { property: 'og:url', content: canonical } : null,
       image ? { property: 'og:image', content: image } : null,
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: metadata.twitter_title || metadata.og_title || title },
@@ -37,10 +42,12 @@ export function seoHeadFromRecord(record, fallback = {}) {
 }
 
 /**
- * Apply SEO payload injected by Laravel into window.__APP__.seo.
+ * Apply SEO payload from Laravel (window.__APP__.seo or /api/seo).
  */
-export function seoHeadFromServer(fallback = {}) {
-  const server = typeof window !== 'undefined' ? window.__APP__?.seo || {} : {};
+export function seoHeadFromServer(fallback = {}, serverOverride = null) {
+  const server =
+    serverOverride ||
+    (typeof window !== 'undefined' ? window.__APP__?.seo || {} : {});
   const title = server.title || fallback.title || 'Ventures Mart';
   const description = server.description || fallback.description || '';
   const canonical = absoluteSeoUrl(server.canonical || fallback.canonical || '');
@@ -68,4 +75,50 @@ export function seoHeadFromServer(fallback = {}) {
     ].filter(Boolean),
     link: canonical ? [{ rel: 'canonical', href: canonical }] : [],
   };
+}
+
+const JSON_LD_ATTR = 'data-vm-jsonld';
+
+export function applyJsonLdScripts(schemas = []) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.querySelectorAll(`script[${JSON_LD_ATTR}]`).forEach((node) => node.remove());
+
+  (Array.isArray(schemas) ? schemas : []).filter(Boolean).forEach((schema) => {
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.setAttribute(JSON_LD_ATTR, '1');
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+  });
+}
+
+export async function syncSeoForPath(path, { applyHead } = {}) {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const normalized = path || '/';
+  try {
+    const response = await fetch(`/api/seo?path=${encodeURIComponent(normalized)}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const seo = await response.json();
+    if (window.__APP__) {
+      window.__APP__.seo = seo;
+    }
+    applyJsonLdScripts(seo.json_ld || []);
+    if (typeof applyHead === 'function') {
+      applyHead(seoHeadFromServer({}, seo));
+    }
+    return seo;
+  } catch {
+    return null;
+  }
 }

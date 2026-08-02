@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RazorpayWebhookController;
+use App\Http\Controllers\Api\SeoResolveController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
 use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
@@ -41,6 +42,7 @@ Route::get('/categories/{slug}', [CategoryController::class, 'show']);
 
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
+Route::get('/seo', SeoResolveController::class);
 
 Route::get('/cart', [CartController::class, 'show']);
 Route::post('/cart', [CartController::class, 'store']);

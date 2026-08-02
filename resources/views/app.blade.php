@@ -184,7 +184,7 @@
         };
     </script>
     @foreach (($seo['json_ld'] ?? []) as $schema)
-    <script type="application/ld+json">@json($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+    <script type="application/ld+json" data-vm-jsonld="1">@json($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
     @endforeach
     @if (! empty($seo['analytics']['gtm_container_id']))
     <script>

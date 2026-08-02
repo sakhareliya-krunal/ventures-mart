@@ -46,6 +46,7 @@ export function fillSeoFields(form, record = {}) {
       }))
     : [];
   form.seo_score = record.seo?.score || 0;
+  form.seo_checks = Array.isArray(record.seo?.checks) ? record.seo.checks : [];
   form.suggested_links = record.seo?.suggested_links || [];
 }
 

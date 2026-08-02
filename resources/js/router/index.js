@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import MainLayout from '@/layouts/MainLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
+import { syncSeoForPath } from '@/utils/seoHead';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -348,7 +349,7 @@ router.beforeEach(async (to, from) => {
   return true;
 });
 
-router.afterEach(() => {
+router.afterEach((to) => {
   const auth = useAuthStore();
   const ui = useUiStore();
 
@@ -358,6 +359,10 @@ router.afterEach(() => {
   // duplicate/same-route follow-up cannot leave redirecting stuck true.
   if (auth.redirecting) {
     auth.endRedirect();
+  }
+
+  if (!String(to.path || '').startsWith('/admin')) {
+    syncSeoForPath(to.path || '/');
   }
 });
 
