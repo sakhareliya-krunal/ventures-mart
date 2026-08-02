@@ -61,13 +61,21 @@ const breadcrumbItems = computed(() => {
   ];
 });
 
-useHead(() =>
-  seoHeadFromServer({
-    title: `${props.title} | ${theme.brandName}`,
-    description: `Shop toys and lunch boxes online at ${theme.brandName}.`,
+useHead(() => {
+  if (props.categorySlug) {
+    return seoHeadFromServer({
+      title: `${props.title} Online | ${theme.brandName}`,
+      description: `Shop ${props.title} online at ${theme.brandName}.`,
+      canonical: `/category/${props.categorySlug}`,
+    });
+  }
+
+  return seoHeadFromServer({
+    title: `Shop Toys & Lunch Boxes Online | ${theme.brandName}`,
+    description: `Shop premium stainless steel lunch boxes and kids toys online at ${theme.brandName}. Fast delivery across India.`,
     canonical: '/shop',
-  }),
-);
+  });
+});
 
 function applyBounds(bounds) {
   const rawMin = Number(bounds?.min ?? 0);

@@ -159,7 +159,8 @@ onUnmounted(() => {
         <source :srcset="slide.webp" type="image/webp" />
         <img
           :src="slide.jpg"
-          alt=""
+          :alt="index === 0 ? `${theme.brandName} toys and steel lunch boxes` : ''"
+          :aria-hidden="index === 0 ? undefined : 'true'"
           :fetchpriority="index === 0 ? 'high' : 'low'"
           :loading="index === 0 ? 'eager' : 'lazy'"
           decoding="async"

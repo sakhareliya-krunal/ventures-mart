@@ -121,15 +121,28 @@ function openCart() {
         >
           Admin
         </RouterLink>
-        <RouterLink class="icon-link" :to="profileTo" :aria-label="auth.user ? 'Profile' : 'Login'">
-          <User :size="20" />
+        <RouterLink
+          class="icon-link"
+          :to="profileTo"
+          :aria-label="auth.user ? 'Account profile' : 'Sign in'"
+        >
+          <User :size="20" aria-hidden="true" />
         </RouterLink>
-        <RouterLink class="icon-link" to="/wishlist" aria-label="Wishlist">
-          <Heart :size="20" />
+        <RouterLink
+          class="icon-link"
+          to="/wishlist"
+          :aria-label="wishlist.count ? `Wishlist, ${wishlist.count} items` : 'Wishlist'"
+        >
+          <Heart :size="20" aria-hidden="true" />
           <CartBadge :count="wishlist.count" />
         </RouterLink>
-        <button class="icon-link" type="button" aria-label="Cart" @click="openCart">
-          <ShoppingBag :size="20" />
+        <button
+          class="icon-link"
+          type="button"
+          :aria-label="cart.itemCount ? `Cart, ${cart.itemCount} items` : 'Cart'"
+          @click="openCart"
+        >
+          <ShoppingBag :size="20" aria-hidden="true" />
           <CartBadge :count="cart.itemCount" />
         </button>
         <button
@@ -139,7 +152,7 @@ function openCart() {
           :aria-expanded="open"
           @click="open = true"
         >
-          <Menu :size="22" />
+          <Menu :size="22" aria-hidden="true" />
         </button>
       </div>
     </div>

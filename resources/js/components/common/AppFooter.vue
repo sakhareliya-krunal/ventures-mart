@@ -94,14 +94,22 @@ const featureIcons = {
         <aside class="footer-help" aria-labelledby="footer-help-title">
           <h3 id="footer-help-title">Need help?</h3>
           <div class="footer-help__list">
-            <a class="footer-help__row" :href="`mailto:${footerContact.email}`">
+            <a
+              class="footer-help__row"
+              :href="`mailto:${footerContact.email}`"
+              :aria-label="`Email ${footerContact.email}`"
+            >
               <Mail class="footer-help__icon" :size="18" aria-hidden="true" />
               <span class="footer-help__text">
                 <span class="footer-help__label">Email</span>
                 <span class="footer-help__value">{{ footerContact.email }}</span>
               </span>
             </a>
-            <a class="footer-help__row" :href="footerContact.phoneHref">
+            <a
+              class="footer-help__row"
+              :href="footerContact.phoneHref"
+              :aria-label="`Call ${footerContact.phone}`"
+            >
               <Phone class="footer-help__icon" :size="18" aria-hidden="true" />
               <span class="footer-help__text">
                 <span class="footer-help__label">Phone</span>

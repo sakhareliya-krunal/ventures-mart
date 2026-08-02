@@ -11,7 +11,7 @@ const services = homeServices.map((service) => ({
 <template>
   <section class="service-strip" aria-label="Shopping promises">
     <div v-for="service in services" :key="service.title" class="service-item">
-      <img :src="service.image" alt="" />
+      <img :src="service.image" :alt="service.title" loading="lazy" />
       <div>
         <h3>{{ service.title }}</h3>
         <p>{{ service.text }}</p>

@@ -93,8 +93,12 @@ async function addToCart() {
 useHead(() =>
   product.value
     ? seoHeadFromRecord(product.value, {
-        title: `${product.value.name} | ${theme.brandName}`,
-        description: stripHtml(product.value.description, 160),
+        title: `${product.value.name} | ${
+          product.value.seo?.metadata?.focus_keyword
+          || product.value.category_name
+          || 'Online'
+        } | ${theme.brandName}`,
+        description: stripHtml(product.value.description, 160) || `Shop ${product.value.name} online at ${theme.brandName}.`,
         canonical: `/product/${product.value.slug}`,
         image: product.value.image,
       })
@@ -492,7 +496,7 @@ onBeforeUnmount(() => {
               :aria-pressed="wished"
               @click="toggleWish"
             >
-              <Heart :size="18" :fill="wished ? 'currentColor' : 'none'" />
+              <Heart :size="18" :fill="wished ? 'currentColor' : 'none'" aria-hidden="true" />
               {{ wished ? 'Saved' : 'Wishlist' }}
             </AppButton>
           </div>

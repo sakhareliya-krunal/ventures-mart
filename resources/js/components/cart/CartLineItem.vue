@@ -36,7 +36,7 @@ function remove() {
 
 <template>
   <div v-if="product" class="cart-line">
-    <img :src="product.image" alt="" />
+    <img :src="product.image" :alt="product.name" />
     <div>
       <RouterLink :to="`/product/${product.slug}`">{{ product.name }}</RouterLink>
       <span>{{ formatCurrency(product.price) }}</span>

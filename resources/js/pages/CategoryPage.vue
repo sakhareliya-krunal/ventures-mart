@@ -21,12 +21,12 @@ const slug = computed(() => String(route.params.slug || ''));
 useHead(() =>
   category.value
     ? seoHeadFromRecord(category.value, {
-        title: `${category.value.name} | ${theme.brandName}`,
-        description: category.value.description,
+        title: `${category.value.name} Online | ${theme.brandName}`,
+        description: category.value.description || `Shop ${category.value.name} online at ${theme.brandName}.`,
         canonical: `/category/${category.value.slug}`,
         image: category.value.image,
       })
-    : { title: `${title.value} | ${theme.brandName}` },
+    : { title: `${title.value} Online | ${theme.brandName}` },
 );
 
 async function resolveCategory() {

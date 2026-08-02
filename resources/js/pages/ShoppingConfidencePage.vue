@@ -61,7 +61,7 @@ const sections = [
   <div class="article-premium">
     <section class="article-premium__hero" aria-labelledby="confidence-hero-title">
       <div class="article-premium__hero-media" aria-hidden="true">
-        <img src="/images/home5-info1.png" alt="" />
+        <img src="/images/home5-info1.png" alt="" role="presentation" />
       </div>
       <div class="article-premium__hero-scrim" aria-hidden="true" />
       <div class="article-premium__hero-inner page-section">

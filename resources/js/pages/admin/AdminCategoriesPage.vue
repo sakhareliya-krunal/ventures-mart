@@ -181,7 +181,7 @@ onMounted(load);
         <label>Description <textarea v-model="form.description" rows="3" /></label>
         <AdminSeoTab
           :form="form"
-          :fallback-title="form.name ? `${form.name} | Ventures Mart` : 'Category | Ventures Mart'"
+          :fallback-title="form.name ? `${form.name} Online | Ventures Mart` : 'Category Online | Ventures Mart'"
           :fallback-description="form.description"
           :fallback-url="form.slug ? `/category/${form.slug}` : '/category'"
         />

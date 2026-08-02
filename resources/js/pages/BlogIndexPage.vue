@@ -17,7 +17,7 @@ const posts = usePostsStore();
 useHead(() =>
   seoHeadFromServer({
     title: `Blog | ${theme.brandName}`,
-    description: `Guides and tips on kids toys and steel lunch boxes from ${theme.brandName}.`,
+    description: `Guides and tips on kids toys, school lunches, and stainless steel lunch boxes from ${theme.brandName}.`,
     canonical: '/blog',
   }),
 );

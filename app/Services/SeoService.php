@@ -74,7 +74,7 @@ class SeoService
         [$subject, $pageKey, $type] = $this->subjectForPath($normalized);
         $seo = $this->metadataFor($subject ?? $pageKey, $pageKey);
         $faqs = $subject ? $this->faqsFor($subject) : $this->faqsFor($pageKey);
-        $fallback = $this->fallback($subject, $pageKey, $type, $normalized);
+        $fallback = $this->fallback($subject, $pageKey, $type, $normalized, $seo);
         $title = $this->first($seo?->title, $fallback['title']);
         $description = $this->limit($this->first($seo?->meta_description, $seo?->ai_summary, $fallback['description']), 165);
         $canonical = $this->canonical($seo?->canonical_url, $normalized);
@@ -413,15 +413,26 @@ class SeoService
         return [null, 'not-found', 'not-found'];
     }
 
-    private function fallback(Model|string|null $subject, ?string $pageKey, string $type, string $path): array
-    {
+    private function fallback(
+        Model|string|null $subject,
+        ?string $pageKey,
+        string $type,
+        string $path,
+        ?SeoMetadata $seo = null,
+    ): array {
         $brand = $this->settings->all()['site']['brand_name'] ?? 'Ventures Mart';
 
         if ($subject instanceof Product) {
-            $description = $this->plainText($subject->description) ?: "Shop {$subject->name} at {$brand}.";
+            $keyword = trim((string) ($seo?->focus_keyword ?? ''));
+            if ($keyword === '') {
+                $keyword = trim((string) ($subject->category?->name ?? '')) ?: 'Online';
+            }
+
+            $description = $this->plainText($subject->description)
+                ?: "Shop {$subject->name} online at {$brand}.";
 
             return [
-                'title' => "{$subject->name} | {$brand}",
+                'title' => "{$subject->name} | {$keyword} | {$brand}",
                 'description' => $description,
                 'image' => $subject->image,
             ];
@@ -429,7 +440,7 @@ class SeoService
 
         if ($subject instanceof Category) {
             return [
-                'title' => "{$subject->name} | {$brand}",
+                'title' => "{$subject->name} Online | {$brand}",
                 'description' => $subject->description ?: "Shop {$subject->name} online at {$brand}.",
                 'image' => $subject->image,
             ];
@@ -438,15 +449,23 @@ class SeoService
         if ($subject instanceof Post) {
             return [
                 'title' => "{$subject->title} | {$brand}",
-                'description' => $subject->excerpt,
+                'description' => $subject->excerpt ?: "Read {$subject->title} on the {$brand} blog.",
                 'image' => $subject->cover_image,
             ];
         }
 
         $titles = [
-            'home' => "{$brand} | Toys & lunch boxes",
-            'shop' => "Shop toys and lunch boxes | {$brand}",
+            'home' => "{$brand} | Premium Stainless Steel Lunch Boxes Online in India",
+            'shop' => "Shop Toys & Lunch Boxes Online | {$brand}",
             'blog' => "Blog | {$brand}",
+            'about' => "About | {$brand}",
+            'contact' => "Contact | {$brand}",
+            'shipping' => "Shipping | {$brand}",
+            'returns' => "Returns | {$brand}",
+            'payments' => "Payments | {$brand}",
+            'privacy-policy' => "Privacy Policy | {$brand}",
+            'terms' => "Terms of Service | {$brand}",
+            'shopping-confidence-shipping-replacement' => "Shopping with Confidence | {$brand}",
             'search' => "Search | {$brand}",
             'cart' => "Cart | {$brand}",
             'checkout' => "Checkout | {$brand}",
@@ -460,7 +479,17 @@ class SeoService
         ];
 
         $descriptions = [
-            'home' => "Shop curated toys and steel lunch boxes for school, play, and everyday family life across India at {$brand}.",
+            'home' => 'Buy premium stainless steel lunch boxes for office, school and kids. Leak-proof, BPA-free and durable lunch boxes with fast delivery across India.',
+            'shop' => "Shop premium stainless steel lunch boxes and kids toys online at {$brand}. Fast delivery across India.",
+            'blog' => "Guides and tips on kids toys, school lunches, and stainless steel lunch boxes from {$brand}.",
+            'about' => "Learn about {$brand}—premium stainless steel lunch boxes and curated toys for families across India.",
+            'contact' => "Contact {$brand} for order help, product questions, and support across India.",
+            'shipping' => "Delivery across India for toys and lunch boxes from {$brand}.",
+            'returns' => "7-day replacement support for toys and lunch boxes at {$brand}.",
+            'payments' => "Secure online payments and COD options for shopping at {$brand}.",
+            'privacy-policy' => "How {$brand} collects and uses information when you browse or shop.",
+            'terms' => "Terms for shopping toys and lunch boxes on {$brand} across India.",
+            'shopping-confidence-shipping-replacement' => "How delivery across India, free shipping, 7-day replacement, and secure payments work at {$brand}.",
             'cart' => "Review your {$brand} cart.",
             'checkout' => "Secure checkout for toys and lunch boxes at {$brand}.",
             'wishlist' => "Saved products at {$brand}.",

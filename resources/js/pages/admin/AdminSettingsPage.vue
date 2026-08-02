@@ -88,6 +88,27 @@ const selectedPage = computed(
   () => STATIC_SEO_PAGES.find((page) => page.key === selectedPageKey.value) || STATIC_SEO_PAGES[0],
 );
 
+const pageSeoFallbackTitle = computed(() => {
+  const brand = seoSettings.site.brand_name || 'Ventures Mart';
+  if (selectedPageKey.value === 'home') {
+    return `${brand} | Premium Stainless Steel Lunch Boxes Online in India`;
+  }
+  if (selectedPageKey.value === 'shop') {
+    return `Shop Toys & Lunch Boxes Online | ${brand}`;
+  }
+  return `${selectedPage.value.label} | ${brand}`;
+});
+
+const pageSeoFallbackDescription = computed(() => {
+  if (selectedPageKey.value === 'home') {
+    return 'Buy premium stainless steel lunch boxes for office, school and kids. Leak-proof, BPA-free and durable lunch boxes with fast delivery across India.';
+  }
+  if (selectedPageKey.value === 'shop') {
+    return `Shop premium stainless steel lunch boxes and kids toys online at ${seoSettings.site.brand_name || 'Ventures Mart'}. Fast delivery across India.`;
+  }
+  return `Shop toys, lunch boxes, and family essentials online at ${seoSettings.site.brand_name || 'Ventures Mart'}.`;
+});
+
 async function savePassword() {
   passwordError.value = '';
   passwordSuccess.value = '';
@@ -298,8 +319,8 @@ onMounted(loadSeo);
 
       <AdminSeoTab
         :form="pageSeoForm"
-        :fallback-title="`${seoSettings.site.brand_name} | ${selectedPage.label}`"
-        fallback-description="Shop toys, lunch boxes, and family essentials online at Ventures Mart."
+        :fallback-title="pageSeoFallbackTitle"
+        :fallback-description="pageSeoFallbackDescription"
         :fallback-url="selectedPage.url"
       />
       <AppButton type="submit" :disabled="savingSeo || loadingPageSeo">

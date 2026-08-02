@@ -21,9 +21,9 @@ const products = useProductsStore();
 
 useHead(() =>
   seoHeadFromServer({
-    title: `${theme.brandName} | Toys & lunch boxes`,
+    title: `${theme.brandName} | Premium Stainless Steel Lunch Boxes Online in India`,
     description:
-      'Shop curated toys and steel lunch boxes for school, play, and everyday family life across India.',
+      'Buy premium stainless steel lunch boxes for office, school and kids. Leak-proof, BPA-free and durable lunch boxes with fast delivery across India.',
     canonical: '/',
   }),
 );
