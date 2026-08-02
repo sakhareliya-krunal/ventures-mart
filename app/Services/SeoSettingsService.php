@@ -9,6 +9,8 @@ class SeoSettingsService
 {
     public const CACHE_KEY = 'seo.settings';
 
+    public const GOOGLE_SITE_VERIFICATION = 'FbCDbEAU2TcJuIMEUlki4N3dx2dxqVLd_ob9RWqV-_s';
+
     public function all(): array
     {
         return Cache::rememberForever(self::CACHE_KEY, function () {
@@ -19,6 +21,11 @@ class SeoSettingsService
             $brand = trim((string) ($settings['site']['brand_name'] ?? ''));
             if ($brand === '' || strcasecmp($brand, 'Venture Smart') === 0) {
                 $settings['site']['brand_name'] = 'Ventures Mart';
+            }
+
+            $verification = trim((string) ($settings['verification']['google_site_verification'] ?? ''));
+            if ($verification === '') {
+                $settings['verification']['google_site_verification'] = self::GOOGLE_SITE_VERIFICATION;
             }
 
             $requiredDisallows = [
@@ -64,7 +71,7 @@ class SeoSettingsService
                 'same_as' => [],
             ],
             'verification' => [
-                'google_site_verification' => env('GOOGLE_SITE_VERIFICATION'),
+                'google_site_verification' => env('GOOGLE_SITE_VERIFICATION', self::GOOGLE_SITE_VERIFICATION),
             ],
             'analytics' => [
                 'ga_measurement_id' => env('GA_MEASUREMENT_ID'),

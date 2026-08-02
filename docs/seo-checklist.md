@@ -14,10 +14,11 @@
 ## Google Search Console (ranking, not Lighthouse)
 
 1. Property verified for `https://venturesmart.in/`.
-2. `GOOGLE_SITE_VERIFICATION=` in production `.env` (token only — not the full `<meta>` tag).
-3. Submit sitemap: `https://venturesmart.in/sitemap.xml` — status Success.
-4. URL Inspection → Request indexing for `/`, `/category/lunch-box`, `/category/toys`, and top product URLs.
-5. Optional: `GA_MEASUREMENT_ID` / `GTM_CONTAINER_ID`.
+2. `GOOGLE_SITE_VERIFICATION=FbCDbEAU2TcJuIMEUlki4N3dx2dxqVLd_ob9RWqV-_s` in production `.env` (token only — not the full `<meta>` tag). The app also defaults to this token if the env/admin value is empty. After deploy, run `php artisan optimize:clear` (and clear `seo.settings` cache if verification was previously blank in Admin).
+3. View-source homepage should include `<meta name="google-site-verification" content="FbCDbEAU2TcJuIMEUlki4N3dx2dxqVLd_ob9RWqV-_s">`.
+4. Submit sitemap: `https://venturesmart.in/sitemap.xml` — status Success.
+5. URL Inspection → Request indexing for `/`, `/category/lunch-box`, `/category/toys`, and top product URLs.
+6. Optional: `GA_MEASUREMENT_ID` / `GTM_CONTAINER_ID`.
 
 **Note:** PageSpeed SEO 100 is a crawl checklist. Ranking on competitive queries also needs indexing, unique content, reviews, and time.
 
