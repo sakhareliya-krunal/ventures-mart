@@ -6,12 +6,17 @@ import CategoryPillars from '@/components/home/CategoryPillars.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import { footerContact } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `About | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `About | ${theme.brandName}`,
+    description: `Why ${theme.brandName} — curated toys and lunch boxes for families across India.`,
+    canonical: '/about',
+  }),
+);
 
 const values = [
   {

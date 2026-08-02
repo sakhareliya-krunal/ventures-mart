@@ -13,8 +13,30 @@ class SeoSettingsService
     {
         return Cache::rememberForever(self::CACHE_KEY, function () {
             $stored = SeoSetting::query()->pluck('value', 'key')->all();
+            $settings = array_replace_recursive($this->defaults(), $stored);
 
-            return array_replace_recursive($this->defaults(), $stored);
+            // Align legacy brand spellings with the live storefront name.
+            $brand = trim((string) ($settings['site']['brand_name'] ?? ''));
+            if ($brand === '' || strcasecmp($brand, 'Venture Smart') === 0) {
+                $settings['site']['brand_name'] = 'Ventures Mart';
+            }
+
+            $requiredDisallows = [
+                '/admin',
+                '/checkout',
+                '/cart',
+                '/profile',
+                '/orders',
+                '/wishlist',
+                '/login',
+                '/register',
+            ];
+            $settings['robots']['disallow'] = array_values(array_unique(array_merge(
+                $requiredDisallows,
+                array_values($settings['robots']['disallow'] ?? []),
+            )));
+
+            return $settings;
         });
     }
 
@@ -33,7 +55,7 @@ class SeoSettingsService
     {
         return [
             'site' => [
-                'brand_name' => config('app.name', 'Ventures Mart'),
+                'brand_name' => 'Ventures Mart',
                 'tagline' => 'Toys, lunch boxes, and family essentials',
                 'default_locale' => env('SEO_DEFAULT_LOCALE', 'en-IN'),
                 'default_robots' => 'index,follow',
@@ -50,7 +72,16 @@ class SeoSettingsService
             ],
             'robots' => [
                 'enabled' => true,
-                'disallow' => ['/admin', '/checkout', '/cart', '/profile', '/orders'],
+                'disallow' => [
+                    '/admin',
+                    '/checkout',
+                    '/cart',
+                    '/profile',
+                    '/orders',
+                    '/wishlist',
+                    '/login',
+                    '/register',
+                ],
             ],
             'sitemap' => [
                 'enabled' => true,

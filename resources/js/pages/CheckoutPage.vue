@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -115,9 +116,14 @@ const submitLabel = computed(() => {
   return paymentMethod.value === 'cod' ? 'Place order' : 'Pay Now';
 });
 
-useHead({
-  title: () => `Checkout | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Checkout | ${theme.brandName}`,
+    description: `Secure checkout for toys and lunch boxes at ${theme.brandName}.`,
+    canonical: '/checkout',
+    robots: 'noindex,follow',
+  }),
+);
 
 function clearBannerTimer() {
   if (bannerTimer != null) {

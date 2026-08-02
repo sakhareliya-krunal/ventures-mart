@@ -4,12 +4,17 @@ import ComingSoon from '@/components/ui/ComingSoon.vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerPaymentPills } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Payments | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Payments | ${theme.brandName}`,
+    description: `Secure online payments and COD options for shopping at ${theme.brandName}.`,
+    canonical: '/payments',
+  }),
+);
 </script>
 
 <template>

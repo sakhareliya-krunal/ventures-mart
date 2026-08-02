@@ -3,12 +3,17 @@ import { useHead } from '@unhead/vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerContact } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Privacy Policy | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Privacy Policy | ${theme.brandName}`,
+    description: `How ${theme.brandName} collects and uses information when you browse or shop.`,
+    canonical: '/privacy-policy',
+  }),
+);
 </script>
 
 <template>

@@ -4,12 +4,17 @@ import ComingSoon from '@/components/ui/ComingSoon.vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerContact, footerWhatsApp } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Returns | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Returns | ${theme.brandName}`,
+    description: `7-day replacement support for toys and lunch boxes at ${theme.brandName}.`,
+    canonical: '/returns',
+  }),
+);
 </script>
 
 <template>

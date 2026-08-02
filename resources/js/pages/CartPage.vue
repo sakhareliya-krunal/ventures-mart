@@ -12,15 +12,21 @@ import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
 import { requireLogin } from '@/utils/authRedirect';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
 const cart = useCartStore();
 const router = useRouter();
 
-useHead({
-  title: () => `Cart | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Cart | ${theme.brandName}`,
+    description: `Review your ${theme.brandName} cart.`,
+    canonical: '/cart',
+    robots: 'noindex,follow',
+  }),
+);
 
 onMounted(() => cart.fetch());
 

@@ -16,21 +16,22 @@
     @foreach (($seo['hreflang'] ?? []) as $alternate)
     <link rel="alternate" hreflang="{{ $alternate['locale'] }}" href="{{ $alternate['url'] }}">
     @endforeach
-    <meta property="og:site_name" content="{{ config('app.name', 'Ventures Mart') }}">
+    <meta property="og:site_name" content="{{ $seo['og']['site_name'] ?? ($seo['brand_name'] ?? 'Ventures Mart') }}">
     <meta property="og:type" content="{{ $seo['og']['type'] ?? 'website' }}">
-    <meta property="og:title" content="{{ $seo['og']['title'] ?? ($seo['title'] ?? config('app.name', 'Ventures Mart')) }}">
+    <meta property="og:locale" content="{{ $seo['og']['locale'] ?? ($seo['og_locale'] ?? 'en_IN') }}">
+    <meta property="og:title" content="{{ $seo['og']['title'] ?? ($seo['title'] ?? 'Ventures Mart') }}">
     <meta property="og:description" content="{{ $seo['og']['description'] ?? ($seo['description'] ?? '') }}">
     <meta property="og:url" content="{{ $seo['og']['url'] ?? ($seo['canonical'] ?? url()->current()) }}">
     @if (! empty($seo['og']['image']))
     <meta property="og:image" content="{{ $seo['og']['image'] }}">
     @endif
     <meta name="twitter:card" content="{{ $seo['twitter']['card'] ?? 'summary_large_image' }}">
-    <meta name="twitter:title" content="{{ $seo['twitter']['title'] ?? ($seo['title'] ?? config('app.name', 'Ventures Mart')) }}">
+    <meta name="twitter:title" content="{{ $seo['twitter']['title'] ?? ($seo['title'] ?? 'Ventures Mart') }}">
     <meta name="twitter:description" content="{{ $seo['twitter']['description'] ?? ($seo['description'] ?? '') }}">
     @if (! empty($seo['twitter']['image']))
     <meta name="twitter:image" content="{{ $seo['twitter']['image'] }}">
     @endif
-    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32">
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

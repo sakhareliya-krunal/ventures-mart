@@ -8,6 +8,7 @@ import PageHero from '@/components/ui/PageHero.vue';
 import { useCategoriesStore } from '@/stores/categories';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const props = defineProps({
   categorySlug: {
@@ -46,9 +47,13 @@ const productCountLabel = computed(() =>
   catalogLoading.value ? '—' : String(products.list.length),
 );
 
-useHead({
-  title: () => `${props.title} | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `${props.title} | ${theme.brandName}`,
+    description: `Shop toys and lunch boxes online at ${theme.brandName}.`,
+    canonical: '/shop',
+  }),
+);
 
 function applyBounds(bounds) {
   const rawMin = Number(bounds?.min ?? 0);

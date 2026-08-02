@@ -8,6 +8,7 @@ import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -24,9 +25,14 @@ const form = reactive({
 
 let leaving = false;
 
-useHead({
-  title: () => `Register | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Register | ${theme.brandName}`,
+    description: `Create your ${theme.brandName} account to shop toys and lunch boxes.`,
+    canonical: '/register',
+    robots: 'noindex,follow',
+  }),
+);
 
 function defaultPostAuthPath() {
   return auth.isAdmin ? '/admin' : '/profile';

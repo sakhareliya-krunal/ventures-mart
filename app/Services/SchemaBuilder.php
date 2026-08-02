@@ -50,7 +50,7 @@ class SchemaBuilder
             'category' => $product->category?->name,
             'brand' => [
                 '@type' => 'Brand',
-                'name' => config('app.name', 'Ventures Mart'),
+                'name' => 'Ventures Mart',
             ],
             'offers' => [
                 '@type' => 'Offer',

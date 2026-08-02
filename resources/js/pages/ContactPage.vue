@@ -8,6 +8,7 @@ import PageHero from '@/components/ui/PageHero.vue';
 import { footerContact, footerWhatsApp } from '@/constants/footer';
 import api from '@/services/api';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const error = ref('');
@@ -49,9 +50,13 @@ const channels = [
   },
 ];
 
-useHead({
-  title: () => `Contact | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Contact | ${theme.brandName}`,
+    description: `Contact ${theme.brandName} for order help, product questions, and support across India.`,
+    canonical: '/contact',
+  }),
+);
 
 async function submit() {
   error.value = '';

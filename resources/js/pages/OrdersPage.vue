@@ -11,6 +11,7 @@ import { downloadOrderInvoice } from '@/utils/downloadInvoice';
 import { formatCurrency, unwrapData } from '@/utils/format';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const ui = useUiStore();
@@ -19,10 +20,14 @@ const loading = ref(true);
 const error = ref('');
 const downloadingId = ref(null);
 
-useHead({
-  title: () => `Orders | ${theme.brandName}`,
-});
-
+useHead(() =>
+  seoHeadFromServer({
+    title: `Orders | ${theme.brandName}`,
+    description: `Your ${theme.brandName} order history.`,
+    canonical: '/orders',
+    robots: 'noindex,follow',
+  }),
+);
 function formatOrderDate(value) {
   if (!value) return '';
   return new Date(value).toLocaleDateString('en-GB');

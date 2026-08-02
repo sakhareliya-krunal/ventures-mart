@@ -74,9 +74,16 @@ class SeoService
         $title = $this->first($seo?->title, $fallback['title']);
         $description = $this->limit($this->first($seo?->meta_description, $fallback['description']), 165);
         $canonical = $this->canonical($seo?->canonical_url, $normalized);
-        $robots = $this->first($seo?->meta_robots, $settings['site']['default_robots'] ?? 'index,follow');
+        $defaultRobots = $type === 'private' || $type === 'not-found'
+            ? 'noindex,follow'
+            : ($settings['site']['default_robots'] ?? 'index,follow');
+        $robots = $this->first($seo?->meta_robots, $defaultRobots);
+        if ($type === 'private' || $type === 'not-found') {
+            $robots = 'noindex,follow';
+        }
         $image = $this->absoluteUrl($this->first($seo?->og_image, $seo?->twitter_image, $fallback['image'], $settings['site']['default_og_image'] ?? null));
         $breadcrumbs = $this->breadcrumbs($subject, $type, $normalized);
+        $locale = $seo?->locale ?: $this->locale();
         $schemas = [
             $this->schema->organization($settings, $baseUrl),
             $this->schema->website($settings, $baseUrl),
@@ -86,21 +93,31 @@ class SeoService
             $seo?->custom_schema,
         ];
 
+        $ogType = match ($type) {
+            'post' => 'article',
+            'product' => 'product',
+            default => 'website',
+        };
+
         return [
             'title' => $title,
             'description' => $description,
             'canonical' => $canonical,
             'robots' => $robots,
-            'locale' => $seo?->locale ?: $this->locale(),
+            'locale' => $locale,
+            'og_locale' => str_replace('-', '_', $locale),
             'hreflang' => [
-                ['locale' => $seo?->locale ?: $this->locale(), 'url' => $canonical],
+                ['locale' => $locale, 'url' => $canonical],
+                ['locale' => 'x-default', 'url' => $canonical],
             ],
             'og' => [
                 'title' => $this->first($seo?->og_title, $title),
                 'description' => $this->first($seo?->og_description, $description),
                 'image' => $image,
                 'url' => $canonical,
-                'type' => $type === 'post' ? 'article' : 'website',
+                'type' => $ogType,
+                'locale' => str_replace('-', '_', $locale),
+                'site_name' => $settings['site']['brand_name'] ?? 'Ventures Mart',
             ],
             'twitter' => [
                 'card' => 'summary_large_image',
@@ -113,6 +130,7 @@ class SeoService
             'json_ld' => array_values(array_filter($schemas)),
             'breadcrumbs' => $breadcrumbs,
             'score' => $this->score->score($seo, $subject ?? $pageKey, $faqs),
+            'brand_name' => $settings['site']['brand_name'] ?? 'Ventures Mart',
         ];
     }
 
@@ -367,7 +385,28 @@ class SeoService
             '/shopping-confidence-shipping-replacement' => 'shopping-confidence-shipping-replacement',
         ];
 
-        return [null, $static[$path] ?? 'not-found', isset($static[$path]) ? 'static' : 'not-found'];
+        if (isset($static[$path])) {
+            return [null, $static[$path], 'static'];
+        }
+
+        $private = [
+            '/cart' => 'cart',
+            '/checkout' => 'checkout',
+            '/wishlist' => 'wishlist',
+            '/login' => 'login',
+            '/register' => 'register',
+            '/profile' => 'profile',
+            '/forgot-password' => 'forgot-password',
+            '/reset-password' => 'reset-password',
+        ];
+
+        if (isset($private[$path]) || str_starts_with($path, '/orders') || str_starts_with($path, '/admin')) {
+            $key = $private[$path] ?? (str_starts_with($path, '/orders') ? 'orders' : 'admin');
+
+            return [null, $key, 'private'];
+        }
+
+        return [null, 'not-found', 'not-found'];
     }
 
     private function fallback(Model|string|null $subject, ?string $pageKey, string $type, string $path): array
@@ -405,11 +444,32 @@ class SeoService
             'shop' => "Shop toys and lunch boxes | {$brand}",
             'blog' => "Blog | {$brand}",
             'search' => "Search | {$brand}",
+            'cart' => "Cart | {$brand}",
+            'checkout' => "Checkout | {$brand}",
+            'wishlist' => "Wishlist | {$brand}",
+            'login' => "Sign in | {$brand}",
+            'register' => "Create account | {$brand}",
+            'profile' => "Profile | {$brand}",
+            'orders' => "Orders | {$brand}",
+            'admin' => "Admin | {$brand}",
+            'not-found' => "Page not found | {$brand}",
+        ];
+
+        $descriptions = [
+            'home' => "Shop curated toys and steel lunch boxes for school, play, and everyday family life across India at {$brand}.",
+            'cart' => "Review your {$brand} cart.",
+            'checkout' => "Secure checkout for toys and lunch boxes at {$brand}.",
+            'wishlist' => "Saved products at {$brand}.",
+            'login' => "Sign in to your {$brand} account.",
+            'register' => "Create your {$brand} account.",
+            'profile' => "Manage your {$brand} profile.",
+            'orders' => "Track and manage your {$brand} orders.",
+            'not-found' => "That page is not part of the {$brand} storefront.",
         ];
 
         return [
             'title' => $titles[$pageKey] ?? Str::headline((string) $pageKey).' | '.$brand,
-            'description' => 'Shop toys, lunch boxes, and family essentials online at '.$brand.'.',
+            'description' => $descriptions[$pageKey] ?? 'Shop toys, lunch boxes, and family essentials online at '.$brand.'.',
             'image' => $this->settings->all()['site']['default_og_image'] ?? null,
         ];
     }
@@ -417,6 +477,14 @@ class SeoService
     private function breadcrumbs(Model|string|null $subject, string $type, string $path): array
     {
         $home = ['label' => 'Home', 'url' => $this->baseUrl().'/'];
+
+        if ($type === 'home' || $path === '/') {
+            return [$home];
+        }
+
+        if ($type === 'private' || $type === 'not-found') {
+            return [$home];
+        }
 
         if ($subject instanceof Product) {
             return array_values(array_filter([

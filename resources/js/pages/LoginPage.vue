@@ -8,6 +8,7 @@ import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -22,9 +23,14 @@ const form = reactive({
 
 let leaving = false;
 
-useHead({
-  title: () => `Login | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Sign in | ${theme.brandName}`,
+    description: `Sign in to your ${theme.brandName} account.`,
+    canonical: '/login',
+    robots: 'noindex,follow',
+  }),
+);
 
 const resetNotice = computed(() =>
   route.query.reset === '1' ? 'Password updated. Sign in with your new password.' : '',

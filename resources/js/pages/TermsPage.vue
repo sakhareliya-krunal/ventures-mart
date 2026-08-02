@@ -4,12 +4,17 @@ import { useHead } from '@unhead/vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerContact } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Terms of Service | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Terms of Service | ${theme.brandName}`,
+    description: `Terms for shopping toys and lunch boxes on ${theme.brandName} across India.`,
+    canonical: '/terms',
+  }),
+);
 </script>
 
 <template>

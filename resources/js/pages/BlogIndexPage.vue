@@ -8,13 +8,18 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const posts = usePostsStore();
 
-useHead({
-  title: () => `Blog | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Blog | ${theme.brandName}`,
+    description: `Guides and tips on kids toys and steel lunch boxes from ${theme.brandName}.`,
+    canonical: '/blog',
+  }),
+);
 
 function formatDate(value) {
   if (!value) {

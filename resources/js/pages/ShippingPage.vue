@@ -3,12 +3,17 @@ import { useHead } from '@unhead/vue';
 import ComingSoon from '@/components/ui/ComingSoon.vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Shipping | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Shipping | ${theme.brandName}`,
+    description: `Delivery across India for toys and lunch boxes from ${theme.brandName}.`,
+    canonical: '/shipping',
+  }),
+);
 </script>
 
 <template>

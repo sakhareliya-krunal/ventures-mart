@@ -6,13 +6,19 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import { useThemeStore } from '@/stores/theme';
 import { useWishlistStore } from '@/stores/wishlist';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const wishlist = useWishlistStore();
 
-useHead({
-  title: () => `Wishlist | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Wishlist | ${theme.brandName}`,
+    description: `Saved products at ${theme.brandName}.`,
+    canonical: '/wishlist',
+    robots: 'noindex,follow',
+  }),
+);
 
 onMounted(() => wishlist.fetch());
 </script>

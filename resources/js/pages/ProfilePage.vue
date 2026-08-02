@@ -10,6 +10,7 @@ import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -51,9 +52,14 @@ const avatarInitial = computed(() => {
   return name ? name.charAt(0).toUpperCase() : '?';
 });
 
-useHead({
-  title: () => `Profile | ${theme.brandName}`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Profile | ${theme.brandName}`,
+    description: `Manage your ${theme.brandName} account, addresses, and password.`,
+    canonical: '/profile',
+    robots: 'noindex,follow',
+  }),
+);
 
 onMounted(async () => {
   if (!auth.user) {

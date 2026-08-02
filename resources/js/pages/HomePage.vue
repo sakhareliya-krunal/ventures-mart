@@ -13,14 +13,20 @@ import { homeRails } from '@/constants/home';
 import { useCategoriesStore } from '@/stores/categories';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const categories = useCategoriesStore();
 const products = useProductsStore();
 
-useHead({
-  title: () => `${theme.brandName} | Toys & lunch boxes`,
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `${theme.brandName} | Toys & lunch boxes`,
+    description:
+      'Shop curated toys and steel lunch boxes for school, play, and everyday family life across India.',
+    canonical: '/',
+  }),
+);
 
 const lunchPicks = computed(() =>
   products.featured.filter((product) => product.category === 'lunch-box').slice(0, 4),

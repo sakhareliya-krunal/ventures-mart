@@ -4,19 +4,18 @@ import { useHead } from '@unhead/vue';
 import { RouterLink } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import { useThemeStore } from '@/stores/theme';
+import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 
-useHead({
-  title: () => `Shopping with confidence | ${theme.brandName}`,
-  meta: [
-    {
-      name: 'description',
-      content:
-        'How delivery across India, free shipping on all orders, 7-day replacement, and secure payments work at Ventures Mart.',
-    },
-  ],
-});
+useHead(() =>
+  seoHeadFromServer({
+    title: `Shopping with confidence | ${theme.brandName}`,
+    description:
+      'How delivery across India, free shipping on all orders, 7-day replacement, and secure payments work at Ventures Mart.',
+    canonical: '/shopping-confidence-shipping-replacement',
+  }),
+);
 
 const sections = [
   {
