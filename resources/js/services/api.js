@@ -4,7 +4,6 @@ import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
 const NETWORK_GET_MAX_RETRIES = 20;
 const NETWORK_MUTATION_MAX_RETRIES = 3;
 const NETWORK_RETRY_DELAY_MS = 1500;
-const SLOW_NETWORK_MS = 600;
 
 const api = axios.create({
   baseURL: '/api',
@@ -63,18 +62,6 @@ function toastError(message) {
   });
 }
 
-function beginNetworkWait(label = 'Connecting…') {
-  withUiStore((ui) => {
-    ui.beginNetworkWait(label);
-  });
-}
-
-function endNetworkWait() {
-  withUiStore((ui) => {
-    ui.endNetworkWait();
-  });
-}
-
 function shouldSkipGlobalToast(config = {}) {
   return Boolean(config.skipErrorToast);
 }
@@ -86,40 +73,6 @@ function isQuietUnauthRequest(config = {}) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function clearSlowNetworkTimer(config) {
-  if (config.__slowNetworkTimer) {
-    clearTimeout(config.__slowNetworkTimer);
-    config.__slowNetworkTimer = null;
-  }
-}
-
-function releaseNetworkWait(config) {
-  clearSlowNetworkTimer(config);
-  if (config.__networkWaitActive) {
-    config.__networkWaitActive = false;
-    endNetworkWait();
-  }
-}
-
-function ensureNetworkWait(config, label = 'Connecting…') {
-  if (config.__networkWaitActive) {
-    return;
-  }
-  config.__networkWaitActive = true;
-  beginNetworkWait(label);
-}
-
-function scheduleSlowNetworkWait(config) {
-  if (config.__slowNetworkTimer || config.__networkWaitActive) {
-    return;
-  }
-
-  config.__slowNetworkTimer = setTimeout(() => {
-    config.__slowNetworkTimer = null;
-    ensureNetworkWait(config, 'Connecting…');
-  }, SLOW_NETWORK_MS);
 }
 
 function maxRetriesForMethod(method) {
@@ -142,16 +95,11 @@ api.interceptors.request.use(async (config) => {
     config.headers['X-CSRF-TOKEN'] = token;
   }
 
-  scheduleSlowNetworkWait(config);
-
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => {
-    releaseNetworkWait(response.config || {});
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const config = error.config || {};
     const status = error.response?.status;
@@ -179,16 +127,12 @@ api.interceptors.response.use(
 
       if (attempt < maxRetries) {
         config.__networkRetries = attempt + 1;
-        ensureNetworkWait(config, 'Connecting…');
         await sleep(NETWORK_RETRY_DELAY_MS);
         return api.request(config);
       }
 
-      releaseNetworkWait(config);
       return Promise.reject(error);
     }
-
-    releaseNetworkWait(config);
 
     if (!shouldSkipGlobalToast(config)) {
       if (status === 419) {
