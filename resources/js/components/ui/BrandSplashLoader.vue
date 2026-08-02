@@ -5,9 +5,9 @@ import { brandAssets } from '@/constants/assets';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
 
-const MIN_MS = import.meta.env.DEV ? 300 : 1400;
+const MIN_MS = import.meta.env.DEV ? 0 : 1400;
 const READY_MAX_MS = 2000;
-const EXIT_MS = 400;
+const EXIT_MS = import.meta.env.DEV ? 150 : 400;
 
 const router = useRouter();
 const theme = useThemeStore();

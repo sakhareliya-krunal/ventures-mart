@@ -822,44 +822,74 @@
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.admin-badge--warn {
-  background: color-mix(in srgb, #c45c26 14%, #fff);
-  color: #9a3f12;
-}
-
-.admin-badge--ok {
-  background: color-mix(in srgb, #1f7a4c 12%, #fff);
-  color: #1f7a4c;
-}
-
 .admin-table-wrap {
   overflow-x: auto;
 }
 
 .admin-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
 }
 
 .admin-table th,
 .admin-table td {
-  border-bottom: 1px solid var(--admin-border);
-  padding: 0.8rem 0.6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-border) 85%, transparent);
+  padding: 1rem 0.85rem;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .admin-table th {
-  background: var(--color-soft-2);
-  color: var(--color-primary-dark);
-  font-size: 0.74rem;
+  background: color-mix(in srgb, var(--color-soft-2) 92%, #fff);
+  color: color-mix(in srgb, var(--color-primary-dark) 88%, var(--admin-muted));
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
+.admin-table th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.admin-table th:last-child {
+  border-top-right-radius: 10px;
+}
+
+.admin-table tbody tr {
+  transition: background 160ms ease;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom-color: transparent;
+}
+
 .admin-table tbody tr:hover {
-  background: rgba(232, 238, 248, 0.55);
+  background: color-mix(in srgb, var(--color-soft-2) 72%, #fff);
+}
+
+.admin-table td[data-label='Date'] {
+  color: var(--admin-muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin-table td[data-label='Total'] {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-table td[data-label='Payment'] {
+  white-space: nowrap;
+}
+
+.admin-table td[data-label='Actions'] {
+  white-space: nowrap;
+  width: 1%;
 }
 
 .admin-order-item {
@@ -907,23 +937,56 @@
 }
 
 .admin-table a {
-  color: var(--color-primary);
-  font-weight: 700;
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  letter-spacing: -0.01em;
   text-decoration: none;
 }
 
 .admin-table a:hover {
-  color: var(--color-secondary);
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .admin-muted {
   color: var(--admin-muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  margin-top: 0.15rem;
+}
+
+.admin-status-cell,
+.admin-payment-cell {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem 0.55rem;
+}
+
+.admin-status-cell {
+  flex-wrap: wrap;
+}
+
+.admin-payment-cell {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.admin-status-cell .admin-muted,
+.admin-payment-cell .admin-muted {
+  margin-top: 0;
 }
 
 .admin-actions {
+  align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.admin-actions .button {
+  flex-shrink: 0;
 }
 
 .admin-form {
@@ -952,13 +1015,37 @@
 }
 
 .admin-badge {
+  align-items: center;
   background: var(--color-soft-2);
   border-radius: 999px;
   color: var(--color-primary-dark);
   display: inline-flex;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  padding: 0.22rem 0.6rem;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  padding: 0.28rem 0.65rem;
+  white-space: nowrap;
+}
+
+.admin-badge.admin-badge--warn {
+  background: color-mix(in srgb, #c45c26 14%, #fff);
+  color: #9a3412;
+}
+
+.admin-badge.admin-badge--ok {
+  background: color-mix(in srgb, #1f7a4c 12%, #fff);
+  color: #166534;
+}
+
+.admin-badge.admin-badge--danger {
+  background: color-mix(in srgb, #dc2626 12%, #fff);
+  color: #991b1b;
+}
+
+.admin-badge.admin-badge--info {
+  background: color-mix(in srgb, var(--color-primary) 12%, #fff);
+  color: var(--color-primary-dark);
 }
 
 .admin-detail-grid {
@@ -975,6 +1062,150 @@
 
 .admin-order-status {
   margin: 1rem 0;
+}
+
+.admin-order-meta-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.55rem;
+  margin: 0.35rem 0;
+}
+
+.admin-order-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.admin-order-detail__header {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  justify-content: space-between;
+}
+
+.admin-order-detail__header h2 {
+  margin-bottom: 0.25rem;
+}
+
+.admin-order-detail__header .admin-muted {
+  margin: 0.15rem 0;
+}
+
+.admin-order-detail__badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-order-detail__section {
+  border-top: 1px solid var(--admin-border);
+  margin-top: 1.15rem;
+  padding-top: 1.15rem;
+}
+
+.admin-order-detail__section h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-order-detail__actions {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-order-detail__status-field {
+  display: grid;
+  flex: 1 1 14rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  max-width: 18rem;
+  min-width: 12rem;
+}
+
+.admin-order-detail__customer {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0 0 1rem;
+}
+
+.admin-order-address-card {
+  background: color-mix(in srgb, var(--color-soft-2) 55%, #fff);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem 1.1rem;
+  width: 100%;
+}
+
+.admin-order-address-card__row {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-order-address-card__row dt {
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.admin-order-address-card__row dd {
+  color: var(--admin-ink);
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-totals {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  max-width: 22rem;
+  margin-left: auto;
+  width: 100%;
+}
+
+.admin-order-totals__row {
+  align-items: baseline;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.admin-order-totals__row dt {
+  color: var(--admin-muted);
+  font-weight: 600;
+  margin: 0;
+}
+
+.admin-order-totals__row dd {
+  margin: 0;
+  text-align: right;
+}
+
+.admin-order-totals__row--total {
+  border-top: 1px solid var(--admin-border);
+  font-size: 1.05rem;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+}
+
+.admin-order-totals__row--total dt,
+.admin-order-totals__row--total dd {
+  color: var(--admin-ink);
+  font-weight: 800;
 }
 
 .admin-message-pane__body {
@@ -1055,12 +1286,6 @@
 .confirm-dialog__confirm .vm-loader__core {
   background: #fff;
   box-shadow: none;
-}
-
-.button--danger {
-  background: var(--color-danger) !important;
-  border-color: var(--color-danger) !important;
-  color: #fff !important;
 }
 
 .admin-product-cell {
@@ -1698,8 +1923,19 @@
     flex-direction: column;
   }
 
-  .admin-order-status .button {
+  .admin-order-status .button,
+  .admin-order-detail__actions .button {
     width: 100%;
+  }
+
+  .admin-order-detail__status-field {
+    max-width: none;
+    width: 100%;
+  }
+
+  .admin-order-totals {
+    margin-left: 0;
+    max-width: none;
   }
 
   .admin-dash-kpis {
@@ -1772,7 +2008,9 @@
   }
 
   .admin-actions {
+    flex-wrap: wrap;
     gap: 0.5rem;
+    justify-content: stretch;
   }
 
   .admin-actions .button {
@@ -1780,8 +2018,20 @@
     justify-content: center;
   }
 
+  .admin-table td[data-label='Actions'] {
+    white-space: normal;
+    width: auto;
+  }
+
+  .admin-table td[data-label='Date'],
+  .admin-table td[data-label='Total'] {
+    white-space: normal;
+  }
+
   .admin-order-status .app-select,
-  .admin-order-status .button {
+  .admin-order-status .button,
+  .admin-order-detail__actions .app-select,
+  .admin-order-detail__actions .button {
     width: 100%;
   }
 

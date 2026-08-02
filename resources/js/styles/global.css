@@ -110,24 +110,65 @@ p {
   gap: 0.1rem;
 }
 
-.price strong {
-  color: var(--color-ink);
+.price__row {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
 }
 
+.price strong {
+  color: var(--color-ink);
+  font-size: 1.05em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.price__was,
 .price span {
   color: var(--color-muted);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   text-decoration: line-through;
+}
+
+.price__off {
+  color: var(--color-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
 }
 
 .price--large {
   align-items: baseline;
   display: flex;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.price--large .price__row {
+  align-items: baseline;
+  gap: 0.45rem 0.65rem;
 }
 
 .price--large strong {
   font-size: 2rem;
+}
+
+.price--large .price__was {
+  font-size: 1.05rem;
+}
+
+.price--large .price__off {
+  font-size: 0.85rem;
+}
+
+.price__tax {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0.15rem 0 0;
+  text-decoration: none;
 }
 
 .check-list {
@@ -154,6 +195,11 @@ p {
   font-weight: 700;
 }
 
+.stock-note--low {
+  color: var(--color-secondary);
+  font-weight: 700;
+}
+
 .full-width {
   margin-top: 1rem;
   width: 100%;
@@ -168,8 +214,8 @@ p {
 
 .skeleton-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -191,8 +237,8 @@ p {
 
 .skeleton-card__body {
   display: grid;
-  gap: 0.65rem;
-  padding: 1rem;
+  gap: 0.4rem;
+  padding: 0.85rem 0.75rem 0.95rem;
 }
 
 .skeleton-card__line {

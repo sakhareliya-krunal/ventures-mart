@@ -79,7 +79,7 @@ onMounted(load);
                 {{ message.created_at ? new Date(message.created_at).toLocaleString() : '—' }}
               </td>
               <td data-label="Actions">
-                <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(message.id)">
+                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(message.id)">
                   Delete
                 </AppButton>
               </td>

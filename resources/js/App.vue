@@ -9,10 +9,18 @@ import { useUiStore } from '@/stores/ui';
 const auth = useAuthStore();
 const ui = useUiStore();
 
-const showOverlay = computed(() => ui.navigating || auth.redirecting);
-const overlayLabel = computed(() =>
-  auth.redirecting && !ui.navigating ? 'Redirecting…' : 'Loading…',
+const showOverlay = computed(
+  () => ui.navigating || auth.redirecting || ui.networkWaiting,
 );
+const overlayLabel = computed(() => {
+  if (ui.networkWaiting) {
+    return ui.networkLabel || 'Connecting…';
+  }
+  if (auth.redirecting && !ui.navigating) {
+    return 'Redirecting…';
+  }
+  return 'Loading…';
+});
 </script>
 
 <template>

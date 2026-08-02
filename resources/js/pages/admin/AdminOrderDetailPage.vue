@@ -7,6 +7,12 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import {
+  orderStatusBadgeClass,
+  orderStatusLabel,
+  paymentStatusBadgeClass,
+  paymentStatusLabel,
+} from '@/utils/adminBadges';
 import { downloadOrderInvoice } from '@/utils/downloadInvoice';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
@@ -14,25 +20,13 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const saving = ref(false);
-const savingAddress = ref(false);
 const markingPaid = ref(false);
 const deleting = ref(false);
 const downloadingInvoice = ref(false);
 const confirmDeleteOpen = ref(false);
 const error = ref('');
-const addressSuccess = ref('');
 const order = ref(null);
 const status = ref('Processing');
-
-const addressForm = reactive({
-  full_name: '',
-  email: '',
-  phone: '',
-  address: '',
-  city: '',
-  state: '',
-  postal_code: '',
-});
 
 const statusOptions = [
   { value: 'AwaitingPayment', label: 'Awaiting payment' },
@@ -55,6 +49,23 @@ const savingCourier = ref(false);
 const courierSuccess = ref('');
 
 const items = computed(() => order.value?.items || []);
+
+const shipping = computed(() => order.value?.address || {});
+
+const customerName = computed(
+  () => order.value?.user?.name || shipping.value.full_name || '—',
+);
+
+const customerEmail = computed(
+  () => order.value?.user?.email || shipping.value.email || '—',
+);
+
+const cityLine = computed(() => {
+  const parts = [shipping.value.city, shipping.value.state, shipping.value.postal_code].filter(
+    Boolean,
+  );
+  return parts.length ? parts.join(', ') : '—';
+});
 
 const paymentMethodLabel = computed(() => {
   const method = order.value?.payment_method;
@@ -90,17 +101,6 @@ function itemInitials(name) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 
-function fillAddressForm(source) {
-  const address = source?.address || {};
-  addressForm.full_name = address.full_name || '';
-  addressForm.email = address.email || '';
-  addressForm.phone = address.phone || '';
-  addressForm.address = address.address || '';
-  addressForm.city = address.city || '';
-  addressForm.state = address.state || '';
-  addressForm.postal_code = address.postal_code || '';
-}
-
 function toDateInput(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -121,7 +121,6 @@ onMounted(async () => {
     const { data } = await api.get(`/admin/orders/${route.params.id}`);
     order.value = unwrapData(data);
     status.value = order.value?.status || 'Processing';
-    fillAddressForm(order.value);
     fillCourierForm(order.value);
   } catch {
     error.value = 'Order not found.';
@@ -137,7 +136,6 @@ async function saveStatus() {
   try {
     const { data } = await api.patch(`/admin/orders/${order.value.id}`, { status: status.value });
     order.value = unwrapData(data);
-    fillAddressForm(order.value);
     fillCourierForm(order.value);
   } catch (err) {
     error.value = err.response?.data?.message || 'Unable to update status.';
@@ -169,23 +167,6 @@ async function saveCourier() {
   }
 }
 
-async function saveAddress() {
-  if (!order.value || savingAddress.value) return;
-  savingAddress.value = true;
-  error.value = '';
-  addressSuccess.value = '';
-  try {
-    const { data } = await api.patch(`/admin/orders/${order.value.id}`, { ...addressForm });
-    order.value = unwrapData(data);
-    fillAddressForm(order.value);
-    addressSuccess.value = 'Shipping address saved.';
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Unable to save address.';
-  } finally {
-    savingAddress.value = false;
-  }
-}
-
 async function markPaymentReceived() {
   if (!order.value || !canMarkPaid.value) return;
   markingPaid.value = true;
@@ -195,7 +176,6 @@ async function markPaymentReceived() {
       payment_status: 'paid',
     });
     order.value = unwrapData(data);
-    fillAddressForm(order.value);
   } catch (err) {
     error.value = err.response?.data?.message || 'Unable to mark payment received.';
   } finally {
@@ -229,7 +209,7 @@ async function removeOrder() {
       <AppButton
         v-if="order"
         type="button"
-        variant="ghost"
+        variant="danger"
         @click="confirmDeleteOpen = true"
       >
         Delete order
@@ -247,27 +227,37 @@ async function removeOrder() {
 
     <LoadingSpinner v-if="loading" page label="Loading order" />
     <div v-else-if="!order" class="admin-panel">{{ error || 'Order not found.' }}</div>
-    <div v-else class="admin-detail-grid">
-      <div class="admin-panel">
-        <h2>Order {{ order.number }}</h2>
-        <p class="admin-muted">
-          Placed {{ order.created_at ? new Date(order.created_at).toLocaleString() : '—' }}
-        </p>
-        <p class="admin-muted">
-          Payment method: <strong>{{ paymentMethodLabel }}</strong>
-        </p>
-        <p class="admin-muted">
-          Payment status: <strong>{{ order.payment_status || '—' }}</strong>
-          <template v-if="order.paid_at">
-            · paid {{ new Date(order.paid_at).toLocaleString() }}
-          </template>
-        </p>
-        <p v-if="error" class="form-error">{{ error }}</p>
-        <p v-if="addressSuccess" class="form-success">{{ addressSuccess }}</p>
-        <p v-if="courierSuccess" class="form-success">{{ courierSuccess }}</p>
+    <div v-else class="admin-panel admin-order-detail">
+      <header class="admin-order-detail__header">
+        <div>
+          <h2>Order {{ order.number }}</h2>
+          <p class="admin-muted">
+            Placed {{ order.created_at ? new Date(order.created_at).toLocaleString() : '—' }}
+          </p>
+          <p class="admin-muted">
+            Payment method: <strong>{{ paymentMethodLabel }}</strong>
+          </p>
+        </div>
+        <div class="admin-order-detail__badges">
+          <span class="admin-badge" :class="paymentStatusBadgeClass(order.payment_status)">
+            {{ paymentStatusLabel(order.payment_status) }}
+          </span>
+          <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
+            {{ orderStatusLabel(order.status) }}
+          </span>
+          <span v-if="order.paid_at" class="admin-muted">
+            Paid {{ new Date(order.paid_at).toLocaleString() }}
+          </span>
+        </div>
+      </header>
 
-        <div class="admin-form admin-order-status">
-          <label>
+      <p v-if="error" class="form-error">{{ error }}</p>
+      <p v-if="courierSuccess" class="form-success">{{ courierSuccess }}</p>
+
+      <section class="admin-order-detail__section">
+        <h3>Fulfillment</h3>
+        <div class="admin-order-detail__actions">
+          <label class="admin-order-detail__status-field">
             Status
             <AppSelect
               v-model="status"
@@ -289,7 +279,10 @@ async function removeOrder() {
             {{ markingPaid ? 'Saving…' : 'Mark payment received' }}
           </AppButton>
         </div>
+      </section>
 
+      <section class="admin-order-detail__section">
+        <h3>Items</h3>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -330,78 +323,101 @@ async function removeOrder() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <div class="admin-panel">
-          <h3>Customer</h3>
-          <p>
-            <strong>{{ order.user?.name || order.address?.full_name }}</strong><br />
-            {{ order.user?.email || order.address?.email }}
-          </p>
-        </div>
-        <div class="admin-panel">
-          <h3>Shipping address</h3>
-          <form class="admin-form" @submit.prevent="saveAddress">
-            <FormField v-model="addressForm.full_name" label="Full name" required />
-            <FormField v-model="addressForm.email" label="Email" type="email" required />
-            <FormField v-model="addressForm.phone" label="Phone" required />
-            <FormField v-model="addressForm.address" label="Address" required />
-            <div class="admin-form__grid">
-              <FormField v-model="addressForm.city" label="City" required />
-              <FormField v-model="addressForm.state" label="State" required />
-              <FormField v-model="addressForm.postal_code" label="Postal code" required />
-            </div>
-            <div class="admin-form__actions">
-              <AppButton type="submit" :disabled="savingAddress">
-                {{ savingAddress ? 'Saving…' : 'Save address' }}
-              </AppButton>
-            </div>
-          </form>
-        </div>
-        <div class="admin-panel">
-          <h3>Courier / tracking</h3>
-          <form class="admin-form" @submit.prevent="saveCourier">
-            <FormField v-model="courierForm.courier_partner" label="Courier partner" />
-            <FormField v-model="courierForm.awb_number" label="AWB number" />
-            <FormField v-model="courierForm.tracking_number" label="Tracking number" />
-            <div class="admin-form__grid">
-              <FormField
-                v-model="courierForm.dispatched_at"
-                label="Dispatched on"
-                type="date"
-              />
-              <FormField
-                v-model="courierForm.expected_delivery_at"
-                label="Expected delivery"
-                type="date"
-              />
-            </div>
-            <div class="admin-form__actions">
-              <AppButton type="submit" :disabled="savingCourier">
-                {{ savingCourier ? 'Saving…' : 'Save courier' }}
-              </AppButton>
-            </div>
-          </form>
-        </div>
-        <div class="admin-panel">
-          <h3>Totals</h3>
-          <p>Subtotal: {{ formatCurrency(order.subtotal) }}</p>
-          <p>Delivery: {{ formatCurrency(order.shipping) }}</p>
+      <section class="admin-order-detail__section">
+        <h3>Customer &amp; shipping</h3>
+        <dl class="admin-order-address-card">
+          <div class="admin-order-address-card__row">
+            <dt>Name</dt>
+            <dd>{{ customerName }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Email</dt>
+            <dd>{{ customerEmail }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Phone</dt>
+            <dd>{{ shipping.phone || '—' }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Address</dt>
+            <dd>{{ shipping.address || '—' }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>City / State / PIN</dt>
+            <dd>{{ cityLine }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="admin-order-detail__section">
+        <h3>Courier / tracking</h3>
+        <form class="admin-form" @submit.prevent="saveCourier">
+          <FormField v-model="courierForm.courier_partner" label="Courier partner" />
+          <FormField v-model="courierForm.awb_number" label="AWB number" />
+          <FormField v-model="courierForm.tracking_number" label="Tracking number" />
+          <div class="admin-form__grid">
+            <FormField
+              v-model="courierForm.dispatched_at"
+              label="Dispatched on"
+              type="date"
+            />
+            <FormField
+              v-model="courierForm.expected_delivery_at"
+              label="Expected delivery"
+              type="date"
+            />
+          </div>
+          <div class="admin-form__actions">
+            <AppButton type="submit" :disabled="savingCourier">
+              {{ savingCourier ? 'Saving…' : 'Save courier' }}
+            </AppButton>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-order-detail__section">
+        <h3>Totals</h3>
+        <dl class="admin-order-totals">
+          <div class="admin-order-totals__row">
+            <dt>Subtotal</dt>
+            <dd>{{ formatCurrency(order.subtotal) }}</dd>
+          </div>
+          <div class="admin-order-totals__row">
+            <dt>Delivery</dt>
+            <dd>{{ formatCurrency(order.shipping) }}</dd>
+          </div>
           <template v-if="Number(order.igst || 0) > 0">
-            <p>IGST (5%): {{ formatCurrency(order.igst) }}</p>
+            <div class="admin-order-totals__row">
+              <dt>IGST (5%)</dt>
+              <dd>{{ formatCurrency(order.igst) }}</dd>
+            </div>
           </template>
           <template v-else>
-            <p>CGST (2.5%): {{ formatCurrency(order.cgst) }}</p>
-            <p>SGST (2.5%): {{ formatCurrency(order.sgst) }}</p>
+            <div class="admin-order-totals__row">
+              <dt>CGST (2.5%)</dt>
+              <dd>{{ formatCurrency(order.cgst) }}</dd>
+            </div>
+            <div class="admin-order-totals__row">
+              <dt>SGST (2.5%)</dt>
+              <dd>{{ formatCurrency(order.sgst) }}</dd>
+            </div>
           </template>
-          <p v-if="Number(order.cod_fee || 0) > 0">
-            COD charge: {{ formatCurrency(order.cod_fee) }}
-          </p>
-          <p v-if="order.seller_state">Seller state: {{ order.seller_state }}</p>
-          <p><strong>Total: {{ formatCurrency(order.total) }}</strong></p>
-        </div>
-      </div>
+          <div v-if="Number(order.cod_fee || 0) > 0" class="admin-order-totals__row">
+            <dt>COD charge</dt>
+            <dd>{{ formatCurrency(order.cod_fee) }}</dd>
+          </div>
+          <div v-if="order.seller_state" class="admin-order-totals__row">
+            <dt>Seller state</dt>
+            <dd>{{ order.seller_state }}</dd>
+          </div>
+          <div class="admin-order-totals__row admin-order-totals__row--total">
+            <dt>Total</dt>
+            <dd>{{ formatCurrency(order.total) }}</dd>
+          </div>
+        </dl>
+      </section>
     </div>
 
     <ConfirmDialog

@@ -1,29 +1,43 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { ChevronRight } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { brandAssets } from '@/constants/assets';
+import { homeHero } from '@/constants/home';
 import { useThemeStore } from '@/stores/theme';
+
+const SLIDE_INTERVAL_MS = 5000;
 
 const theme = useThemeStore();
 const heroRef = ref(null);
 const videoRef = ref(null);
+const useSlideshow = ref(false);
+const activeSlide = ref(0);
+
+const slides = computed(() =>
+  brandAssets.heroSlidesMobileTablet.map((webp, index) => ({
+    webp,
+    jpg: brandAssets.heroSlidesMobileTabletJpg[index],
+  })),
+);
+
 let motionQuery = null;
-let mobileQuery = null;
+let compactQuery = null;
 let visibilityObserver = null;
 let isVisible = true;
+let slideTimer = null;
 
-function canPlay() {
-  return Boolean(videoRef.value) && isVisible && !motionQuery?.matches;
+function canPlayVideo() {
+  return Boolean(videoRef.value) && !useSlideshow.value && isVisible && !motionQuery?.matches;
 }
 
-function syncPlayback() {
+function syncVideoPlayback() {
   const video = videoRef.value;
   if (!video) {
     return;
   }
 
-  if (!canPlay()) {
+  if (!canPlayVideo()) {
     video.pause();
     return;
   }
@@ -31,20 +45,16 @@ function syncPlayback() {
   video.play().catch(() => {});
 }
 
-function resolveVideoSrc() {
-  return mobileQuery?.matches ? brandAssets.heroVideoMobile : brandAssets.heroVideo;
-}
-
-function applyVideoSource({ forceReload = false } = {}) {
+function applyDesktopVideo({ forceReload = false } = {}) {
   const video = videoRef.value;
-  if (!video) {
+  if (!video || useSlideshow.value) {
     return;
   }
 
-  const nextSrc = resolveVideoSrc();
+  const nextSrc = brandAssets.heroVideo;
   const currentSrc = video.currentSrc || video.getAttribute('src') || '';
   if (!forceReload && currentSrc.endsWith(nextSrc)) {
-    syncPlayback();
+    syncVideoPlayback();
     return;
   }
 
@@ -52,44 +62,112 @@ function applyVideoSource({ forceReload = false } = {}) {
   video.load();
 }
 
-function onMobileQueryChange() {
-  applyVideoSource({ forceReload: true });
+function clearSlideTimer() {
+  if (slideTimer) {
+    window.clearInterval(slideTimer);
+    slideTimer = null;
+  }
+}
+
+function canAdvanceSlides() {
+  return useSlideshow.value && isVisible && !motionQuery?.matches && slides.value.length > 1;
+}
+
+function syncSlideshow() {
+  clearSlideTimer();
+  if (!canAdvanceSlides()) {
+    return;
+  }
+
+  slideTimer = window.setInterval(() => {
+    activeSlide.value = (activeSlide.value + 1) % slides.value.length;
+  }, SLIDE_INTERVAL_MS);
+}
+
+function syncMediaMode() {
+  const nextSlideshow = Boolean(compactQuery?.matches);
+  if (nextSlideshow === useSlideshow.value) {
+    if (useSlideshow.value) {
+      syncSlideshow();
+    } else {
+      syncVideoPlayback();
+    }
+    return;
+  }
+
+  useSlideshow.value = nextSlideshow;
+  activeSlide.value = 0;
+  clearSlideTimer();
+
+  if (useSlideshow.value) {
+    videoRef.value?.pause();
+    syncSlideshow();
+    return;
+  }
+
+  applyDesktopVideo({ forceReload: true });
 }
 
 function onLoadedData() {
-  syncPlayback();
+  syncVideoPlayback();
 }
 
 onMounted(() => {
   motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-  mobileQuery = window.matchMedia('(max-width: 720px)');
-  motionQuery.addEventListener('change', syncPlayback);
-  mobileQuery.addEventListener('change', onMobileQueryChange);
+  compactQuery = window.matchMedia('(max-width: 1024px)');
+  motionQuery.addEventListener('change', syncMediaMode);
+  compactQuery.addEventListener('change', syncMediaMode);
 
   if (heroRef.value && 'IntersectionObserver' in window) {
     visibilityObserver = new IntersectionObserver(
       ([entry]) => {
         isVisible = Boolean(entry?.isIntersecting);
-        syncPlayback();
+        if (useSlideshow.value) {
+          syncSlideshow();
+        } else {
+          syncVideoPlayback();
+        }
       },
       { threshold: 0.35 },
     );
     visibilityObserver.observe(heroRef.value);
   }
 
-  applyVideoSource({ forceReload: true });
+  syncMediaMode();
+  if (!useSlideshow.value) {
+    applyDesktopVideo({ forceReload: true });
+  }
 });
 
 onUnmounted(() => {
-  motionQuery?.removeEventListener('change', syncPlayback);
-  mobileQuery?.removeEventListener('change', onMobileQueryChange);
+  motionQuery?.removeEventListener('change', syncMediaMode);
+  compactQuery?.removeEventListener('change', syncMediaMode);
   visibilityObserver?.disconnect();
+  clearSlideTimer();
 });
 </script>
 
 <template>
-  <section ref="heroRef" class="hero">
+  <section ref="heroRef" class="hero" :class="{ 'hero--slideshow': useSlideshow }">
+    <div v-if="useSlideshow" class="hero__slides" aria-hidden="true">
+      <picture
+        v-for="(slide, index) in slides"
+        :key="slide.webp"
+        class="hero__slide"
+        :class="{ 'is-active': index === activeSlide }"
+      >
+        <source :srcset="slide.webp" type="image/webp" />
+        <img
+          :src="slide.jpg"
+          alt=""
+          :fetchpriority="index === 0 ? 'high' : 'low'"
+          :loading="index === 0 ? 'eager' : 'lazy'"
+          decoding="async"
+        />
+      </picture>
+    </div>
     <video
+      v-else
       ref="videoRef"
       class="hero__video"
       :poster="brandAssets.heroPoster"
@@ -107,8 +185,9 @@ onUnmounted(() => {
       <div class="hero__copy">
         <h1>{{ theme.brandName }}</h1>
         <p class="hero__lead">
-          Premium toys and lunch boxes for school, play, and everyday family life across India.
+          {{ homeHero.lead }}
         </p>
+        <p class="hero__assurances">{{ homeHero.assurances }}</p>
         <div class="hero__actions">
           <AppButton to="/category/toys" size="lg">
             Shop toys

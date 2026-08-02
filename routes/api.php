@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardControll
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\SeoController as AdminSeoController;
 use App\Http\Controllers\Api\Admin\UploadController as AdminUploadController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Resources\UserResource;
@@ -100,6 +101,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/uploads/images', [AdminUploadController::class, 'images']);
     Route::apiResource('categories', AdminCategoryController::class);
     Route::apiResource('posts', AdminPostController::class);
+    Route::get('/seo/settings', [AdminSeoController::class, 'settings']);
+    Route::patch('/seo/settings', [AdminSeoController::class, 'updateSettings']);
+    Route::get('/seo/pages/{key}', [AdminSeoController::class, 'page']);
+    Route::patch('/seo/pages/{key}', [AdminSeoController::class, 'updatePage']);
+    Route::get('/seo/redirects', [AdminSeoController::class, 'redirects']);
+    Route::post('/seo/redirects', [AdminSeoController::class, 'storeRedirect']);
+    Route::patch('/seo/redirects/{redirect}', [AdminSeoController::class, 'updateRedirect']);
+    Route::delete('/seo/redirects/{redirect}', [AdminSeoController::class, 'destroyRedirect']);
 
     Route::get('/contact-messages', [AdminContactMessageController::class, 'index']);
     Route::get('/contact-messages/{contactMessage}', [AdminContactMessageController::class, 'show']);
@@ -108,6 +117,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::post('/users', [AdminUserController::class, 'store']);
     Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+    Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
 
     Route::get('/addresses', [AdminAddressController::class, 'index']);
     Route::delete('/addresses/{address}', [AdminAddressController::class, 'destroy']);

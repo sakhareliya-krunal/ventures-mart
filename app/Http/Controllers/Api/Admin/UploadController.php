@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UploadController extends Controller
@@ -20,11 +21,48 @@ class UploadController extends Controller
 
         foreach ($validated['images'] as $file) {
             $path = $file->store($folder, 'public');
-            $urls[] = '/storage/'.$path;
+            $webp = $this->createWebpDerivative($file->getRealPath(), $path);
+            $urls[] = '/storage/'.($webp ?: $path);
         }
 
         return response()->json([
             'urls' => $urls,
         ], 201);
+    }
+
+    private function createWebpDerivative(string $sourcePath, string $storedPath): ?string
+    {
+        if (! function_exists('imagewebp')) {
+            return null;
+        }
+
+        $info = @getimagesize($sourcePath);
+        $mime = $info['mime'] ?? '';
+        $image = match ($mime) {
+            'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourcePath) : false,
+            'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourcePath) : false,
+            'image/webp' => null,
+            default => false,
+        };
+
+        if ($image === null) {
+            return $storedPath;
+        }
+
+        if (! $image) {
+            return null;
+        }
+
+        $webpPath = preg_replace('/\.[^.]+$/', '.webp', $storedPath) ?: $storedPath.'.webp';
+        $absolute = Storage::disk('public')->path($webpPath);
+
+        if (! is_dir(dirname($absolute))) {
+            mkdir(dirname($absolute), 0775, true);
+        }
+
+        $created = imagewebp($image, $absolute, 82);
+        imagedestroy($image);
+
+        return $created ? $webpPath : null;
     }
 }

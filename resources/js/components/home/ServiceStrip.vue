@@ -1,27 +1,15 @@
 <script setup>
 import { brandAssets } from '@/constants/assets';
+import { homeServices } from '@/constants/home';
 
-const services = [
-  {
-    title: 'Free Shipping',
-    text: 'On every order',
-    image: brandAssets.serviceShipping,
-  },
-  {
-    title: 'Family Support',
-    text: 'Responsive help for every order',
-    image: brandAssets.serviceSupport,
-  },
-  {
-    title: 'Easy Returns',
-    text: 'Simple returns within 14 days',
-    image: brandAssets.serviceReturns,
-  },
-];
+const services = homeServices.map((service) => ({
+  ...service,
+  image: brandAssets[service.imageKey],
+}));
 </script>
 
 <template>
-  <section class="service-strip">
+  <section class="service-strip" aria-label="Shopping promises">
     <div v-for="service in services" :key="service.title" class="service-item">
       <img :src="service.image" alt="" />
       <div>

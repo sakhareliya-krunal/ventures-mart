@@ -1,15 +1,16 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { useHead } from '@unhead/vue';
-import { Heart, MessageSquareQuote, ShoppingBag, Star, X } from '@lucide/vue';
+import { Heart, MessageSquareQuote, RefreshCw, ShoppingBag, Star, Truck, X } from '@lucide/vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
-import { formatCurrency } from '@/utils/format';
+import { discountPercent, formatCurrency } from '@/utils/format';
 import { safeHtml, stripHtml } from '@/utils/html';
+import { seoHeadFromRecord } from '@/utils/seoHead';
 import { useCartStore } from '@/stores/cart';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
@@ -25,9 +26,12 @@ const wishlist = useWishlistStore();
 const activeImage = ref('');
 const activeIndex = ref(0);
 const trackEl = ref(null);
+const actionsEl = ref(null);
+const stickyVisible = ref(false);
 const reviewSuccess = ref(false);
 const reviewDialogOpen = ref(false);
 let reviewSuccessTimer = null;
+let stickyObserver = null;
 
 const reviewForm = reactive({
   author_name: '',
@@ -72,13 +76,30 @@ const reviewCountLabel = computed(() => {
   const count = Number(product.value?.reviews || 0);
   return count === 1 ? '1 review' : `${count} reviews`;
 });
-
-useHead({
-  title: () =>
-    product.value
-      ? `${product.value.name} | ${theme.brandName}`
-      : `Product | ${theme.brandName}`,
+const saleOff = computed(() =>
+  product.value ? discountPercent(product.value.price, product.value.compare_at_price) : null,
+);
+const reviewSnippets = computed(() => (products.productReviews || []).slice(0, 2));
+const lowStock = computed(() => {
+  const stock = Number(product.value?.stock ?? 0);
+  return stock > 0 && stock <= 5;
 });
+
+async function addToCart() {
+  if (!product.value || adding.value || !inStock.value) return;
+  await cart.addItem(product.value.id);
+}
+
+useHead(() =>
+  product.value
+    ? seoHeadFromRecord(product.value, {
+        title: `${product.value.name} | ${theme.brandName}`,
+        description: stripHtml(product.value.description, 160),
+        canonical: `/product/${product.value.slug}`,
+        image: product.value.image,
+      })
+    : { title: `Product | ${theme.brandName}` },
+);
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -245,12 +266,40 @@ watch(reviewDialogOpen, (isOpen) => {
   }
 });
 
+function bindStickyObserver() {
+  stickyObserver?.disconnect();
+  stickyObserver = null;
+
+  if (!actionsEl.value || typeof IntersectionObserver === 'undefined') {
+    stickyVisible.value = false;
+    return;
+  }
+
+  stickyObserver = new IntersectionObserver(
+    ([entry]) => {
+      stickyVisible.value = !entry.isIntersecting;
+    },
+    { root: null, threshold: 0, rootMargin: '-8px 0px 0px 0px' },
+  );
+  stickyObserver.observe(actionsEl.value);
+}
+
+watch(
+  () => [products.loading, product.value?.id],
+  async () => {
+    await nextTick();
+    bindStickyObserver();
+  },
+);
+
 onMounted(load);
 
 onBeforeUnmount(() => {
   clearReviewSuccessTimer();
   lockReviewScroll(false);
   window.removeEventListener('keydown', onReviewDialogKeydown);
+  stickyObserver?.disconnect();
+  stickyObserver = null;
 });
 </script>
 
@@ -290,7 +339,7 @@ onBeforeUnmount(() => {
                 aria-roledescription="slide"
                 :aria-label="`${index + 1} of ${gallery.length}`"
               >
-                <img :src="image" :alt="`${product.name} view ${index + 1}`" />
+                <img :src="image" :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`" />
               </div>
             </div>
             <div
@@ -314,7 +363,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="product-detail__stage">
-            <img :src="displayImage" :alt="product.name" />
+            <img :src="displayImage" :alt="product.seo?.metadata?.image_alt_text || product.name" />
           </div>
           <div v-if="gallery.length > 1" class="product-detail__thumbs" role="list">
             <button
@@ -326,7 +375,7 @@ onBeforeUnmount(() => {
               :aria-label="`View image ${index + 1}`"
               @click="selectThumb(image)"
             >
-              <img :src="image" :alt="`${product.name} view ${index + 1}`" />
+              <img :src="image" :alt="product.seo?.metadata?.image_alt_text || `${product.name} view ${index + 1}`" />
             </button>
           </div>
         </div>
@@ -347,11 +396,15 @@ onBeforeUnmount(() => {
             </template>
           </div>
           <div class="price price--large">
-            <strong>{{ formatCurrency(product.price) }}</strong>
-            <span v-if="product.compare_at_price">
+            <div class="price__row">
+              <strong>{{ formatCurrency(product.price) }}</strong>
+              <span v-if="saleOff" class="price__off">{{ saleOff }}% OFF</span>
+            </div>
+            <span v-if="product.compare_at_price" class="price__was">
               {{ formatCurrency(product.compare_at_price) }}
             </span>
           </div>
+          <p class="price__tax">Inclusive of taxes</p>
           <p class="product-detail__lead">{{ stripHtml(product.description, 160) }}</p>
 
           <div v-if="variants.length > 1" class="color-swatches">
@@ -377,14 +430,33 @@ onBeforeUnmount(() => {
             <li v-for="detail in product.details" :key="detail">{{ detail }}</li>
           </ul>
 
-          <div class="product-detail__actions">
+          <div v-if="reviewSnippets.length" class="product-detail__snippets">
+            <blockquote
+              v-for="review in reviewSnippets"
+              :key="`snippet-${review.id}`"
+              class="product-detail__snippet"
+            >
+              <div class="product-detail__snippet-stars" :aria-label="`${review.rating} out of 5 stars`">
+                <Star
+                  v-for="star in 5"
+                  :key="`${review.id}-s-${star}`"
+                  :size="12"
+                  :fill="star <= review.rating ? 'currentColor' : 'none'"
+                />
+              </div>
+              <p>“{{ stripHtml(review.body, 110) }}”</p>
+              <cite>{{ review.author_name }}</cite>
+            </blockquote>
+          </div>
+
+          <div ref="actionsEl" class="product-detail__actions">
             <AppButton
               size="lg"
               class="button--busy-lg"
               :disabled="adding || !inStock"
               :aria-busy="adding"
               :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
-              @click="inStock && cart.addItem(product.id)"
+              @click="addToCart"
             >
               <template v-if="!inStock">Out of stock</template>
               <template v-else>
@@ -411,11 +483,32 @@ onBeforeUnmount(() => {
               {{ wished ? 'Saved' : 'Wishlist' }}
             </AppButton>
           </div>
-          <p class="stock-note" :class="{ 'stock-note--oos': !inStock }">
-            <template v-if="inStock">
-              {{ product.stock }} in stock. Ships from Ventures Mart fulfillment.
-            </template>
-            <template v-else>Currently out of stock.</template>
+
+          <ul class="product-detail__trust" aria-label="Purchase confidence">
+            <li>
+              <Truck :size="16" aria-hidden="true" />
+              <span>
+                Free shipping on all orders ·
+                <RouterLink to="/shipping">Details</RouterLink>
+              </span>
+            </li>
+            <li>
+              <ShoppingBag :size="16" aria-hidden="true" />
+              <span>COD available at checkout</span>
+            </li>
+            <li>
+              <RefreshCw :size="16" aria-hidden="true" />
+              <span>
+                7-day replacement ·
+                <RouterLink to="/returns">Returns</RouterLink>
+              </span>
+            </li>
+          </ul>
+
+          <p class="stock-note" :class="{ 'stock-note--oos': !inStock, 'stock-note--low': lowStock }">
+            <template v-if="!inStock">Currently out of stock.</template>
+            <template v-else-if="lowStock">Only {{ product.stock }} left — ships from Ventures Mart.</template>
+            <template v-else>{{ product.stock }} in stock. Ships from Ventures Mart fulfillment.</template>
           </p>
         </div>
       </div>
@@ -423,10 +516,25 @@ onBeforeUnmount(() => {
 
     <section class="page-section product-detail__description" aria-labelledby="product-description-title">
       <h2 id="product-description-title">Description</h2>
+      <ul v-if="product.seo?.metadata?.ai_highlights?.length" class="check-list">
+        <li v-for="highlight in product.seo.metadata.ai_highlights" :key="highlight">{{ highlight }}</li>
+      </ul>
       <div class="product-detail__prose" v-html="safeHtml(product.description)" />
       <ul v-if="product.details?.length" class="check-list">
         <li v-for="detail in product.details" :key="`desc-${detail}`">{{ detail }}</li>
       </ul>
+    </section>
+
+    <section
+      v-if="product.seo?.faqs?.length"
+      class="page-section"
+      aria-labelledby="product-faq-title"
+    >
+      <h2 id="product-faq-title">Frequently asked questions</h2>
+      <article v-for="faq in product.seo.faqs" :key="faq.question" class="product-review-card">
+        <h3>{{ faq.question }}</h3>
+        <p>{{ faq.answer }}</p>
+      </article>
     </section>
 
     <section
@@ -480,6 +588,40 @@ onBeforeUnmount(() => {
       <h2>Related products</h2>
       <ProductGrid :products="products.related" />
     </section>
+
+    <div
+      v-show="stickyVisible"
+      class="product-detail__sticky"
+      :class="{ 'is-visible': stickyVisible }"
+    >
+      <div class="product-detail__sticky-inner">
+        <div class="product-detail__sticky-price">
+          <strong>{{ formatCurrency(product.price) }}</strong>
+          <span v-if="saleOff" class="price__off">{{ saleOff }}% OFF</span>
+        </div>
+        <AppButton
+          size="sm"
+          class="button--busy-sm product-detail__sticky-add"
+          :disabled="adding || !inStock"
+          :aria-busy="adding"
+          :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+          @click="addToCart"
+        >
+          <template v-if="!inStock">Out of stock</template>
+          <template v-else>
+            <span class="button__busy-label" :class="{ 'is-loading': adding }">
+              <ShoppingBag :size="16" />
+              Add
+            </span>
+            <span
+              v-if="adding"
+              class="button-spinner button-spinner--center"
+              aria-hidden="true"
+            />
+          </template>
+        </AppButton>
+      </div>
+    </div>
 
     <Teleport to="body">
       <div v-if="reviewDialogOpen" class="review-dialog">

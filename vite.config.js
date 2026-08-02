@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
+import lucidePreprocess from 'vite-plugin-lucide-preprocess';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
     plugins: [
+        lucidePreprocess(),
         laravel({
             input: ['resources/js/app.js'],
             refresh: true,

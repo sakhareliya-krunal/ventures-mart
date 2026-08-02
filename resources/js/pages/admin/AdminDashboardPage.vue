@@ -11,6 +11,7 @@ import {
 } from '@lucide/vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { orderStatusBadgeClass, orderStatusLabel } from '@/utils/adminBadges';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -250,7 +251,9 @@ onMounted(async () => {
                     {{ order.address?.full_name || order.user?.name || '—' }}
                   </td>
                   <td data-label="Status">
-                    <span class="admin-badge">{{ order.status }}</span>
+                    <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
+                      {{ orderStatusLabel(order.status) }}
+                    </span>
                   </td>
                   <td data-label="Date">{{ formatDate(order.created_at) }}</td>
                   <td data-label="Total">{{ formatCurrency(order.total) }}</td>

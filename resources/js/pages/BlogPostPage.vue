@@ -8,6 +8,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
 import { safeHtml, stripHtml } from '@/utils/html';
+import { seoHeadFromRecord } from '@/utils/seoHead';
 import { splitPostBody } from '@/utils/splitPostBody';
 
 const route = useRoute();
@@ -26,16 +27,16 @@ const lead = computed(() => {
   return stripHtml(bodyParts.value.introHtml, 160);
 });
 
-useHead({
-  title: () =>
-    post.value ? `${post.value.title} | ${theme.brandName}` : `Blog | ${theme.brandName}`,
-  meta: [
-    {
-      name: 'description',
-      content: () => lead.value || `${theme.brandName} journal`,
-    },
-  ],
-});
+useHead(() =>
+  post.value
+    ? seoHeadFromRecord(post.value, {
+        title: `${post.value.title} | ${theme.brandName}`,
+        description: lead.value || `${theme.brandName} journal`,
+        canonical: `/blog/${post.value.slug}`,
+        image: post.value.cover_image,
+      })
+    : { title: `Blog | ${theme.brandName}` },
+);
 
 function formatDate(value) {
   if (!value) {
@@ -148,6 +149,21 @@ watch(slug, load, { immediate: true });
           </AppButton>
           <AppButton to="/blog" variant="secondary" size="lg">More articles</AppButton>
         </div>
+      </div>
+    </section>
+
+    <section
+      v-if="post.seo?.faqs?.length"
+      class="article-premium__section article-premium__section--plain"
+      aria-labelledby="blog-faq-title"
+    >
+      <div class="page-section article-premium__section-inner">
+        <span class="eyebrow">FAQ</span>
+        <h2 id="blog-faq-title">Frequently asked questions</h2>
+        <article v-for="faq in post.seo.faqs" :key="faq.question" class="article-premium__prose">
+          <h3>{{ faq.question }}</h3>
+          <p>{{ faq.answer }}</p>
+        </article>
       </div>
     </section>
   </div>

@@ -773,7 +773,13 @@
 
   .footer-grid {
     gap: 1.75rem;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-brand,
+  .footer-help,
+  .footer-col:nth-child(4) {
+    grid-column: 1 / -1;
   }
 
   .footer-payments {

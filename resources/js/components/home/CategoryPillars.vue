@@ -2,36 +2,29 @@
 import { ChevronRight } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
+import { homeCategories, homePillars } from '@/constants/home';
 
 defineProps({
   eyebrow: {
     type: String,
-    default: 'Shop categories',
+    default: homeCategories.eyebrow,
   },
   title: {
     type: String,
-    default: 'Toys and lunch boxes',
+    default: homeCategories.title,
   },
   subtitle: {
     type: String,
-    default: 'Pick a category to browse playtime finds or everyday tiffins.',
+    default: homeCategories.subtitle,
   },
 });
 
-const pillars = [
-  {
-    title: 'Toys',
-    text: 'Creative play picks for building, pretend kitchens, and soft companions.',
-    href: '/category/toys',
-    image: brandAssets.pillarToys,
-  },
-  {
-    title: 'Lunch Box',
-    text: 'Steel and kids tiffins made for school, office, and everyday packing.',
-    href: '/category/lunch-box',
-    image: brandAssets.pillarLunchBox,
-  },
-];
+const pillars = homePillars.map((pillar) => ({
+  ...pillar,
+  image: pillar.href.includes('lunch')
+    ? brandAssets.pillarLunchBox
+    : brandAssets.pillarToys,
+}));
 </script>
 
 <template>

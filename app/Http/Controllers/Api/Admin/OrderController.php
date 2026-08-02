@@ -7,7 +7,6 @@ use App\Http\Resources\AdminOrderResource;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\InvoiceService;
-use App\Support\GstState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,16 +18,6 @@ class OrderController extends Controller
     }
 
     private const STATUSES = ['AwaitingPayment', 'Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
-
-    private const ADDRESS_FIELDS = [
-        'full_name',
-        'email',
-        'phone',
-        'address',
-        'city',
-        'state',
-        'postal_code',
-    ];
 
     private const COURIER_FIELDS = [
         'courier_partner',
@@ -75,22 +64,9 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order)
     {
-        if ($request->has('state')) {
-            $request->merge([
-                'state' => GstState::normalize((string) $request->input('state')) ?? $request->input('state'),
-            ]);
-        }
-
         $validated = $request->validate([
             'status' => ['sometimes', 'required', 'string', Rule::in(self::STATUSES)],
             'payment_status' => ['sometimes', 'required', 'string', Rule::in(['paid'])],
-            'full_name' => ['sometimes', 'required', 'string', 'max:120'],
-            'email' => ['sometimes', 'required', 'email', 'max:255'],
-            'phone' => ['sometimes', 'required', 'string', 'max:40'],
-            'address' => ['sometimes', 'required', 'string', 'max:255'],
-            'city' => ['sometimes', 'required', 'string', 'max:120'],
-            'state' => ['sometimes', 'required', 'string', 'max:120'],
-            'postal_code' => ['sometimes', 'required', 'string', 'max:30'],
             'courier_partner' => ['sometimes', 'nullable', 'string', 'max:120'],
             'awb_number' => ['sometimes', 'nullable', 'string', 'max:120'],
             'tracking_number' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -129,12 +105,6 @@ class OrderController extends Controller
             ) {
                 $order->payment_status = 'paid';
                 $order->paid_at = now();
-            }
-        }
-
-        foreach (self::ADDRESS_FIELDS as $field) {
-            if (array_key_exists($field, $validated)) {
-                $order->{$field} = $validated[$field];
             }
         }
 

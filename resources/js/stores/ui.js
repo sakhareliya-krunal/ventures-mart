@@ -1,15 +1,20 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const SHOW_DELAY_MS = 120;
 const TOAST_MS = 3500;
+const DEFAULT_NETWORK_LABEL = 'Connecting…';
 
 export const useUiStore = defineStore('ui', () => {
   const navigating = ref(false);
   const splashVisible = ref(true);
   const toast = ref(null);
+  const networkWaitCount = ref(0);
+  const networkLabel = ref(DEFAULT_NETWORK_LABEL);
   let showTimer = null;
   let toastTimer = null;
+
+  const networkWaiting = computed(() => networkWaitCount.value > 0);
 
   function clearShowTimer() {
     if (showTimer != null) {
@@ -48,6 +53,21 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   /**
+   * @param {string} [label]
+   */
+  function beginNetworkWait(label = DEFAULT_NETWORK_LABEL) {
+    networkLabel.value = String(label || DEFAULT_NETWORK_LABEL);
+    networkWaitCount.value += 1;
+  }
+
+  function endNetworkWait() {
+    networkWaitCount.value = Math.max(0, networkWaitCount.value - 1);
+    if (networkWaitCount.value === 0) {
+      networkLabel.value = DEFAULT_NETWORK_LABEL;
+    }
+  }
+
+  /**
    * @param {string} message
    * @param {{ type?: 'success'|'error', durationMs?: number }} [options]
    */
@@ -72,10 +92,14 @@ export const useUiStore = defineStore('ui', () => {
     navigating,
     splashVisible,
     toast,
+    networkWaiting,
+    networkLabel,
     startNavigating,
     stopNavigating,
     dismissSplash,
     showToast,
     dismissToast,
+    beginNetworkWait,
+    endNetworkWait,
   };
 });

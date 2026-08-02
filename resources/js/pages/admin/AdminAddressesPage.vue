@@ -83,9 +83,11 @@ watch(search, load);
             </td>
             <td data-label="Default">{{ address.is_default ? 'Yes' : 'No' }}</td>
             <td data-label="Actions">
-              <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(address.id)">
-                Delete
-              </AppButton>
+              <div class="admin-actions">
+                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(address.id)">
+                  Delete
+                </AppButton>
+              </div>
             </td>
           </tr>
         </tbody>

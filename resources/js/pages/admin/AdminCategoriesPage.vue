@@ -1,9 +1,11 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -23,6 +25,10 @@ const form = reactive({
   image: '',
   featured: false,
   sort_order: 0,
+  seo: blankSeoFields(),
+  faqs: [],
+  seo_score: 0,
+  suggested_links: [],
 });
 
 function resetForm() {
@@ -35,6 +41,10 @@ function resetForm() {
     image: '',
     featured: false,
     sort_order: 0,
+    seo: blankSeoFields(),
+    faqs: [],
+    seo_score: 0,
+    suggested_links: [],
   });
 }
 
@@ -49,6 +59,7 @@ function edit(category) {
     featured: Boolean(category.featured),
     sort_order: category.sort_order || 0,
   });
+  fillSeoFields(form, category);
 }
 
 async function load({ silent = false } = {}) {
@@ -65,10 +76,19 @@ async function save() {
   saving.value = true;
   error.value = '';
   try {
+    const seoErrors = validateSeoFields(form);
+    if (Object.keys(seoErrors).length) {
+      error.value = Object.values(seoErrors)[0][0];
+      saving.value = false;
+      return;
+    }
+    const payload = { ...form, ...buildSeoPayload(form) };
+    delete payload.seo_score;
+    delete payload.suggested_links;
     if (editingId.value) {
-      await api.put(`/admin/categories/${editingId.value}`, { ...form });
+      await api.put(`/admin/categories/${editingId.value}`, payload);
     } else {
-      await api.post('/admin/categories', { ...form });
+      await api.post('/admin/categories', payload);
     }
     resetForm();
     await load({ silent: true });
@@ -133,7 +153,7 @@ onMounted(load);
                   <AppButton type="button" variant="secondary" size="sm" @click="edit(category)">
                     Edit
                   </AppButton>
-                  <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(category.id)">
+                  <AppButton type="button" variant="danger" size="sm" @click="requestRemove(category.id)">
                     Delete
                   </AppButton>
                 </div>
@@ -156,6 +176,12 @@ onMounted(load);
         </div>
         <label>Image URL <input v-model="form.image" /></label>
         <label>Description <textarea v-model="form.description" rows="3" /></label>
+        <AdminSeoTab
+          :form="form"
+          :fallback-title="form.name ? `${form.name} | Ventures Mart` : 'Category | Ventures Mart'"
+          :fallback-description="form.description"
+          :fallback-url="form.slug ? `/category/${form.slug}` : '/category'"
+        />
         <div class="admin-actions">
           <AppButton type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</AppButton>
           <AppButton type="button" variant="ghost" @click="resetForm">Cancel</AppButton>

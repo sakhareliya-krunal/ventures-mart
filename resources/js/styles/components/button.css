@@ -52,8 +52,15 @@
 }
 
 .button--danger {
-  background: var(--color-secondary);
-  color: var(--color-surface);
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-danger) 28%, transparent);
+  color: #fff;
+}
+
+.button--danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 88%, #000);
+  border-color: color-mix(in srgb, var(--color-danger) 88%, #000);
 }
 
 .button:disabled {

@@ -3,8 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { Heart, ShoppingBag, Star } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
-import { formatCurrency } from '@/utils/format';
-import { stripHtml } from '@/utils/html';
+import { discountPercent, formatCurrency } from '@/utils/format';
 import { useCartStore } from '@/stores/cart';
 import { useWishlistStore } from '@/stores/wishlist';
 
@@ -57,6 +56,9 @@ const wished = computed(() => wishlist.isWishlisted(display.value.id));
 const adding = computed(() => cart.isAdding(display.value.id));
 const inStock = computed(() => Number(display.value.stock ?? 0) > 0);
 const hasHover = computed(() => Boolean(display.value.hover_image));
+const hasVariants = computed(() => (props.product.variants || []).length > 1);
+const showRating = computed(() => Number(display.value.reviews ?? 0) > 0 || Number(display.value.rating ?? 0) > 0);
+const saleOff = computed(() => discountPercent(display.value.price, display.value.compare_at_price));
 
 function selectVariant(slug) {
   if (slug !== selectedSlug.value) {
@@ -70,9 +72,8 @@ async function addToCart() {
 }
 
 async function toggleWish() {
-  const hasVariants = (props.product.variants || []).length > 1;
   await wishlist.toggle(display.value.id, {
-    variantId: hasVariants ? display.value.id : null,
+    variantId: hasVariants.value ? display.value.id : null,
   });
 }
 </script>
@@ -108,46 +109,66 @@ async function toggleWish() {
       >
         <Heart :size="18" :fill="wished ? 'currentColor' : 'none'" />
       </button>
+      <button
+        type="button"
+        class="product-card__cart-icon"
+        :class="{ 'is-loading': adding }"
+        :disabled="adding || !inStock"
+        :aria-busy="adding"
+        :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+        @click.stop="addToCart"
+      >
+        <span class="product-card__cart-icon-label" :class="{ 'is-loading': adding }">
+          <ShoppingBag :size="18" />
+        </span>
+        <span
+          v-if="adding"
+          class="button-spinner button-spinner--center"
+          aria-hidden="true"
+        />
+      </button>
     </div>
     <div class="product-card__body">
-      <div class="product-card__rating">
-        <Star :size="15" fill="currentColor" />
-        <span>{{ Number(display.rating).toFixed(1) }}</span>
-        <span>({{ display.reviews }})</span>
+      <div class="product-card__rating" :class="{ 'is-empty': !showRating }">
+        <template v-if="showRating">
+          <Star :size="14" fill="currentColor" />
+          <span>{{ Number(display.rating).toFixed(1) }}</span>
+          <span>({{ display.reviews }})</span>
+        </template>
       </div>
       <h3>
         <RouterLink :to="`/product/${display.slug}`">{{ display.name }}</RouterLink>
       </h3>
-      <div class="color-swatches color-swatches--compact" @click.stop>
-        <template v-if="product.variants?.length > 1">
-          <button
-            v-for="variant in product.variants"
-            :key="variant.slug"
-            type="button"
-            class="color-swatch"
-            :class="{ 'is-active': variant.slug === selectedSlug }"
-            :style="{ '--swatch-color': variant.color_hex || '#c5cdd8' }"
-            :title="variant.color_name || variant.name"
-            :aria-label="variant.color_name || variant.name"
-            @click="selectVariant(variant.slug)"
-          />
-        </template>
+      <div v-if="hasVariants" class="color-swatches color-swatches--compact" @click.stop>
+        <button
+          v-for="variant in product.variants"
+          :key="variant.slug"
+          type="button"
+          class="color-swatch"
+          :class="{ 'is-active': variant.slug === selectedSlug }"
+          :style="{ '--swatch-color': variant.color_hex || '#c5cdd8' }"
+          :title="variant.color_name || variant.name"
+          :aria-label="variant.color_name || variant.name"
+          @click="selectVariant(variant.slug)"
+        />
       </div>
-      <p>{{ stripHtml(display.description, 120) }}</p>
       <div class="product-card__footer">
-        <div class="price">
-          <strong>{{ formatCurrency(display.price) }}</strong>
-          <span v-if="display.compare_at_price">
+        <div class="price product-card__price">
+          <div class="price__row">
+            <strong>{{ formatCurrency(display.price) }}</strong>
+            <span v-if="saleOff" class="price__off">{{ saleOff }}% OFF</span>
+          </div>
+          <span v-if="display.compare_at_price" class="price__was">
             {{ formatCurrency(display.compare_at_price) }}
           </span>
         </div>
         <AppButton
           size="sm"
-          class="button--busy-sm"
+          class="button--busy-sm product-card__add"
           :disabled="adding || !inStock"
           :aria-busy="adding"
           :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
-          @click="addToCart"
+          @click.stop="addToCart"
         >
           <template v-if="!inStock">Out of stock</template>
           <template v-else>

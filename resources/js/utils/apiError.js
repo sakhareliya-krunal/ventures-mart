@@ -10,10 +10,8 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
   if (!err) return fallback;
 
   if (!err.response) {
-    if (err.code === 'ECONNABORTED' || /timeout/i.test(String(err.message || ''))) {
-      return 'The request timed out. Please try again.';
-    }
-    return 'Connection problem. Check your network and try again.';
+    // Network/timeout/offline: global loader + retries handle UX; no toast copy.
+    return '';
   }
 
   const status = err.response.status;

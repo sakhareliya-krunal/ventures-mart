@@ -5,15 +5,21 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Models\SeoRedirect;
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    public function __construct(private readonly SeoService $seo)
+    {
+    }
+
     public function index(Request $request)
     {
-        $query = Product::query()->with('category')->latest('id');
+        $query = Product::query()->with(['category', 'seoMetadata'])->latest('id');
 
         if ($search = $request->string('search')->trim()->toString()) {
             $query->where(function ($builder) use ($search) {
@@ -32,24 +38,36 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validated($request);
+        $seoPayload = $validated['seo'] ?? null;
+        $faqsPayload = $validated['faqs'] ?? null;
+        unset($validated['seo'], $validated['faqs']);
+
         $product = Product::query()->create($validated);
-        $product->load('category');
+        $this->seo->updateFor($product, $seoPayload, $faqsPayload);
+        $product->load(['category', 'seoMetadata', 'seoFaqs']);
 
         return (new ProductResource($product))->response()->setStatusCode(201);
     }
 
     public function show(Product $product)
     {
-        $product->load('category');
+        $product->load(['category', 'seoMetadata', 'seoFaqs']);
 
         return new ProductResource($product);
     }
 
     public function update(Request $request, Product $product)
     {
+        $oldSlug = $product->slug;
         $validated = $this->validated($request, $product);
+        $seoPayload = $validated['seo'] ?? null;
+        $faqsPayload = $validated['faqs'] ?? null;
+        unset($validated['seo'], $validated['faqs']);
+
         $product->fill($validated)->save();
-        $product->load('category');
+        $this->createSlugRedirect('/product/'.$oldSlug, '/product/'.$product->slug);
+        $this->seo->updateFor($product, $seoPayload, $faqsPayload);
+        $product->load(['category', 'seoMetadata', 'seoFaqs']);
 
         return new ProductResource($product);
     }
@@ -100,7 +118,7 @@ class ProductController extends Controller
                 'max:120',
                 Rule::unique('products', 'external_id')->ignore($product?->id),
             ],
-        ]);
+        ] + $this->seo->seoRules());
 
         $validated['slug'] = filled($validated['slug'] ?? null)
             ? $validated['slug']
@@ -153,5 +171,17 @@ class ProductController extends Controller
         }
 
         return $validated;
+    }
+
+    private function createSlugRedirect(string $oldPath, string $newPath): void
+    {
+        if ($oldPath === $newPath) {
+            return;
+        }
+
+        SeoRedirect::query()->updateOrCreate(
+            ['old_path' => $oldPath],
+            ['target_path' => $newPath, 'status_code' => 301, 'is_active' => true],
+        );
     }
 }

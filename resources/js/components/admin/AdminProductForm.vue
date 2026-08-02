@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { ChevronLeft, ChevronRight, ImagePlus, Trash2 } from '@lucide/vue';
 import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
+import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import api from '@/services/api';
@@ -299,6 +300,14 @@ function addPath() {
           </div>
         </div>
       </section>
+
+      <AdminSeoTab
+        :form="form"
+        :field-errors="fieldErrors"
+        :fallback-title="form.name ? `${form.name} | Ventures Mart` : 'Product | Ventures Mart'"
+        :fallback-description="form.description"
+        :fallback-url="form.slug ? `/product/${form.slug}` : '/product'"
+      />
 
       <div class="admin-actions">
         <AppButton type="button" variant="ghost" :disabled="busy" @click="emit('cancel')">

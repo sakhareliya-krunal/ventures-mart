@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
                 <span class="admin-badge">×{{ row.occurrence_count || 1 }}</span>
               </td>
               <td data-label="Actions">
-                <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(row.uuid)">
+                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(row.uuid)">
                   Delete
                 </AppButton>
               </td>
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
           >
             Reopen
           </AppButton>
-          <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(selected.uuid)">
+          <AppButton type="button" variant="danger" size="sm" @click="requestRemove(selected.uuid)">
             Delete
           </AppButton>
         </div>

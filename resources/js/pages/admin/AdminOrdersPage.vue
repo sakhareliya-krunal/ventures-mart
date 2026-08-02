@@ -7,6 +7,12 @@ import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import {
+  orderStatusBadgeClass,
+  orderStatusLabel,
+  paymentStatusBadgeClass,
+  paymentStatusLabel,
+} from '@/utils/adminBadges';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
 const route = useRoute();
@@ -124,11 +130,21 @@ watch([search, status], load);
               {{ order.address?.full_name || order.user?.name || '—' }}
               <div class="admin-muted">{{ order.address?.email }}</div>
             </td>
-            <td data-label="Status"><span class="admin-badge">{{ order.status }}</span></td>
+            <td data-label="Status">
+              <div class="admin-status-cell">
+                <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
+                  {{ orderStatusLabel(order.status) }}
+                </span>
+              </div>
+            </td>
             <td data-label="Payment">
-              <span class="admin-badge">{{ order.payment_status || '—' }}</span>
-              <div class="admin-muted">
-                {{ order.payment_method === 'cod' ? 'COD' : (order.payment_method || '—') }}
+              <div class="admin-payment-cell">
+                <span class="admin-badge" :class="paymentStatusBadgeClass(order.payment_status)">
+                  {{ paymentStatusLabel(order.payment_status) }}
+                </span>
+                <span class="admin-muted">
+                  {{ order.payment_method === 'cod' ? 'COD' : (order.payment_method || '—') }}
+                </span>
               </div>
             </td>
             <td data-label="Total">{{ formatCurrency(order.total) }}</td>
@@ -137,7 +153,7 @@ watch([search, status], load);
                 <AppButton type="button" variant="secondary" size="sm" @click="openOrder(order)">
                   View
                 </AppButton>
-                <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(order.id)">
+                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(order.id)">
                   Delete
                 </AppButton>
               </div>

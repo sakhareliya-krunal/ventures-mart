@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,7 @@ class PostResource extends JsonResource
             ),
             'cover_image' => $this->cover_image,
             'published_at' => $this->published_at?->toIso8601String(),
+            'seo' => app(SeoService::class)->serializeForResource($this->resource),
         ];
     }
 }

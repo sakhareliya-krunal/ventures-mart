@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +19,7 @@ class CategoryResource extends JsonResource
             'image' => $this->image,
             'featured' => (bool) $this->featured,
             'sort_order' => (int) ($this->sort_order ?? 0),
+            'seo' => app(SeoService::class)->serializeForResource($this->resource),
         ];
     }
 }

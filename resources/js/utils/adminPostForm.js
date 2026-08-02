@@ -1,4 +1,5 @@
 import { isEmptyHtml } from '@/utils/html';
+import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
 
 export function blankPostForm() {
   return {
@@ -8,6 +9,10 @@ export function blankPostForm() {
     body: '',
     cover_image: '',
     published_at: '',
+    seo: blankSeoFields(),
+    faqs: [],
+    seo_score: 0,
+    suggested_links: [],
   };
 }
 
@@ -38,7 +43,7 @@ export function validatePostForm(form) {
   if (form.published_at && fromDatetimeLocal(form.published_at) === null) {
     errors.published_at = ['Enter a valid publish date and time.'];
   }
-  return errors;
+  return { ...errors, ...validateSeoFields(form) };
 }
 
 export function buildPostPayload(form) {
@@ -49,7 +54,20 @@ export function buildPostPayload(form) {
     body: String(form.body || '').trim(),
     cover_image: String(form.cover_image || '').trim() || null,
     published_at: fromDatetimeLocal(form.published_at),
+    ...buildSeoPayload(form),
   };
+}
+
+export function fillPostForm(form, post) {
+  Object.assign(form, {
+    title: post.title || '',
+    slug: post.slug || '',
+    excerpt: post.excerpt || '',
+    body: post.body || '',
+    cover_image: post.cover_image || '',
+    published_at: toDatetimeLocal(post.published_at),
+  });
+  fillSeoFields(form, post);
 }
 
 export function apiErrorMessage(err, fallback) {

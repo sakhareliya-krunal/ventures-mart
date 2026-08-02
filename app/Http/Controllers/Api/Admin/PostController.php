@@ -5,14 +5,20 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
+use App\Models\SeoRedirect;
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
+    public function __construct(private readonly SeoService $seo)
+    {
+    }
+
     public function index(Request $request)
     {
-        $query = Post::query()->latest('id');
+        $query = Post::query()->with('seoMetadata')->latest('id');
 
         if ($search = $request->string('search')->trim()->toString()) {
             $query->where(function ($builder) use ($search) {
@@ -30,20 +36,34 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validated($request);
+        $seoPayload = $validated['seo'] ?? null;
+        $faqsPayload = $validated['faqs'] ?? null;
+        unset($validated['seo'], $validated['faqs']);
         $post = Post::query()->create($validated);
+        $this->seo->updateFor($post, $seoPayload, $faqsPayload);
+        $post->load(['seoMetadata', 'seoFaqs']);
 
         return (new PostResource($post))->response()->setStatusCode(201);
     }
 
     public function show(Post $post)
     {
+        $post->load(['seoMetadata', 'seoFaqs']);
+
         return new PostResource($post);
     }
 
     public function update(Request $request, Post $post)
     {
+        $oldSlug = $post->slug;
         $validated = $this->validated($request, $post);
+        $seoPayload = $validated['seo'] ?? null;
+        $faqsPayload = $validated['faqs'] ?? null;
+        unset($validated['seo'], $validated['faqs']);
         $post->fill($validated)->save();
+        $this->createSlugRedirect('/blog/'.$oldSlug, '/blog/'.$post->slug);
+        $this->seo->updateFor($post, $seoPayload, $faqsPayload);
+        $post->load(['seoMetadata', 'seoFaqs']);
 
         return new PostResource($post);
     }
@@ -64,7 +84,7 @@ class PostController extends Controller
             'body' => ['required', 'string'],
             'cover_image' => ['nullable', 'string', 'max:500'],
             'published_at' => ['nullable', 'date'],
-        ]);
+        ] + $this->seo->seoRules());
 
         $validated['slug'] = $this->uniqueSlug(
             $validated['slug'] ?? null,
@@ -73,6 +93,18 @@ class PostController extends Controller
         );
 
         return $validated;
+    }
+
+    private function createSlugRedirect(string $oldPath, string $newPath): void
+    {
+        if ($oldPath === $newPath) {
+            return;
+        }
+
+        SeoRedirect::query()->updateOrCreate(
+            ['old_path' => $oldPath],
+            ['target_path' => $newPath, 'status_code' => 301, 'is_active' => true],
+        );
     }
 
     private function uniqueSlug(?string $slug, string $title, ?int $ignoreId = null): string

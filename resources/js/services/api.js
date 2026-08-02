@@ -1,12 +1,14 @@
 import axios from 'axios';
 import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
 
-const ADMIN_NETWORK_MAX_RETRIES = 20;
-const ADMIN_NETWORK_RETRY_DELAY_MS = 1500;
+const NETWORK_GET_MAX_RETRIES = 20;
+const NETWORK_MUTATION_MAX_RETRIES = 3;
+const NETWORK_RETRY_DELAY_MS = 1500;
+const SLOW_NETWORK_MS = 600;
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 8000,
+  timeout: 20000,
   withCredentials: true,
   headers: {
     Accept: 'application/json',
@@ -45,14 +47,32 @@ export async function ensureCsrfCookie({ force = false } = {}) {
   await csrfPromise;
 }
 
-function toastError(message) {
-  import('@/stores/ui')
+function withUiStore(callback) {
+  return import('@/stores/ui')
     .then(({ useUiStore }) => {
-      useUiStore().showToast(message, { type: 'error', durationMs: 4500 });
+      callback(useUiStore());
     })
     .catch(() => {
       // Pinia may not be ready during early boot.
     });
+}
+
+function toastError(message) {
+  withUiStore((ui) => {
+    ui.showToast(message, { type: 'error', durationMs: 4500 });
+  });
+}
+
+function beginNetworkWait(label = 'Connecting…') {
+  withUiStore((ui) => {
+    ui.beginNetworkWait(label);
+  });
+}
+
+function endNetworkWait() {
+  withUiStore((ui) => {
+    ui.endNetworkWait();
+  });
 }
 
 function shouldSkipGlobalToast(config = {}) {
@@ -64,12 +84,48 @@ function isQuietUnauthRequest(config = {}) {
   return url.includes('/user') && (config.method || 'get').toLowerCase() === 'get';
 }
 
-function isAdminRequest(config = {}) {
-  return String(config.url || '').includes('/admin');
-}
-
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function clearSlowNetworkTimer(config) {
+  if (config.__slowNetworkTimer) {
+    clearTimeout(config.__slowNetworkTimer);
+    config.__slowNetworkTimer = null;
+  }
+}
+
+function releaseNetworkWait(config) {
+  clearSlowNetworkTimer(config);
+  if (config.__networkWaitActive) {
+    config.__networkWaitActive = false;
+    endNetworkWait();
+  }
+}
+
+function ensureNetworkWait(config, label = 'Connecting…') {
+  if (config.__networkWaitActive) {
+    return;
+  }
+  config.__networkWaitActive = true;
+  beginNetworkWait(label);
+}
+
+function scheduleSlowNetworkWait(config) {
+  if (config.__slowNetworkTimer || config.__networkWaitActive) {
+    return;
+  }
+
+  config.__slowNetworkTimer = setTimeout(() => {
+    config.__slowNetworkTimer = null;
+    ensureNetworkWait(config, 'Connecting…');
+  }, SLOW_NETWORK_MS);
+}
+
+function maxRetriesForMethod(method) {
+  return ['get', 'head', 'options'].includes(method)
+    ? NETWORK_GET_MAX_RETRIES
+    : NETWORK_MUTATION_MAX_RETRIES;
 }
 
 api.interceptors.request.use(async (config) => {
@@ -86,11 +142,16 @@ api.interceptors.request.use(async (config) => {
     config.headers['X-CSRF-TOKEN'] = token;
   }
 
+  scheduleSlowNetworkWait(config);
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    releaseNetworkWait(response.config || {});
+    return response;
+  },
   async (error) => {
     const config = error.config || {};
     const status = error.response?.status;
@@ -111,24 +172,26 @@ api.interceptors.response.use(
       }
     }
 
-    if (isNetworkOrTimeoutError(error) && isAdminRequest(config)) {
+    if (isNetworkOrTimeoutError(error)) {
       const method = (config.method || 'get').toLowerCase();
-      if (method === 'get') {
-        const attempt = config.__adminNetworkRetries || 0;
-        if (attempt < ADMIN_NETWORK_MAX_RETRIES) {
-          config.__adminNetworkRetries = attempt + 1;
-          await sleep(ADMIN_NETWORK_RETRY_DELAY_MS);
-          return api.request(config);
-        }
+      const attempt = config.__networkRetries || 0;
+      const maxRetries = maxRetriesForMethod(method);
+
+      if (attempt < maxRetries) {
+        config.__networkRetries = attempt + 1;
+        ensureNetworkWait(config, 'Connecting…');
+        await sleep(NETWORK_RETRY_DELAY_MS);
+        return api.request(config);
       }
 
+      releaseNetworkWait(config);
       return Promise.reject(error);
     }
 
+    releaseNetworkWait(config);
+
     if (!shouldSkipGlobalToast(config)) {
-      if (!error.response) {
-        toastError(friendlyApiError(error));
-      } else if (status === 419) {
+      if (status === 419) {
         toastError(friendlyApiError(error));
       } else if (status === 429) {
         toastError(friendlyApiError(error));

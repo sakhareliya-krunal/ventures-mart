@@ -134,10 +134,13 @@ class AdminPanelTest extends TestCase
             'state' => 'Gujarat',
             'postal_code' => '395001',
         ])
-            ->assertOk()
-            ->assertJsonPath('data.address.full_name', 'Updated Buyer')
-            ->assertJsonPath('data.address.city', 'Surat')
-            ->assertJsonPath('data.address.postal_code', '395001');
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Nothing to update.');
+
+        $order->refresh();
+        $this->assertSame('Admin Buyer', $order->full_name);
+        $this->assertSame('Ahmedabad', $order->city);
+        $this->assertSame('380001', $order->postal_code);
 
         $this->deleteJson("/api/admin/orders/{$order->id}")
             ->assertOk()

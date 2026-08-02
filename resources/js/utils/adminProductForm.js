@@ -1,3 +1,5 @@
+import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
+
 export function blankProductForm() {
   return {
     name: '',
@@ -11,6 +13,10 @@ export function blankProductForm() {
     images: [],
     description: '',
     badge: '',
+    seo: blankSeoFields(),
+    faqs: [],
+    seo_score: 0,
+    suggested_links: [],
   };
 }
 
@@ -34,6 +40,7 @@ export function fillProductForm(form, product) {
     description: product.description || '',
     badge: product.badge || '',
   });
+  fillSeoFields(form, product);
 }
 
 export function buildProductPayload(form) {
@@ -52,6 +59,7 @@ export function buildProductPayload(form) {
     gallery: images.slice(1),
     description: form.description || '',
     badge: form.badge || null,
+    ...buildSeoPayload(form),
   };
 }
 
@@ -68,7 +76,7 @@ export function validateProductForm(form) {
     errors.stock = ['Enter a valid stock quantity.'];
   }
   if (!images.length) errors.image = ['At least one product image is required.'];
-  return errors;
+  return { ...errors, ...validateSeoFields(form) };
 }
 
 export function apiErrorMessage(err, fallback) {

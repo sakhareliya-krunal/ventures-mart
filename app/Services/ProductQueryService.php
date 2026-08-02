@@ -91,6 +91,7 @@ class ProductQueryService
                     ->orWhereJsonContains('tags', 'featured');
             })
             ->orderByDesc('rating')
+            ->limit($limit * 3)
             ->get();
 
         return $this->groupForListing($products)->take($limit)->values();
@@ -104,6 +105,7 @@ class ProductQueryService
             ->whereNotNull('compare_at_price')
             ->whereColumn('compare_at_price', '>', 'price')
             ->orderByDesc('rating')
+            ->limit($limit * 3)
             ->get();
 
         return $this->groupForListing($products)->take($limit)->values();
@@ -124,6 +126,7 @@ class ProductQueryService
                 fn (Builder $query) => $query->where('id', '!=', $product->id),
             )
             ->orderByDesc('rating')
+            ->limit($limit * 3)
             ->get();
 
         return $this->groupForListing($products)

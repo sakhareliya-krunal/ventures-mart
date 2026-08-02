@@ -10,7 +10,7 @@ import {
   apiErrorMessage,
   blankPostForm,
   buildPostPayload,
-  toDatetimeLocal,
+  fillPostForm,
   validatePostForm,
 } from '@/utils/adminPostForm';
 import { isNetworkOrTimeoutError } from '@/utils/apiError';
@@ -37,14 +37,7 @@ async function load() {
   try {
     const { data } = await api.get(`/admin/posts/${route.params.id}`);
     const full = unwrapData(data);
-    Object.assign(form, {
-      title: full.title || '',
-      slug: full.slug || '',
-      excerpt: full.excerpt || '',
-      body: full.body || '',
-      cover_image: full.cover_image || '',
-      published_at: toDatetimeLocal(full.published_at),
-    });
+    fillPostForm(form, full);
   } catch (err) {
     if (isNetworkOrTimeoutError(err)) {
       holdLoader = true;

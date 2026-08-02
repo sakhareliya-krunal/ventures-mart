@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductCardResource;
 use App\Http\Resources\ProductResource;
 use App\Services\ProductQueryService;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class ProductController extends Controller
     {
         $items = $this->products->query($request->only(['q', 'category', 'min_price', 'max_price', 'sort']));
 
-        return ProductResource::collection($items);
+        return ProductCardResource::collection($items);
     }
 
     public function priceBounds()
@@ -27,12 +28,12 @@ class ProductController extends Controller
 
     public function featured()
     {
-        return ProductResource::collection($this->products->featured());
+        return ProductCardResource::collection($this->products->featured());
     }
 
     public function sale()
     {
-        return ProductResource::collection($this->products->sale());
+        return ProductCardResource::collection($this->products->sale());
     }
 
     public function show(string $slug)
@@ -42,7 +43,7 @@ class ProductController extends Controller
         abort_if(! $product, 404);
 
         return (new ProductResource($product))->additional([
-            'related' => ProductResource::collection($this->products->related($product)),
+            'related' => ProductCardResource::collection($this->products->related($product)),
         ]);
     }
 }

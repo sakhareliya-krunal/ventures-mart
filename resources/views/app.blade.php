@@ -4,7 +4,32 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Ventures Mart') }}</title>
+    <title>{{ $seo['title'] ?? config('app.name', 'Ventures Mart') }}</title>
+    <meta name="description" content="{{ $seo['description'] ?? '' }}">
+    <meta name="robots" content="{{ $seo['robots'] ?? 'index,follow' }}">
+    @if (! empty($seo['verification']['google_site_verification']))
+    <meta name="google-site-verification" content="{{ $seo['verification']['google_site_verification'] }}">
+    @endif
+    @if (! empty($seo['canonical']))
+    <link rel="canonical" href="{{ $seo['canonical'] }}">
+    @endif
+    @foreach (($seo['hreflang'] ?? []) as $alternate)
+    <link rel="alternate" hreflang="{{ $alternate['locale'] }}" href="{{ $alternate['url'] }}">
+    @endforeach
+    <meta property="og:site_name" content="{{ config('app.name', 'Ventures Mart') }}">
+    <meta property="og:type" content="{{ $seo['og']['type'] ?? 'website' }}">
+    <meta property="og:title" content="{{ $seo['og']['title'] ?? ($seo['title'] ?? config('app.name', 'Ventures Mart')) }}">
+    <meta property="og:description" content="{{ $seo['og']['description'] ?? ($seo['description'] ?? '') }}">
+    <meta property="og:url" content="{{ $seo['og']['url'] ?? ($seo['canonical'] ?? url()->current()) }}">
+    @if (! empty($seo['og']['image']))
+    <meta property="og:image" content="{{ $seo['og']['image'] }}">
+    @endif
+    <meta name="twitter:card" content="{{ $seo['twitter']['card'] ?? 'summary_large_image' }}">
+    <meta name="twitter:title" content="{{ $seo['twitter']['title'] ?? ($seo['title'] ?? config('app.name', 'Ventures Mart')) }}">
+    <meta name="twitter:description" content="{{ $seo['twitter']['description'] ?? ($seo['description'] ?? '') }}">
+    @if (! empty($seo['twitter']['image']))
+    <meta name="twitter:image" content="{{ $seo['twitter']['image'] }}">
+    @endif
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="apple-touch-icon" href="/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,11 +179,38 @@
     <script>
         window.__APP__ = {
             googleClientId: @json(config('services.google.client_id')),
+            seo: @json($seo ?? []),
         };
     </script>
+    @foreach (($seo['json_ld'] ?? []) as $schema)
+    <script type="application/ld+json">@json($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+    @endforeach
+    @if (! empty($seo['analytics']['gtm_container_id']))
+    <script>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer',@json($seo['analytics']['gtm_container_id']));
+    </script>
+    @elseif (! empty($seo['analytics']['ga_measurement_id']))
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ $seo['analytics']['ga_measurement_id'] }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', @json($seo['analytics']['ga_measurement_id']));
+    </script>
+    @endif
     @vite(['resources/js/app.js'])
 </head>
 <body>
+    @if (! empty($seo['analytics']['gtm_container_id']))
+    <noscript>
+        <iframe src="https://www.googletagmanager.com/ns.html?id={{ $seo['analytics']['gtm_container_id'] }}"
+            height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    @endif
     <div id="brand-splash" class="brand-splash" role="status" aria-live="polite" aria-label="Loading Ventures Mart">
         <span class="brand-splash__orb brand-splash__orb--1" aria-hidden="true"></span>
         <span class="brand-splash__orb brand-splash__orb--2" aria-hidden="true"></span>

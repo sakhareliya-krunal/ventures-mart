@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { ImagePlus, Trash2 } from '@lucide/vue';
 import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
+import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import api from '@/services/api';
 
@@ -217,6 +218,13 @@ function addPath() {
         />
         <small v-if="fieldError('body')" class="form-error">{{ fieldError('body') }}</small>
       </div>
+      <AdminSeoTab
+        :form="form"
+        :field-errors="fieldErrors"
+        :fallback-title="form.title ? `${form.title} | Ventures Mart` : 'Blog post | Ventures Mart'"
+        :fallback-description="form.excerpt"
+        :fallback-url="form.slug ? `/blog/${form.slug}` : '/blog'"
+      />
       <div class="admin-actions">
         <AppButton type="button" :disabled="busy" @click="$emit('submit')">
           {{ saving ? 'Saving…' : submitLabel }}

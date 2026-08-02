@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
                   <AppButton type="button" variant="secondary" size="sm" @click="openEdit(product)">
                     Edit
                   </AppButton>
-                  <AppButton type="button" variant="ghost" size="sm" @click="requestRemove(product.id)">
+                  <AppButton type="button" variant="danger" size="sm" @click="requestRemove(product.id)">
                     Delete
                   </AppButton>
                 </div>

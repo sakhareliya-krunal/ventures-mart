@@ -4,6 +4,8 @@ const REVEAL_SELECTORS = [
   '.product-card',
   '.category-card',
   '.category-pillar',
+  '.home-why__item',
+  '.home-trust__quote',
   '.product-detail__gallery',
   '.product-detail__copy',
   '.page-hero',
@@ -17,7 +19,7 @@ const REVEAL_SELECTORS = [
 ].join(', ');
 
 const SOFT_SELECTORS =
-  '.product-card, .category-card, .category-pillar, .about-value, .article-premium__section';
+  '.product-card, .category-card, .category-pillar, .about-value, .home-why__item, .home-trust__quote, .article-premium__section';
 const VIEWPORT_MARGIN = 100;
 
 let observer = null;

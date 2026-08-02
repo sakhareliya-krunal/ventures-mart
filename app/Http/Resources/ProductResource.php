@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -37,6 +38,7 @@ class ProductResource extends JsonResource
             'color_hex' => $this->color_hex,
             'gallery' => $this->localGallery(),
             'variants' => $this->variantPayload(),
+            'seo' => app(SeoService::class)->serializeForResource($this->resource),
         ];
     }
 
