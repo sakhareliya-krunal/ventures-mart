@@ -72,7 +72,7 @@ class ProductQueryService
 
     public function findBySlug(string $slug): ?Product
     {
-        $product = Product::query()->active()->with('category')->where('slug', $slug)->first();
+        $product = Product::query()->active()->with(['category', 'seoMetadata', 'seoFaqs'])->where('slug', $slug)->first();
 
         if ($product) {
             $product->setRelation('colorVariants', $product->siblingVariants());

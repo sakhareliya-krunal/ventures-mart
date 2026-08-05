@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
       <p v-if="listError" class="form-error">{{ listError }}</p>
       <LoadingSpinner v-if="loading" page label="Loading products" />
       <div v-else class="admin-table-wrap">
-        <table class="admin-table">
+        <table class="admin-table admin-products-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -151,8 +151,12 @@ onBeforeUnmount(() => {
                     class="admin-product-cell__thumb"
                     :src="product.image"
                     :alt="product.name"
+                    width="56"
+                    height="56"
+                    loading="lazy"
+                    decoding="async"
                   />
-                  <div>
+                  <div class="admin-product-cell__copy">
                     <strong>{{ product.name }}</strong>
                     <div class="admin-muted">{{ product.category_name || product.category }}</div>
                   </div>
@@ -163,7 +167,7 @@ onBeforeUnmount(() => {
               <td data-label="Stock">{{ product.stock }}</td>
               <td data-label="Status">
                 <span
-                  class="admin-badge"
+                  class="admin-badge admin-products-table__status"
                   :class="product.is_active === false ? 'admin-badge--warn' : 'admin-badge--ok'"
                 >
                   {{ product.is_active === false ? 'Hidden' : 'Active' }}

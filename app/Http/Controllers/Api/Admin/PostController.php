@@ -5,15 +5,18 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
-use App\Models\SeoRedirect;
+use App\Services\SeoCache;
+use App\Services\SeoRedirectService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
-    public function __construct(private readonly SeoService $seo)
-    {
+    public function __construct(
+        private readonly SeoService $seo,
+        private readonly SeoRedirectService $redirects,
+    ) {
     }
 
     public function index(Request $request)
@@ -41,6 +44,7 @@ class PostController extends Controller
         unset($validated['seo'], $validated['faqs']);
         $post = Post::query()->create($validated);
         $this->seo->updateFor($post, $seoPayload, $faqsPayload);
+        SeoCache::forgetSitemap();
         $post->load(['seoMetadata', 'seoFaqs']);
 
         return (new PostResource($post))->response()->setStatusCode(201);
@@ -61,8 +65,9 @@ class PostController extends Controller
         $faqsPayload = $validated['faqs'] ?? null;
         unset($validated['seo'], $validated['faqs']);
         $post->fill($validated)->save();
-        $this->createSlugRedirect('/blog/'.$oldSlug, '/blog/'.$post->slug);
+        $this->redirects->redirectSlugChange('/blog/'.$oldSlug, '/blog/'.$post->slug);
         $this->seo->updateFor($post, $seoPayload, $faqsPayload);
+        SeoCache::forgetSitemap();
         $post->load(['seoMetadata', 'seoFaqs']);
 
         return new PostResource($post);
@@ -71,6 +76,7 @@ class PostController extends Controller
     public function destroy(Post $post)
     {
         $post->delete();
+        SeoCache::forgetSitemap();
 
         return response()->json(['message' => 'Post deleted.']);
     }
@@ -93,18 +99,6 @@ class PostController extends Controller
         );
 
         return $validated;
-    }
-
-    private function createSlugRedirect(string $oldPath, string $newPath): void
-    {
-        if ($oldPath === $newPath) {
-            return;
-        }
-
-        SeoRedirect::query()->updateOrCreate(
-            ['old_path' => $oldPath],
-            ['target_path' => $newPath, 'status_code' => 301, 'is_active' => true],
-        );
     }
 
     private function uniqueSlug(?string $slug, string $title, ?int $ignoreId = null): string

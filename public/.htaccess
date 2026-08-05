@@ -24,12 +24,17 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
+# Favicon / PWA manifest MIME types
+AddType image/x-icon .ico
+AddType image/vnd.microsoft.icon .ico
+AddType application/manifest+json .webmanifest
+
 # Long-cache hashed Vite build assets and static media (CWV / repeat visits).
 <IfModule mod_headers.c>
     <If "%{REQUEST_URI} =~ m#^/build/#">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </If>
-    <If "%{REQUEST_URI} =~ m#^/(images|products|favicon)#">
+    <If "%{REQUEST_URI} =~ m#^/(images|products|favicon|apple-touch-icon|site\\.webmanifest)#">
         Header set Cache-Control "public, max-age=604800"
     </If>
 </IfModule>
@@ -42,5 +47,8 @@
     ExpiresByType image/jpeg "access plus 1 week"
     ExpiresByType image/png "access plus 1 week"
     ExpiresByType image/svg+xml "access plus 1 week"
+    ExpiresByType image/x-icon "access plus 1 week"
+    ExpiresByType image/vnd.microsoft.icon "access plus 1 week"
+    ExpiresByType application/manifest+json "access plus 1 week"
     ExpiresByType video/mp4 "access plus 1 week"
 </IfModule>

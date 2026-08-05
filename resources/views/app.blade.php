@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $seo['title'] ?? config('app.name', 'Ventures Mart') }}</title>
     <meta name="description" content="{{ $seo['description'] ?? '' }}">
+    @if (! empty($seo['keywords']))
+    <meta name="keywords" content="{{ $seo['keywords'] }}">
+    @endif
     <meta name="robots" content="{{ $seo['robots'] ?? 'index,follow' }}">
     @if (! empty($seo['verification']['google_site_verification']))
     <meta name="google-site-verification" content="{{ $seo['verification']['google_site_verification'] }}">
@@ -24,6 +27,9 @@
     <meta property="og:url" content="{{ $seo['og']['url'] ?? ($seo['canonical'] ?? url()->current()) }}">
     @if (! empty($seo['og']['image']))
     <meta property="og:image" content="{{ $seo['og']['image'] }}">
+    @if (($seo['og']['type'] ?? '') === 'product')
+    <link rel="preload" as="image" href="{{ $seo['og']['image'] }}">
+    @endif
     @endif
     <meta name="twitter:card" content="{{ $seo['twitter']['card'] ?? 'summary_large_image' }}">
     <meta name="twitter:title" content="{{ $seo['twitter']['title'] ?? ($seo['title'] ?? 'Ventures Mart') }}">
@@ -32,10 +38,12 @@
     <meta name="twitter:image" content="{{ $seo['twitter']['image'] }}">
     @endif
     <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" href="/favicon-48x48.png" sizes="48x48">
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-    <link rel="icon" type="image/png" href="/favicon-192x192.png" sizes="192x192">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#ffffff">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">

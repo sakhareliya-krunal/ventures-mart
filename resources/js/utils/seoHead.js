@@ -15,6 +15,7 @@ export function seoHeadFromRecord(record, fallback = {}) {
   const metadata = record?.seo?.metadata || {};
   const title = metadata.title || fallback.title || 'Ventures Mart';
   const description = metadata.meta_description || fallback.description || '';
+  const keywords = metadata.meta_keywords || fallback.keywords || '';
   const canonical = absoluteSeoUrl(metadata.canonical_url || fallback.canonical || '');
   const image = absoluteSeoUrl(metadata.og_image || metadata.twitter_image || fallback.image || '');
   const robots = metadata.meta_robots || fallback.robots || 'index,follow';
@@ -24,6 +25,7 @@ export function seoHeadFromRecord(record, fallback = {}) {
     title,
     meta: [
       description ? { name: 'description', content: description } : null,
+      keywords ? { name: 'keywords', content: keywords } : null,
       { name: 'robots', content: robots },
       { property: 'og:site_name', content: siteName },
       { property: 'og:type', content: fallback.ogType || 'website' },
@@ -50,6 +52,7 @@ export function seoHeadFromServer(fallback = {}, serverOverride = null) {
     (typeof window !== 'undefined' ? window.__APP__?.seo || {} : {});
   const title = server.title || fallback.title || 'Ventures Mart';
   const description = server.description || fallback.description || '';
+  const keywords = server.keywords || fallback.keywords || '';
   const canonical = absoluteSeoUrl(server.canonical || fallback.canonical || '');
   const image = absoluteSeoUrl(server.og?.image || server.twitter?.image || fallback.image || '');
   const robots = server.robots || fallback.robots || 'index,follow';
@@ -58,6 +61,7 @@ export function seoHeadFromServer(fallback = {}, serverOverride = null) {
     title,
     meta: [
       description ? { name: 'description', content: description } : null,
+      keywords ? { name: 'keywords', content: keywords } : null,
       { name: 'robots', content: robots },
       { property: 'og:site_name', content: server.og?.site_name || server.brand_name || 'Ventures Mart' },
       { property: 'og:type', content: server.og?.type || 'website' },

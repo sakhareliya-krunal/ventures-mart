@@ -12,6 +12,7 @@ class SeoMetadata extends Model
         'locale',
         'title',
         'meta_description',
+        'meta_keywords',
         'focus_keyword',
         'seo_slug',
         'canonical_url',

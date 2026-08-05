@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
-use App\Models\SeoRedirect;
+use App\Services\SeoAutoGenerator;
+use App\Services\SeoCache;
+use App\Services\SeoRedirectService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
-    public function __construct(private readonly SeoService $seo)
-    {
+    public function __construct(
+        private readonly SeoService $seo,
+        private readonly SeoAutoGenerator $autoSeo,
+        private readonly SeoRedirectService $redirects,
+    ) {
     }
 
     public function index()
@@ -31,7 +35,17 @@ class CategoryController extends Controller
         $faqsPayload = $validated['faqs'] ?? null;
         unset($validated['seo'], $validated['faqs']);
         $category = Category::query()->create($validated);
-        $this->seo->updateFor($category, $seoPayload, $faqsPayload);
+
+        $merged = $this->autoSeo->syncSeoSlug(
+            $this->autoSeo->merge(
+                $this->autoSeo->forCategory($category),
+                [],
+                $seoPayload,
+            ),
+            $category->slug,
+        );
+        $this->seo->updateFor($category, $merged, $faqsPayload);
+        SeoCache::forgetSitemap();
         $category->load(['seoMetadata', 'seoFaqs']);
 
         return (new CategoryResource($category))->response()->setStatusCode(201);
@@ -52,8 +66,19 @@ class CategoryController extends Controller
         $faqsPayload = $validated['faqs'] ?? null;
         unset($validated['seo'], $validated['faqs']);
         $category->fill($validated)->save();
-        $this->createSlugRedirect('/category/'.$oldSlug, '/category/'.$category->slug);
-        $this->seo->updateFor($category, $seoPayload, $faqsPayload);
+        $this->redirects->redirectSlugChange('/category/'.$oldSlug, '/category/'.$category->slug);
+
+        $existing = $this->seo->metadataPayload($category->seoMetadata);
+        $merged = $this->autoSeo->syncSeoSlug(
+            $this->autoSeo->merge(
+                $this->autoSeo->forCategory($category),
+                $existing,
+                $seoPayload,
+            ),
+            $category->slug,
+        );
+        $this->seo->updateFor($category, $merged, $faqsPayload);
+        SeoCache::forgetSitemap();
         $category->load(['seoMetadata', 'seoFaqs']);
 
         return new CategoryResource($category);
@@ -62,6 +87,7 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+        SeoCache::forgetSitemap();
 
         return response()->json(['message' => 'Category deleted.']);
     }
@@ -82,22 +108,12 @@ class CategoryController extends Controller
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ] + $this->seo->seoRules());
 
-        $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
+        $validated['slug'] = filled($validated['slug'] ?? null)
+            ? $validated['slug']
+            : $this->autoSeo->uniqueCategorySlug($validated['name'], $category?->id);
         $validated['featured'] = (bool) ($validated['featured'] ?? false);
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
 
         return $validated;
-    }
-
-    private function createSlugRedirect(string $oldPath, string $newPath): void
-    {
-        if ($oldPath === $newPath) {
-            return;
-        }
-
-        SeoRedirect::query()->updateOrCreate(
-            ['old_path' => $oldPath],
-            ['target_path' => $newPath, 'status_code' => 301, 'is_active' => true],
-        );
     }
 }

@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use App\Models\SeoRedirect;
+use App\Services\SeoAutoGenerator;
+use App\Services\SeoCache;
+use App\Services\SeoRedirectService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly SeoService $seo)
-    {
+    public function __construct(
+        private readonly SeoService $seo,
+        private readonly SeoAutoGenerator $autoSeo,
+        private readonly SeoRedirectService $redirects,
+    ) {
     }
 
     public function index(Request $request)
@@ -43,7 +47,18 @@ class ProductController extends Controller
         unset($validated['seo'], $validated['faqs']);
 
         $product = Product::query()->create($validated);
-        $this->seo->updateFor($product, $seoPayload, $faqsPayload);
+        $product->load('category');
+
+        $merged = $this->autoSeo->syncSeoSlug(
+            $this->autoSeo->merge(
+                $this->autoSeo->forProduct($product),
+                [],
+                $seoPayload,
+            ),
+            $product->slug,
+        );
+        $this->seo->updateFor($product, $merged, $faqsPayload);
+        SeoCache::forgetSitemap();
         $product->load(['category', 'seoMetadata', 'seoFaqs']);
 
         return (new ProductResource($product))->response()->setStatusCode(201);
@@ -65,8 +80,20 @@ class ProductController extends Controller
         unset($validated['seo'], $validated['faqs']);
 
         $product->fill($validated)->save();
-        $this->createSlugRedirect('/product/'.$oldSlug, '/product/'.$product->slug);
-        $this->seo->updateFor($product, $seoPayload, $faqsPayload);
+        $this->redirects->redirectSlugChange('/product/'.$oldSlug, '/product/'.$product->slug);
+        $product->load('category');
+
+        $existing = $this->seo->metadataPayload($product->seoMetadata);
+        $merged = $this->autoSeo->syncSeoSlug(
+            $this->autoSeo->merge(
+                $this->autoSeo->forProduct($product),
+                $existing,
+                $seoPayload,
+            ),
+            $product->slug,
+        );
+        $this->seo->updateFor($product, $merged, $faqsPayload);
+        SeoCache::forgetSitemap();
         $product->load(['category', 'seoMetadata', 'seoFaqs']);
 
         return new ProductResource($product);
@@ -75,6 +102,7 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->delete();
+        SeoCache::forgetSitemap();
 
         return response()->json(['message' => 'Product deleted.']);
     }
@@ -126,12 +154,12 @@ class ProductController extends Controller
 
         $validated['slug'] = filled($validated['slug'] ?? null)
             ? $validated['slug']
-            : Str::slug($validated['name']).'-'.Str::lower(Str::random(4));
+            : $this->autoSeo->uniqueProductSlug($validated['name'], $product?->id);
 
         if (! $product) {
             $validated['external_id'] = filled($validated['external_id'] ?? null)
                 ? $validated['external_id']
-                : 'prod-'.Str::lower(Str::random(10));
+                : 'prod-'.strtolower(bin2hex(random_bytes(5)));
             $validated['is_active'] = array_key_exists('is_active', $validated)
                 ? (bool) $validated['is_active']
                 : true;
@@ -201,17 +229,5 @@ class ProductController extends Controller
         }
 
         return $validated;
-    }
-
-    private function createSlugRedirect(string $oldPath, string $newPath): void
-    {
-        if ($oldPath === $newPath) {
-            return;
-        }
-
-        SeoRedirect::query()->updateOrCreate(
-            ['old_path' => $oldPath],
-            ['target_path' => $newPath, 'status_code' => 301, 'is_active' => true],
-        );
     }
 }

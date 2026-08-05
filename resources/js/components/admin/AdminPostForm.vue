@@ -221,6 +221,7 @@ function addPath() {
       <AdminSeoTab
         :form="form"
         :field-errors="fieldErrors"
+        bind-entity-slug
         :fallback-title="form.title ? `${form.title} | Ventures Mart` : 'Blog post | Ventures Mart'"
         :fallback-description="form.excerpt"
         :fallback-url="form.slug ? `/blog/${form.slug}` : '/blog'"

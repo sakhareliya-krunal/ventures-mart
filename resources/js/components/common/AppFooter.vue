@@ -7,7 +7,8 @@ import {
   ShieldCheck,
   Truck,
 } from '@lucide/vue';
-import { RouterLink } from 'vue-router';
+import { computed } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import {
   footerBlurb,
@@ -21,7 +22,10 @@ import {
 } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
 
+const route = useRoute();
 const theme = useThemeStore();
+
+const isProductRoute = computed(() => route.path.startsWith('/product/'));
 
 const featureIcons = {
   truck: Truck,
@@ -31,7 +35,10 @@ const featureIcons = {
 </script>
 
 <template>
-  <footer class="site-footer">
+  <footer
+    class="site-footer"
+    :class="{ 'site-footer--product-sticky': isProductRoute }"
+  >
     <div class="footer-inner">
       <div class="footer-features">
         <div

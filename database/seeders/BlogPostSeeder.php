@@ -77,7 +77,7 @@ HTML,
                 'title' => 'Gift ideas: toys and lunch boxes for birthdays',
                 'slug' => 'gift-ideas-toys-lunch-boxes-birthdays',
                 'excerpt' => 'Birthday gifts Indian families actually use—creative toys kids love and lunch boxes that earn a place in the school bag.',
-                'cover_image' => '/images/home5-slideshow2.jpg',
+                'cover_image' => '/images/blog/gift-ideas-toys-lunch-boxes.jpg',
                 'published_at' => Carbon::parse('2026-07-12 10:00:00'),
                 'body' => <<<'HTML'
 <p>Great birthday gifts solve a daily need or unlock new play. For kids in India, that often means something for school mornings or something for after-homework imagination.</p>

@@ -481,10 +481,22 @@
   box-shadow: 0 -8px 24px rgba(11, 46, 138, 0.1);
   display: none;
   left: 0;
+  opacity: 0;
   padding: 0.65rem 1rem max(0.65rem, env(safe-area-inset-bottom));
+  pointer-events: none;
   position: fixed;
   right: 0;
+  transform: translateY(110%);
+  transition: opacity 180ms ease, transform 180ms ease;
+  visibility: hidden;
   z-index: 40;
+}
+
+.product-detail__sticky.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 .product-detail__sticky-inner {
@@ -667,6 +679,10 @@
   }
 
   .product-detail__dot {
+    transition: none;
+  }
+
+  .product-detail__sticky {
     transition: none;
   }
 

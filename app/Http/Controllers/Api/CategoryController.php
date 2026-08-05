@@ -16,14 +16,14 @@ class CategoryController extends Controller
 
     public function index()
     {
-        $categories = Category::query()->orderBy('sort_order')->orderBy('name')->get();
+        $categories = Category::query()->with(['seoMetadata'])->orderBy('sort_order')->orderBy('name')->get();
 
         return CategoryResource::collection($categories);
     }
 
     public function show(string $slug)
     {
-        $category = Category::query()->where('slug', $slug)->firstOrFail();
+        $category = Category::query()->with(['seoMetadata', 'seoFaqs'])->where('slug', $slug)->firstOrFail();
 
         return (new CategoryResource($category))->additional([
             'products' => ProductResource::collection(

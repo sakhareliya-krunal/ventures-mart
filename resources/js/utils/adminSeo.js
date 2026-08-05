@@ -2,6 +2,7 @@ export function blankSeoFields() {
   return {
     title: '',
     meta_description: '',
+    meta_keywords: '',
     focus_keyword: '',
     seo_slug: '',
     canonical_url: '',
@@ -57,12 +58,15 @@ export function buildSeoPayload(form) {
     customSchema = JSON.parse(schemaText);
   }
 
+  const entitySlug = String(form.slug || form.seo?.seo_slug || '').trim();
+
   return {
     seo: {
       title: emptyToNull(form.seo.title),
       meta_description: emptyToNull(form.seo.meta_description),
+      meta_keywords: emptyToNull(form.seo.meta_keywords),
       focus_keyword: emptyToNull(form.seo.focus_keyword),
-      seo_slug: emptyToNull(form.seo.seo_slug),
+      seo_slug: emptyToNull(entitySlug),
       canonical_url: emptyToNull(form.seo.canonical_url),
       meta_robots: emptyToNull(form.seo.meta_robots) || 'index,follow',
       og_title: emptyToNull(form.seo.og_title),
@@ -101,7 +105,24 @@ export function validateSeoFields(form) {
       errors['seo.custom_schema'] = ['Custom structured data must be valid JSON.'];
     }
   }
+
+  const canonical = String(form.seo?.canonical_url || '').trim();
+  if (canonical && !/^(https?:\/\/|\/).+/i.test(canonical)) {
+    errors['seo.canonical_url'] = ['Canonical URL must start with / or http(s)://.'];
+  }
+
   return errors;
+}
+
+export function seoCharCount(value) {
+  return String(value ?? '').length;
+}
+
+export function seoLengthTone(length, { min, max, hardMax }) {
+  if (hardMax && length > hardMax) return 'danger';
+  if (length === 0) return 'muted';
+  if (length < min || length > max) return 'warn';
+  return 'ok';
 }
 
 function emptyToNull(value) {

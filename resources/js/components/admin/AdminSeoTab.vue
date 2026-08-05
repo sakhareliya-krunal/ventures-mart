@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Plus, Trash2 } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import { blankFaq } from '@/utils/adminSeo';
+import { blankFaq, seoCharCount, seoLengthTone } from '@/utils/adminSeo';
 
 const props = defineProps({
   form: {
@@ -25,6 +25,11 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  /** When set, URL slug edits the entity slug (product/category/post) instead of a dead seo_slug. */
+  bindEntitySlug: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const score = computed(() => Number(props.form.seo_score || 0));
@@ -34,6 +39,22 @@ const previewDescription = computed(() =>
   props.form.seo.meta_description || props.fallbackDescription || 'SEO description fallback will be generated automatically.',
 );
 const previewUrl = computed(() => props.form.seo.canonical_url || props.fallbackUrl || '/');
+
+const titleLength = computed(() => seoCharCount(props.form.seo.title));
+const descriptionLength = computed(() => seoCharCount(props.form.seo.meta_description));
+const titleTone = computed(() => seoLengthTone(titleLength.value, { min: 50, max: 60, hardMax: 70 }));
+const descriptionTone = computed(() => seoLengthTone(descriptionLength.value, { min: 150, max: 160, hardMax: 180 }));
+
+const robotsIndex = computed({
+  get() {
+    return !String(props.form.seo.meta_robots || 'index,follow').toLowerCase().includes('noindex');
+  },
+  set(value) {
+    const current = String(props.form.seo.meta_robots || 'index,follow');
+    const follow = /nofollow/i.test(current) ? 'nofollow' : 'follow';
+    props.form.seo.meta_robots = value ? `index,${follow}` : `noindex,${follow}`;
+  },
+});
 
 function fieldError(name) {
   const value = props.fieldErrors?.[name] || props.fieldErrors?.[`seo.${name}`];
@@ -46,6 +67,13 @@ function addFaq() {
 
 function removeFaq(index) {
   props.form.faqs.splice(index, 1);
+}
+
+function counterHint(tone, recommended) {
+  if (tone === 'danger') return `Over recommended length (${recommended}).`;
+  if (tone === 'warn') return `Aim for ${recommended}.`;
+  if (tone === 'ok') return 'Good length.';
+  return `Recommended ${recommended}.`;
 }
 </script>
 
@@ -81,6 +109,12 @@ function removeFaq(index) {
       <label class="admin-field">
         <span>SEO title</span>
         <input v-model="form.seo.title" maxlength="255" autocomplete="off" />
+        <small
+          class="admin-seo-counter"
+          :data-tone="titleTone"
+        >
+          {{ titleLength }} chars — {{ counterHint(titleTone, '50–60') }}
+        </small>
         <small v-if="fieldError('title')" class="admin-field__error">{{ fieldError('title') }}</small>
       </label>
       <label class="admin-field">
@@ -90,14 +124,45 @@ function removeFaq(index) {
       <label class="admin-field admin-field--full">
         <span>Meta description</span>
         <textarea v-model="form.seo.meta_description" rows="3" maxlength="500" />
+        <small
+          class="admin-seo-counter"
+          :data-tone="descriptionTone"
+        >
+          {{ descriptionLength }} chars — {{ counterHint(descriptionTone, '150–160') }}
+        </small>
+        <small v-if="fieldError('meta_description')" class="admin-field__error">{{ fieldError('meta_description') }}</small>
+      </label>
+      <label class="admin-field admin-field--full">
+        <span>Meta keywords</span>
+        <input
+          v-model="form.seo.meta_keywords"
+          maxlength="500"
+          placeholder="product name, category, brand"
+          autocomplete="off"
+        />
       </label>
       <label class="admin-field">
-        <span>SEO slug</span>
-        <input v-model="form.seo.seo_slug" autocomplete="off" />
+        <span>URL slug</span>
+        <input
+          v-if="bindEntitySlug"
+          v-model="form.slug"
+          placeholder="Auto-generated if empty"
+          autocomplete="off"
+        />
+        <input
+          v-else
+          v-model="form.seo.seo_slug"
+          autocomplete="off"
+        />
       </label>
       <label class="admin-field">
         <span>Canonical URL</span>
         <input v-model="form.seo.canonical_url" placeholder="Auto-generated if empty" autocomplete="off" />
+        <small v-if="fieldError('canonical_url')" class="admin-field__error">{{ fieldError('canonical_url') }}</small>
+      </label>
+      <label class="admin-field checkbox-row admin-field--robots">
+        <input v-model="robotsIndex" type="checkbox" />
+        <span>Allow search engines to index this page</span>
       </label>
       <label class="admin-field">
         <span>Meta robots</span>
@@ -173,7 +238,7 @@ function removeFaq(index) {
           Visible
         </label>
         <AppButton type="button" variant="danger" size="sm" @click="removeFaq(index)">
-          <Trash2 :size="16" /> Remove
+          <Trash2 :size="16" /> Remove FAQ
         </AppButton>
       </div>
     </div>

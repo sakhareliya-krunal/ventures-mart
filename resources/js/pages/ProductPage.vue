@@ -93,6 +93,12 @@ function productImageAlt(index = 0) {
   }
   return `${product.value.name} photo ${index + 1}`;
 }
+
+function productImageTitle(index = 0) {
+  const name = String(product.value?.name || '').trim();
+  if (!name) return '';
+  return index > 0 ? `${name} — image ${index + 1}` : name;
+}
 const reviewSnippets = computed(() => (products.productReviews || []).slice(0, 2));
 const lowStock = computed(() => {
   const stock = Number(product.value?.stock ?? 0);
@@ -115,6 +121,8 @@ useHead(() =>
         description: stripHtml(product.value.description, 160) || `Shop ${product.value.name} online at ${theme.brandName}.`,
         canonical: `/product/${product.value.slug}`,
         image: product.value.image,
+        ogType: 'product',
+        siteName: theme.brandName,
       })
     : { title: `Product | ${theme.brandName}` },
 );
@@ -284,12 +292,16 @@ watch(reviewDialogOpen, (isOpen) => {
   }
 });
 
-function bindStickyObserver() {
+function disconnectStickyObserver() {
   stickyObserver?.disconnect();
   stickyObserver = null;
+}
+
+function bindStickyObserver() {
+  disconnectStickyObserver();
+  stickyVisible.value = false;
 
   if (!actionsEl.value || typeof IntersectionObserver === 'undefined') {
-    stickyVisible.value = false;
     return;
   }
 
@@ -316,8 +328,7 @@ onBeforeUnmount(() => {
   clearReviewSuccessTimer();
   lockReviewScroll(false);
   window.removeEventListener('keydown', onReviewDialogKeydown);
-  stickyObserver?.disconnect();
-  stickyObserver = null;
+  disconnectStickyObserver();
 });
 </script>
 
@@ -361,6 +372,7 @@ onBeforeUnmount(() => {
                 <img
                   :src="image"
                   :alt="productImageAlt(index)"
+                  :title="productImageTitle(index)"
                   :loading="index === 0 ? 'eager' : 'lazy'"
                   :fetchpriority="index === 0 ? 'high' : undefined"
                 />
@@ -390,6 +402,7 @@ onBeforeUnmount(() => {
             <img
               :src="displayImage"
               :alt="productImageAlt(Math.max(0, gallery.indexOf(displayImage)))"
+              :title="productImageTitle(Math.max(0, gallery.indexOf(displayImage)))"
               fetchpriority="high"
             />
           </div>
@@ -406,6 +419,7 @@ onBeforeUnmount(() => {
               <img
                 :src="image"
                 :alt="productImageAlt(index)"
+                :title="productImageTitle(index)"
                 loading="lazy"
               />
             </button>
@@ -662,9 +676,9 @@ onBeforeUnmount(() => {
     </section>
 
     <div
-      v-show="stickyVisible"
       class="product-detail__sticky"
       :class="{ 'is-visible': stickyVisible }"
+      :aria-hidden="stickyVisible ? 'false' : 'true'"
     >
       <div class="product-detail__sticky-inner">
         <div class="product-detail__sticky-price">
@@ -677,6 +691,7 @@ onBeforeUnmount(() => {
           :disabled="adding || !inStock"
           :aria-busy="adding"
           :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+          :tabindex="stickyVisible ? 0 : -1"
           @click="addToCart"
         >
           <template v-if="!inStock">Out of stock</template>

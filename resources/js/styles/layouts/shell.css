@@ -722,6 +722,16 @@
   color: var(--color-surface);
 }
 
+@media (max-width: 1024px) {
+  .site-footer--product-sticky .footer-bottom {
+    padding-bottom: max(4.75rem, calc(4rem + env(safe-area-inset-bottom)));
+  }
+
+  .site-footer--product-sticky .footer-bottom__inner {
+    padding-bottom: 1.25rem;
+  }
+}
+
 @media (max-width: 1040px) {
   .header-main {
     display: flex;
