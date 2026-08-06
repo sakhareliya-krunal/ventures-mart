@@ -10,15 +10,22 @@ use App\Models\Order;
 use App\Models\Post;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Admin\DashboardRevenueSeries;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function stats()
+    public function __construct(private readonly DashboardRevenueSeries $revenueSeries)
+    {
+    }
+
+    public function stats(Request $request)
     {
         $todayStart = Carbon::today();
         $weekStart = Carbon::today()->subDays(6);
+        $revenue = $this->revenueSeries->build($request->query('range'));
 
         $statuses = ['Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
         $statusCounts = Order::query()
@@ -29,24 +36,6 @@ class DashboardController extends Controller
         $ordersByStatus = [];
         foreach ($statuses as $status) {
             $ordersByStatus[$status] = (int) ($statusCounts[$status] ?? 0);
-        }
-
-        $revenueByDay = Order::query()
-            ->select(DB::raw('DATE(created_at) as day'), DB::raw('SUM(total) as total'))
-            ->where('status', '!=', 'Cancelled')
-            ->where('created_at', '>=', $weekStart->copy()->startOfDay())
-            ->groupBy('day')
-            ->pluck('total', 'day');
-
-        $revenueLast7Days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $day = $weekStart->copy()->addDays($i);
-            $key = $day->toDateString();
-            $revenueLast7Days[] = [
-                'date' => $key,
-                'label' => $day->format('D'),
-                'total' => (float) ($revenueByDay[$key] ?? 0),
-            ];
         }
 
         $recentOrders = Order::query()
@@ -95,7 +84,12 @@ class DashboardController extends Controller
                 ->sum('total'),
             'revenue_total' => (float) Order::query()->tap($nonCancelled)->sum('total'),
             'orders_by_status' => $ordersByStatus,
-            'revenue_last_7_days' => $revenueLast7Days,
+            'revenue_range' => $revenue['revenue_range'],
+            'revenue_period_label' => $revenue['revenue_period_label'],
+            'revenue_period_total' => $revenue['revenue_period_total'],
+            'revenue_period_orders' => $revenue['revenue_period_orders'],
+            'revenue_series' => $revenue['revenue_series'],
+            'revenue_last_7_days' => $revenue['revenue_last_7_days'],
             'low_stock_products' => $lowStockProducts,
             'recent_messages' => $recentMessages,
             'recent_posts' => $recentPosts,

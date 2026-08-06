@@ -45,12 +45,20 @@ class AdminPanelTest extends TestCase
                     'Delivered',
                     'Cancelled',
                 ],
+                'revenue_series',
                 'revenue_last_7_days',
+                'revenue_range',
+                'revenue_period_label',
+                'revenue_period_total',
+                'revenue_period_orders',
                 'low_stock_products',
                 'recent_messages',
                 'recent_posts',
             ])
-            ->assertJsonPath('orders_by_status.Processing', 1);
+            ->assertJsonPath('orders_by_status.Processing', 1)
+            ->assertJsonPath('revenue_range', 'week')
+            ->assertJsonCount(7, 'revenue_series')
+            ->assertJsonCount(7, 'revenue_last_7_days');
 
         $this->getJson('/api/admin/orders')
             ->assertOk()
@@ -65,6 +73,39 @@ class AdminPanelTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('data.status', 'Shipped');
+    }
+
+    public function test_admin_stats_revenue_ranges(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/stats?range=day')
+            ->assertOk()
+            ->assertJsonPath('revenue_range', 'day')
+            ->assertJsonPath('revenue_period_label', 'Today')
+            ->assertJsonCount(24, 'revenue_series');
+
+        $this->getJson('/api/admin/stats?range=week')
+            ->assertOk()
+            ->assertJsonPath('revenue_range', 'week')
+            ->assertJsonCount(7, 'revenue_series');
+
+        $this->getJson('/api/admin/stats?range=month')
+            ->assertOk()
+            ->assertJsonPath('revenue_range', 'month')
+            ->assertJsonPath('revenue_period_label', 'Last 30 days')
+            ->assertJsonCount(30, 'revenue_series');
+
+        $this->getJson('/api/admin/stats?range=year')
+            ->assertOk()
+            ->assertJsonPath('revenue_range', 'year')
+            ->assertJsonPath('revenue_period_label', 'Last 12 months')
+            ->assertJsonCount(12, 'revenue_series');
+
+        $this->getJson('/api/admin/stats?range=invalid')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['range']);
     }
 
     public function test_admin_can_update_order_address_and_delete_order(): void

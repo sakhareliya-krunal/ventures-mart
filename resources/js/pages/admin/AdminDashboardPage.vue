@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
   FileText,
@@ -14,7 +14,16 @@ import api from '@/services/api';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/utils/adminBadges';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
+const revenueRanges = [
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'year', label: 'Year' },
+];
+
 const loading = ref(true);
+const chartLoading = ref(false);
+const revenueRange = ref('week');
 const stats = ref({
   orders_count: 0,
   products_count: 0,
@@ -36,6 +45,11 @@ const stats = ref({
     Delivered: 0,
     Cancelled: 0,
   },
+  revenue_range: 'week',
+  revenue_period_label: 'Last 7 days',
+  revenue_period_total: 0,
+  revenue_period_orders: 0,
+  revenue_series: [],
   revenue_last_7_days: [],
   low_stock_products: [],
   recent_messages: [],
@@ -45,8 +59,14 @@ const stats = ref({
 
 const statusOrder = ['Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
 
-const maxRevenueDay = computed(() =>
-  Math.max(1, ...stats.value.revenue_last_7_days.map((day) => Number(day.total) || 0)),
+const revenueSeries = computed(() =>
+  Array.isArray(stats.value.revenue_series) && stats.value.revenue_series.length
+    ? stats.value.revenue_series
+    : stats.value.revenue_last_7_days || [],
+);
+
+const maxRevenuePoint = computed(() =>
+  Math.max(1, ...revenueSeries.value.map((point) => Number(point.total) || 0)),
 );
 
 const statusTotal = computed(() =>
@@ -130,7 +150,7 @@ function statusShare(status) {
 }
 
 function barHeight(total) {
-  return `${Math.max(6, Math.round((Number(total) / maxRevenueDay.value) * 100))}%`;
+  return `${Math.max(6, Math.round((Number(total) / maxRevenuePoint.value) * 100))}%`;
 }
 
 function isPublished(post) {
@@ -138,26 +158,56 @@ function isPublished(post) {
   return new Date(post.published_at).getTime() <= Date.now();
 }
 
-onMounted(async () => {
+function pointKey(point, index) {
+  return point.key || point.date || `point-${index}`;
+}
+
+function applyStats(data) {
+  stats.value = {
+    ...stats.value,
+    ...data,
+    orders_by_status: {
+      ...stats.value.orders_by_status,
+      ...(data.orders_by_status || {}),
+    },
+    revenue_series: data.revenue_series || [],
+    revenue_last_7_days: data.revenue_last_7_days || [],
+    low_stock_products: data.low_stock_products || [],
+    recent_messages: data.recent_messages || [],
+    recent_posts: data.recent_posts || [],
+    recent_orders: unwrapData(data.recent_orders) || data.recent_orders || [],
+  };
+  if (data.revenue_range) {
+    revenueRange.value = data.revenue_range;
+  }
+}
+
+async function loadStats({ silent = false } = {}) {
+  if (silent) chartLoading.value = true;
+  else loading.value = true;
+
   try {
-    const { data } = await api.get('/admin/stats');
-    stats.value = {
-      ...stats.value,
-      ...data,
-      orders_by_status: {
-        ...stats.value.orders_by_status,
-        ...(data.orders_by_status || {}),
-      },
-      revenue_last_7_days: data.revenue_last_7_days || [],
-      low_stock_products: data.low_stock_products || [],
-      recent_messages: data.recent_messages || [],
-      recent_posts: data.recent_posts || [],
-      recent_orders: unwrapData(data.recent_orders) || data.recent_orders || [],
-    };
+    const { data } = await api.get('/admin/stats', {
+      params: { range: revenueRange.value },
+    });
+    applyStats(data);
   } finally {
     loading.value = false;
+    chartLoading.value = false;
   }
+}
+
+function setRevenueRange(range) {
+  if (range === revenueRange.value || chartLoading.value) return;
+  revenueRange.value = range;
+}
+
+watch(revenueRange, async (next, prev) => {
+  if (!prev || next === prev) return;
+  await loadStats({ silent: true });
 });
+
+onMounted(() => loadStats());
 </script>
 
 <template>
@@ -199,26 +249,50 @@ onMounted(async () => {
         </component>
       </section>
 
-      <section class="admin-panel admin-dash-revenue">
-        <div class="admin-toolbar">
+      <section class="admin-panel admin-dash-revenue" :aria-busy="chartLoading ? 'true' : 'false'">
+        <div class="admin-toolbar admin-dash-revenue__toolbar">
           <div>
-            <h2>Revenue · last 7 days</h2>
+            <h2>Sales · {{ stats.revenue_period_label }}</h2>
             <p class="admin-muted admin-dash-sub">
-              Today {{ formatCurrency(stats.revenue_today) }} · Week
-              {{ formatCurrency(stats.revenue_this_week) }}
+              {{ formatCurrency(stats.revenue_period_total) }}
+              · {{ stats.revenue_period_orders }}
+              {{ stats.revenue_period_orders === 1 ? 'order' : 'orders' }}
             </p>
           </div>
+          <div class="admin-dash-range" role="tablist" aria-label="Sales range">
+            <button
+              v-for="option in revenueRanges"
+              :key="option.key"
+              type="button"
+              role="tab"
+              class="admin-dash-range__btn"
+              :class="{ 'is-active': revenueRange === option.key }"
+              :aria-selected="revenueRange === option.key"
+              :disabled="chartLoading"
+              @click="setRevenueRange(option.key)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
-        <div class="admin-dash-bars" role="img" aria-label="Revenue by day for the last 7 days">
+        <div
+          class="admin-dash-bars"
+          :class="{ 'is-loading': chartLoading }"
+          :data-points="revenueSeries.length"
+          role="img"
+          :aria-label="`Revenue for ${stats.revenue_period_label}`"
+        >
           <div
-            v-for="day in stats.revenue_last_7_days"
-            :key="day.date"
+            v-for="(point, index) in revenueSeries"
+            :key="pointKey(point, index)"
             class="admin-dash-bar"
-            :title="`${day.date}: ${formatCurrency(day.total)}`"
+            :title="`${point.key || point.date}: ${formatCurrency(point.total)}`"
           >
-            <div class="admin-dash-bar__fill" :style="{ height: barHeight(day.total) }" />
-            <span class="admin-dash-bar__label">{{ day.label }}</span>
-            <span class="admin-dash-bar__value">{{ formatCurrency(day.total) }}</span>
+            <div class="admin-dash-bar__track">
+              <div class="admin-dash-bar__fill" :style="{ height: barHeight(point.total) }" />
+            </div>
+            <span class="admin-dash-bar__label">{{ point.label }}</span>
+            <span class="admin-dash-bar__value">{{ formatCurrency(point.total) }}</span>
           </div>
         </div>
       </section>
