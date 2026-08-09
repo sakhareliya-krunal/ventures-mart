@@ -7,7 +7,8 @@
         @if ($order->phone)<span class="muted">{{ $order->phone }}</span><br>@endif
         @if ($order->email)<span class="muted">{{ $order->email }}</span><br>@endif
         {{ $order->address }}<br>
-        {{ $order->city }}, {{ $order->state }} {{ $order->postal_code }}
+        {{ collect([$order->city, $order->district, $order->state])->filter()->implode(', ') }}
+        {{ $order->postal_code }}
       </div>
     </td>
     <td style="width: 1%;"></td>
@@ -18,7 +19,8 @@
         @if ($order->phone)<span class="muted">{{ $order->phone }}</span><br>@endif
         @if ($order->email)<span class="muted">{{ $order->email }}</span><br>@endif
         {{ $order->address }}<br>
-        {{ $order->city }}, {{ $order->state }} {{ $order->postal_code }}
+        {{ collect([$order->city, $order->district, $order->state])->filter()->implode(', ') }}
+        {{ $order->postal_code }}
       </div>
     </td>
   </tr>

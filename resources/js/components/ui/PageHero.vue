@@ -26,6 +26,8 @@ defineProps({
 
 <template>
   <section class="page-hero" :class="`page-hero--${size}`">
+    <span class="page-hero__orb page-hero__orb--one" aria-hidden="true" />
+    <span class="page-hero__orb page-hero__orb--two" aria-hidden="true" />
     <div class="page-hero__inner page-section">
       <div class="page-hero__copy">
         <span v-if="eyebrow" class="eyebrow">{{ eyebrow }}</span>

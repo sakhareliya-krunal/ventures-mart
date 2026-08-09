@@ -45,4 +45,17 @@ return [
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
     ],
 
+    'shiprocket' => [
+        'enabled' => env('SHIPROCKET_ENABLED', false),
+        'base_url' => env('SHIPROCKET_BASE_URL', 'https://apiv2.shiprocket.in/v1/external'),
+        'email' => env('SHIPROCKET_EMAIL'),
+        'password' => env('SHIPROCKET_PASSWORD'),
+        'pickup_location' => env('SHIPROCKET_PICKUP_LOCATION'),
+        'timeout' => (int) env('SHIPROCKET_TIMEOUT', 20),
+        'fallback_weight_kg' => (float) env('SHIPROCKET_FALLBACK_WEIGHT_KG', 0.5),
+        'fallback_length_cm' => (float) env('SHIPROCKET_FALLBACK_LENGTH_CM', 20),
+        'fallback_breadth_cm' => (float) env('SHIPROCKET_FALLBACK_BREADTH_CM', 15),
+        'fallback_height_cm' => (float) env('SHIPROCKET_FALLBACK_HEIGHT_CM', 10),
+    ],
+
 ];

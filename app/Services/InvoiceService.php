@@ -18,6 +18,10 @@ use Throwable;
 
 class InvoiceService
 {
+    public function __construct(private readonly OrderShipmentDetails $shipments)
+    {
+    }
+
     public function isInvoiceable(Order $order): bool
     {
         if ($order->status === 'Cancelled') {
@@ -81,7 +85,7 @@ class InvoiceService
 
     public function streamPdf(Order $order): Response
     {
-        $order = $this->ensureIssued($order->loadMissing('items'));
+        $order = $this->ensureIssued($order->loadMissing(['items', 'shiprocketShipment']));
         $payload = $this->buildViewData($order);
 
         $pdf = Pdf::loadView('invoices.tax-invoice', $payload)
@@ -97,7 +101,7 @@ class InvoiceService
      */
     public function buildViewData(Order $order): array
     {
-        $order->loadMissing('items');
+        $order->loadMissing(['items', 'shiprocketShipment']);
 
         $subtotal = (float) $order->subtotal;
         $cgst = (float) $order->cgst;
@@ -157,14 +161,8 @@ class InvoiceService
             default => ['label' => 'Pending', 'bg' => '#FFEDD5', 'fg' => '#9A3412'],
         };
 
-        $courier = [
-            'partner' => $order->courier_partner,
-            'awb_number' => $order->awb_number,
-            'tracking_number' => $order->tracking_number,
-            'dispatched_at' => $order->dispatched_at,
-            'expected_delivery_at' => $order->expected_delivery_at,
-        ];
-        $hasCourier = collect($courier)->filter(fn ($value) => filled($value))->isNotEmpty();
+        $courier = $this->shipments->forCustomer($order);
+        $hasCourier = $courier['has_details'];
 
         $orderUrl = str_replace(
             '{number}',

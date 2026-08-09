@@ -3,6 +3,7 @@ import { ChevronRight, CreditCard, MapPin, RefreshCw, Truck } from '@lucide/vue'
 import { useHead } from '@unhead/vue';
 import { RouterLink } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
 
@@ -59,6 +60,14 @@ const sections = [
 
 <template>
   <div class="article-premium">
+    <div class="page-section article-premium__crumb-wrap">
+      <Breadcrumb
+        :items="[
+          { label: 'Home', to: '/' },
+          { label: 'Shopping with confidence' },
+        ]"
+      />
+    </div>
     <section class="article-premium__hero" aria-labelledby="confidence-hero-title">
       <div class="article-premium__hero-media" aria-hidden="true">
         <img src="/images/home5-info1.png" alt="" role="presentation" />

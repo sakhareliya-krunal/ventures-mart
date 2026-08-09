@@ -7,6 +7,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
+import { emailHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -261,7 +262,10 @@ onBeforeUnmount(() => {
         </p>
         <p v-if="selected.url" class="admin-muted">{{ selected.method }} {{ selected.url }}</p>
         <p v-if="selected.user" class="admin-muted">
-          User {{ selected.user.name }} ({{ selected.user.email }})
+          User {{ selected.user.name }}
+          <template v-if="selected.user.email">
+            (<a :href="emailHref(selected.user.email)">{{ selected.user.email }}</a>)
+          </template>
         </p>
         <p v-if="selected.ip || selected.user_agent" class="admin-muted">
           {{ selected.ip }}

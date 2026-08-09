@@ -1,6 +1,9 @@
 <?php
 
 use App\Services\ApplicationErrorRecorder;
+use App\Exceptions\InsufficientInventoryException;
+use App\Exceptions\InvalidInventoryTransitionException;
+use App\Exceptions\InventoryVersionConflictException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -47,7 +50,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontReport([ValidationException::class]);
+        $exceptions->dontReport([
+            ValidationException::class,
+            InsufficientInventoryException::class,
+            InvalidInventoryTransitionException::class,
+            InventoryVersionConflictException::class,
+        ]);
 
         $exceptions->reportable(function (Throwable $e): void {
             app(ApplicationErrorRecorder::class)->recordThrowable($e);
@@ -70,7 +78,19 @@ return Application::configure(basePath: dirname(__DIR__))
             $code = 'server_error';
             $message = 'Something went wrong. Please try again.';
 
-            if ($e instanceof TokenMismatchException) {
+            if ($e instanceof InventoryVersionConflictException) {
+                $status = 409;
+                $code = 'inventory_version_conflict';
+                $message = 'Inventory changed since it was loaded. Refresh and try again.';
+            } elseif ($e instanceof InsufficientInventoryException) {
+                $status = 422;
+                $code = 'insufficient_inventory';
+                $message = 'There is not enough available inventory for this action.';
+            } elseif ($e instanceof InvalidInventoryTransitionException) {
+                $status = 422;
+                $code = 'invalid_inventory_transition';
+                $message = 'This inventory action is no longer valid. Refresh and try again.';
+            } elseif ($e instanceof TokenMismatchException) {
                 $status = 419;
                 $code = 'session_expired';
                 $message = 'Your session expired. Please refresh and try again.';

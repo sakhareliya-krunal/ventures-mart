@@ -1,4 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router';
+import { watch } from 'vue';
 import MainLayout from '@/layouts/MainLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
@@ -99,6 +100,7 @@ const router = createRouter({
           path: 'orders/:number',
           name: 'order-track',
           component: () => import('@/pages/OrderTrackPage.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'contact',
@@ -217,6 +219,12 @@ const router = createRouter({
           meta: { title: 'Products' },
         },
         {
+          path: 'inventory',
+          name: 'admin-inventory',
+          component: () => import('@/pages/admin/AdminInventoryPage.vue'),
+          meta: { title: 'Inventory' },
+        },
+        {
           path: 'categories',
           name: 'admin-categories',
           component: () => import('@/pages/admin/AdminCategoriesPage.vue'),
@@ -294,9 +302,43 @@ const router = createRouter({
   ],
 });
 
+let adminRedirectWatcherReady = false;
+
+// Safety net: if admin status resolves after the initial navigation (slow
+// /user response, or a login in another tab), correct a stale storefront view
+// by sending the admin back to the admin panel. Registered lazily on the first
+// guard run so Pinia is guaranteed to be active.
+function ensureAdminRedirectWatcher(auth) {
+  if (adminRedirectWatcherReady) {
+    return;
+  }
+  adminRedirectWatcherReady = true;
+
+  watch(
+    () => auth.isAdmin,
+    (isAdmin) => {
+      if (!isAdmin) {
+        return;
+      }
+
+      const current = router.currentRoute.value;
+      const path = current.path || '/';
+      const onAuthPage = ['login', 'register', 'forgot-password', 'reset-password'].includes(
+        current.name,
+      );
+
+      if (!path.startsWith('/admin') && !onAuthPage) {
+        router.replace('/admin');
+      }
+    },
+  );
+}
+
 router.beforeEach(async (to, from) => {
   const auth = useAuthStore();
   const ui = useUiStore();
+
+  ensureAdminRedirectWatcher(auth);
 
   if (to.fullPath !== from.fullPath) {
     ui.startNavigating();
@@ -317,7 +359,7 @@ router.beforeEach(async (to, from) => {
   if (!auth.user) {
     const session = auth.fetchUser();
     const needsSession =
-      needsAuth || needsAdmin || isAdminRoute || isAuthPage;
+      needsAuth || needsAdmin || isAdminRoute || isAuthPage || from === START_LOCATION;
 
     if (needsSession) {
       await session;

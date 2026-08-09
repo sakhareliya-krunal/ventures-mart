@@ -1,5 +1,6 @@
 const ORDER_STATUS_LABELS = {
   AwaitingPayment: 'Awaiting payment',
+  InventoryHold: 'Inventory hold',
   Processing: 'Confirmed',
   Packed: 'Packed',
   Shipped: 'Shipped',
@@ -9,6 +10,7 @@ const ORDER_STATUS_LABELS = {
 
 const ORDER_STATUS_CLASSES = {
   AwaitingPayment: 'admin-badge--warn',
+  InventoryHold: 'admin-badge--danger',
   Processing: 'admin-badge--info',
   Packed: 'admin-badge--info',
   Shipped: 'admin-badge--info',

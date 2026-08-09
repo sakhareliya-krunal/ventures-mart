@@ -2,10 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Order;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Order */
+/** @mixin Order */
 class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -15,7 +17,7 @@ class OrderResource extends JsonResource
             'number' => $this->number,
             'invoice_number' => $this->invoice_number,
             'invoice_issued_at' => $this->invoice_issued_at?->toIso8601String(),
-            'invoice_available' => app(\App\Services\InvoiceService::class)->isInvoiceable($this->resource),
+            'invoice_available' => app(InvoiceService::class)->isInvoiceable($this->resource),
             'created_at' => $this->created_at?->toIso8601String(),
             'status' => $this->status,
             'payment_status' => $this->payment_status,
@@ -36,6 +38,7 @@ class OrderResource extends JsonResource
                 'phone' => $this->phone,
                 'address' => $this->address,
                 'city' => $this->city,
+                'district' => $this->district,
                 'state' => $this->state,
                 'postal_code' => $this->postal_code,
             ],

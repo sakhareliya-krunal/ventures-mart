@@ -88,12 +88,14 @@ class AddressController extends Controller
             'phone' => ['required', 'string', 'max:40'],
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:120'],
+            'district' => ['nullable', 'string', 'max:120'],
             'state' => ['required', 'string', 'max:120'],
             'postal_code' => ['required', 'string', 'max:20'],
             'is_default' => ['sometimes', 'boolean'],
         ]);
 
         $validated['label'] = trim((string) ($validated['label'] ?? '')) ?: 'Home';
+        $validated['district'] = trim((string) ($validated['district'] ?? '')) ?: null;
         $validated['state'] = GstState::normalize($validated['state']) ?? $validated['state'];
 
         return $validated;

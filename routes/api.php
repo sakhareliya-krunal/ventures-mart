@@ -1,11 +1,26 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
+use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
+use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Api\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Api\Admin\InventoryController as AdminInventoryController;
+use App\Http\Controllers\Api\Admin\NotificationController as AdminNotificationController;
+use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\SeoController as AdminSeoController;
+use App\Http\Controllers\Api\Admin\UploadController as AdminUploadController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\OrderTrackController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProductController;
@@ -14,17 +29,6 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RazorpayWebhookController;
 use App\Http\Controllers\Api\SeoResolveController;
 use App\Http\Controllers\Api\WishlistController;
-use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
-use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
-use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
-use App\Http\Controllers\Api\Admin\ContactMessageController as AdminContactMessageController;
-use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
-use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
-use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
-use App\Http\Controllers\Api\Admin\SeoController as AdminSeoController;
-use App\Http\Controllers\Api\Admin\UploadController as AdminUploadController;
-use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,9 +62,9 @@ Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle']);
 
 Route::get('/orders', [OrderController::class, 'index']);
-Route::get('/orders/track/{number}', [\App\Http\Controllers\Api\OrderTrackController::class, 'show']);
-Route::get('/orders/track/{number}/invoice', [\App\Http\Controllers\Api\OrderTrackController::class, 'invoice']);
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/orders/track/{number}', [OrderTrackController::class, 'show']);
+    Route::get('/orders/track/{number}/invoice', [OrderTrackController::class, 'invoice']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment/verify', [OrderController::class, 'verifyPayment']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
@@ -71,7 +75,7 @@ Route::post('/contact', [ContactController::class, 'store']);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/auth/google', \App\Http\Controllers\Api\GoogleAuthController::class);
+Route::post('/auth/google', GoogleAuthController::class);
 Route::post('/forgot-password', [PasswordResetController::class, 'forgot']);
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -92,10 +96,29 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/me', fn (Request $request) => new UserResource($request->user()));
     Route::get('/stats', [AdminDashboardController::class, 'stats']);
+    Route::get('/inventory', [AdminInventoryController::class, 'index']);
+    Route::get('/inventory/summary', [AdminInventoryController::class, 'summary']);
+    Route::get('/inventory/export', [AdminInventoryController::class, 'export']);
+    Route::post('/inventory/bulk-adjustments', [AdminInventoryController::class, 'bulkAdjust']);
+    Route::get('/inventory/ledger', [AdminInventoryController::class, 'ledger']);
+    Route::get('/inventory/audit-flags', [AdminInventoryController::class, 'auditFlags']);
+    Route::patch('/inventory/audit-flags/{inventoryAuditFlag}/resolve', [AdminInventoryController::class, 'resolveAuditFlag']);
+    Route::get('/inventory/returns', [AdminInventoryController::class, 'returns']);
+    Route::post('/inventory/returns', [AdminInventoryController::class, 'processReturn']);
+    Route::get('/inventory/{product}', [AdminInventoryController::class, 'show']);
+    Route::get('/inventory/{product}/movements', [AdminInventoryController::class, 'movements']);
+    Route::post('/inventory/{product}/adjustments', [AdminInventoryController::class, 'adjust']);
+    Route::get('/navigation-counts', [AdminNotificationController::class, 'navigationCounts']);
+    Route::get('/notifications', [AdminNotificationController::class, 'index']);
+    Route::patch('/notifications/inventory/read-all', [AdminNotificationController::class, 'readInventory']);
+    Route::patch('/notifications/read-all', [AdminNotificationController::class, 'readAll']);
+    Route::patch('/notifications/{notification}/read', [AdminNotificationController::class, 'read']);
 
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'invoice']);
+    Route::post('/orders/{order}/shiprocket/retry', [AdminOrderController::class, 'retryShiprocket']);
+    Route::post('/orders/{order}/shiprocket/sync', [AdminOrderController::class, 'syncShiprocket']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
 
@@ -113,7 +136,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/seo/redirects/{redirect}', [AdminSeoController::class, 'destroyRedirect']);
 
     Route::get('/contact-messages', [AdminContactMessageController::class, 'index']);
+    Route::patch('/contact-messages/read-all', [AdminContactMessageController::class, 'readAll']);
     Route::get('/contact-messages/{contactMessage}', [AdminContactMessageController::class, 'show']);
+    Route::patch('/contact-messages/{contactMessage}/read', [AdminContactMessageController::class, 'read']);
     Route::delete('/contact-messages/{contactMessage}', [AdminContactMessageController::class, 'destroy']);
 
     Route::get('/users', [AdminUserController::class, 'index']);

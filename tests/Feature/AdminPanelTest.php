@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -94,13 +96,13 @@ class AdminPanelTest extends TestCase
         $this->getJson('/api/admin/stats?range=month')
             ->assertOk()
             ->assertJsonPath('revenue_range', 'month')
-            ->assertJsonPath('revenue_period_label', 'Last 30 days')
-            ->assertJsonCount(30, 'revenue_series');
+            ->assertJsonPath('revenue_period_label', now()->format('F Y'))
+            ->assertJsonCount(now()->daysInMonth, 'revenue_series');
 
         $this->getJson('/api/admin/stats?range=year')
             ->assertOk()
             ->assertJsonPath('revenue_range', 'year')
-            ->assertJsonPath('revenue_period_label', 'Last 12 months')
+            ->assertJsonPath('revenue_period_label', (string) now()->year)
             ->assertJsonCount(12, 'revenue_series');
 
         $this->getJson('/api/admin/stats?range=invalid')
@@ -108,17 +110,17 @@ class AdminPanelTest extends TestCase
             ->assertJsonValidationErrors(['range']);
     }
 
-    public function test_admin_can_update_order_address_and_delete_order(): void
+    public function test_admin_cannot_mutate_address_or_delete_audited_order(): void
     {
         $admin = User::factory()->admin()->create();
-        $category = \App\Models\Category::query()->create([
+        $category = Category::query()->create([
             'name' => 'Toys',
             'slug' => 'toys-admin-order',
             'description' => 'Toys',
             'image' => '/products/toys/demo.jpg',
             'featured' => true,
         ]);
-        $product = \App\Models\Product::query()->create([
+        $product = Product::query()->create([
             'external_id' => 'ext-admin-order-1',
             'category_id' => $category->id,
             'name' => 'Plush',
@@ -184,11 +186,14 @@ class AdminPanelTest extends TestCase
         $this->assertSame('380001', $order->postal_code);
 
         $this->deleteJson("/api/admin/orders/{$order->id}")
-            ->assertOk()
-            ->assertJsonPath('ok', true);
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'Orders are retained for inventory and financial audit. Cancel the order instead.',
+            );
 
-        $this->assertDatabaseMissing('orders', ['id' => $order->id]);
-        $this->assertSame(5, $product->fresh()->stock);
+        $this->assertDatabaseHas('orders', ['id' => $order->id]);
+        $this->assertSame(2, $product->fresh()->stock);
     }
 
     public function test_non_admin_cannot_delete_orders(): void

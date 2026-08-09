@@ -1,12 +1,24 @@
 <script setup>
+import { Scale } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerContact } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
+const sections = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'orders', label: 'Orders & pricing' },
+  { id: 'availability', label: 'Availability' },
+  { id: 'accounts', label: 'Accounts' },
+  { id: 'use', label: 'Acceptable use' },
+  { id: 'returns', label: 'Returns' },
+  { id: 'limitation', label: 'Limitation' },
+  { id: 'contact', label: 'Contact' },
+];
 
 useHead(() =>
   seoHeadFromServer({
@@ -23,9 +35,20 @@ useHead(() =>
     title="Terms of Service"
     lead="Simple terms for shopping toys and lunch boxes on Ventures Mart across India."
     meta="Last updated: July 2026"
+    :sections="sections"
+    wide
   >
+    <template #aside>
+      <Scale :size="24" aria-hidden="true" />
+      <strong>Clear terms</strong>
+      for a transparent shopping experience
+    </template>
+    <template #actions>
+      <AppButton to="/shop" size="lg">Browse the shop</AppButton>
+      <AppButton to="/contact" variant="secondary" size="lg">Ask a question</AppButton>
+    </template>
     <div class="static-prose">
-      <section>
+      <section id="overview">
         <h2>Store overview</h2>
         <p>
           Ventures Mart is an online store for curated toys and everyday lunch boxes, delivered
@@ -33,7 +56,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="orders">
         <h2>Orders and pricing</h2>
         <p>
           Prices are shown in Indian Rupees (INR). An order is confirmed once payment is completed
@@ -42,7 +65,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="availability">
         <h2>Availability</h2>
         <p>
           Product details, stock, and offers can change as inventory updates. If something becomes
@@ -50,7 +73,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="accounts">
         <h2>Accounts</h2>
         <p>
           You are responsible for keeping login details secure and for activity under your account.
@@ -58,7 +81,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="use">
         <h2>Acceptable use</h2>
         <p>
           Do not misuse the storefront, attempt unauthorized access, or submit false information.
@@ -66,7 +89,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="returns">
         <h2>Returns overview</h2>
         <p>
           We offer 7-day replacement support for eligible issues. See our
@@ -75,7 +98,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="limitation">
         <h2>Limitation</h2>
         <p>
           To the extent allowed by law, Ventures Mart is not liable for indirect or consequential
@@ -83,7 +106,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="contact">
         <h2>Contact</h2>
         <p>
           Questions about these terms?

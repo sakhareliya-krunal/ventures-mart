@@ -13,6 +13,7 @@ import {
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from '@/utils/adminBadges';
+import { emailHref } from '@/utils/contactLinks';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
 const route = useRoute();
@@ -128,7 +129,9 @@ watch([search, status], load);
             </td>
             <td data-label="Customer">
               {{ order.address?.full_name || order.user?.name || '—' }}
-              <div class="admin-muted">{{ order.address?.email }}</div>
+              <div v-if="order.address?.email" class="admin-muted">
+                <a :href="emailHref(order.address.email)">{{ order.address.email }}</a>
+              </div>
             </td>
             <td data-label="Status">
               <div class="admin-status-cell">

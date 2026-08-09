@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard,
   Package,
+  Warehouse,
   ShoppingBag,
   Tags,
   FileText,
@@ -19,10 +20,12 @@ import {
 } from '@lucide/vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { brandAssets } from '@/constants/assets';
+import { useAdminNavigationCountsStore } from '@/stores/adminNavigationCounts';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 
 const auth = useAuthStore();
+const navigationCounts = useAdminNavigationCountsStore();
 const theme = useThemeStore();
 const route = useRoute();
 const router = useRouter();
@@ -30,6 +33,7 @@ const confirmLogoutOpen = ref(false);
 const navOpen = ref(false);
 const accountMenuOpen = ref(false);
 const welcomeMessage = ref('');
+let countsPoll = null;
 
 function consumeWelcomeQuery() {
   if (String(route.query.welcome || '') !== '1') return;
@@ -43,6 +47,7 @@ const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/posts', label: 'Blog posts', icon: FileText },
   { to: '/admin/contacts', label: 'Contact messages', icon: Mail },
@@ -89,6 +94,18 @@ function onKeydown(event) {
   }
 }
 
+function refreshNavigationCounts() {
+  if (document.visibilityState === 'visible') {
+    navigationCounts.refresh();
+  }
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    navigationCounts.refresh();
+  }
+}
+
 function lockScroll(locked) {
   document.body.style.overflow = locked ? 'hidden' : '';
 }
@@ -111,6 +128,7 @@ watch(
     closeNav();
     closeAccountMenu();
     consumeWelcomeQuery();
+    if (route.path === '/admin/inventory') navigationCounts.markInventoryRead();
   },
   { immediate: true },
 );
@@ -135,11 +153,23 @@ function onViewportChange(event) {
 
 const desktopQuery = window.matchMedia('(min-width: 961px)');
 desktopQuery.addEventListener('change', onViewportChange);
+onMounted(async () => {
+  await navigationCounts.refresh();
+  if (route.path === '/admin/inventory') {
+    await navigationCounts.markInventoryRead();
+  }
+  window.addEventListener('focus', refreshNavigationCounts);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  countsPoll = window.setInterval(refreshNavigationCounts, 60000);
+});
 
 onBeforeUnmount(() => {
   lockScroll(false);
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('focus', refreshNavigationCounts);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
   desktopQuery.removeEventListener('change', onViewportChange);
+  if (countsPoll) window.clearInterval(countsPoll);
 });
 </script>
 
@@ -186,7 +216,21 @@ onBeforeUnmount(() => {
           @click="closeNav"
         >
           <component :is="item.icon" :size="18" />
-          <span>{{ item.label }}</span>
+          <span class="admin-nav-link__label">{{ item.label }}</span>
+          <span
+            v-if="item.to === '/admin/inventory' && navigationCounts.inventoryUnread"
+            class="admin-nav-link__count"
+            aria-label="Unread inventory alerts"
+          >
+            {{ navigationCounts.inventoryUnread > 99 ? '99+' : navigationCounts.inventoryUnread }}
+          </span>
+          <span
+            v-if="item.to === '/admin/contacts' && navigationCounts.contactUnread"
+            class="admin-nav-link__count"
+            aria-label="Unread contact messages"
+          >
+            {{ navigationCounts.contactUnread > 99 ? '99+' : navigationCounts.contactUnread }}
+          </span>
         </RouterLink>
       </nav>
 

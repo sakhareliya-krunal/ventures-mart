@@ -2,22 +2,37 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\InventoryReservationState;
+use App\Enums\OrderInventoryStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminOrderResource;
+use App\Jobs\CancelShiprocketOrder;
+use App\Jobs\FulfillShiprocketOrder;
+use App\Jobs\SyncShiprocketTracking;
 use App\Models\Order;
-use App\Models\Product;
+use App\Services\Inventory\InventoryService;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly InvoiceService $invoices)
-    {
-    }
+    public function __construct(
+        private readonly InvoiceService $invoices,
+        private readonly InventoryService $inventory,
+    ) {}
 
-    private const STATUSES = ['AwaitingPayment', 'Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
+    private const STATUSES = ['AwaitingPayment', 'InventoryHold', 'Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
+
+    private const STATUS_TRANSITIONS = [
+        'AwaitingPayment' => ['Processing', 'Cancelled'],
+        'InventoryHold' => ['Processing', 'Cancelled'],
+        'Processing' => ['Packed', 'Shipped', 'Delivered', 'Cancelled'],
+        'Packed' => ['Shipped', 'Delivered', 'Cancelled'],
+        'Shipped' => ['Delivered'],
+        'Delivered' => [],
+        'Cancelled' => [],
+    ];
 
     private const COURIER_FIELDS = [
         'courier_partner',
@@ -29,7 +44,7 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = Order::query()->with(['items', 'user'])->latest();
+        $query = Order::query()->with(['items.inventoryReservation', 'user', 'shiprocketShipment'])->latest();
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -52,7 +67,7 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load(['items', 'user']);
+        $order->load(['items.inventoryReservation', 'user', 'shiprocketShipment']);
 
         return new AdminOrderResource($order);
     }
@@ -72,11 +87,22 @@ class OrderController extends Controller
             'tracking_number' => ['sometimes', 'nullable', 'string', 'max:120'],
             'dispatched_at' => ['sometimes', 'nullable', 'date'],
             'expected_delivery_at' => ['sometimes', 'nullable', 'date'],
+            'cancellation_reason' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
         if ($validated === []) {
             return response()->json([
                 'message' => 'Nothing to update.',
+            ], 422);
+        }
+
+        $order->loadMissing('shiprocketShipment');
+        if (
+            $order->shiprocketShipment
+            && collect(self::COURIER_FIELDS)->contains(fn ($field) => array_key_exists($field, $validated))
+        ) {
+            return response()->json([
+                'message' => 'Courier fields are managed by Shiprocket for this order.',
             ], 422);
         }
 
@@ -96,7 +122,47 @@ class OrderController extends Controller
         }
 
         if (array_key_exists('status', $validated)) {
+            if (
+                $validated['status'] !== $order->status
+                && ! in_array($validated['status'], self::STATUS_TRANSITIONS[$order->status] ?? [], true)
+            ) {
+                return response()->json([
+                    'message' => "Order cannot move from {$order->status} to {$validated['status']}.",
+                ], 422);
+            }
+
+            if (
+                $validated['status'] === 'Cancelled'
+                && $order->shiprocketShipment
+                && ! $order->shiprocketShipment->cancelled_at
+            ) {
+                $order->forceFill([
+                    'cancel_requested_at' => now(),
+                    'cancellation_reason' => $validated['cancellation_reason'] ?? 'Admin cancellation',
+                ])->save();
+                CancelShiprocketOrder::dispatch($order->id);
+                $order->load(['items.inventoryReservation', 'user', 'shiprocketShipment']);
+
+                return new AdminOrderResource($order);
+            }
+
             $order->status = $validated['status'];
+
+            if ($order->getOriginal('status') === 'InventoryHold' && $validated['status'] === 'Processing') {
+                $this->reacquireExceptionInventory($order);
+            }
+
+            if ($validated['status'] === 'Cancelled') {
+                $this->releaseOrderInventory($order, $validated['cancellation_reason'] ?? 'Admin cancellation');
+                $order->cancel_requested_at ??= now();
+                $order->cancelled_at ??= now();
+                $order->cancellation_reason = $validated['cancellation_reason'] ?? 'Admin cancellation';
+            }
+
+            if (in_array($validated['status'], ['Shipped', 'Delivered'], true)) {
+                $this->consumeOrderInventory($order);
+                $order->dispatched_at ??= now();
+            }
 
             if (
                 $validated['status'] === 'Delivered'
@@ -115,40 +181,101 @@ class OrderController extends Controller
         }
 
         $order->save();
-        $order->load(['items', 'user']);
+        $order->load(['items.inventoryReservation', 'user', 'shiprocketShipment']);
 
         return new AdminOrderResource($order);
     }
 
-    public function destroy(Order $order)
+    public function retryShiprocket(Order $order)
     {
-        DB::transaction(function () use ($order) {
-            $order->loadMissing('items');
-
-            if ($this->shouldRestoreStock($order)) {
-                foreach ($order->items as $item) {
-                    if (! $item->product_id || $item->quantity < 1) {
-                        continue;
-                    }
-
-                    Product::query()
-                        ->whereKey($item->product_id)
-                        ->increment('stock', (int) $item->quantity);
-                }
-            }
-
-            $order->delete();
-        });
-
-        return response()->json(['ok' => true]);
-    }
-
-    private function shouldRestoreStock(Order $order): bool
-    {
-        if ($order->payment_method === 'cod') {
-            return true;
+        if (! config('services.shiprocket.enabled')) {
+            return response()->json(['message' => 'Shiprocket integration is disabled.'], 422);
         }
 
-        return $order->payment_status === 'paid';
+        if ($order->status === 'Cancelled') {
+            return response()->json(['message' => 'Cancelled orders cannot be fulfilled.'], 422);
+        }
+
+        FulfillShiprocketOrder::dispatch($order->id);
+
+        return response()->json(['message' => 'Shiprocket fulfillment was queued.'], 202);
+    }
+
+    public function syncShiprocket(Order $order)
+    {
+        if (! $order->shiprocketShipment?->awb_code) {
+            return response()->json(['message' => 'This order does not have a Shiprocket AWB.'], 422);
+        }
+
+        SyncShiprocketTracking::dispatch($order->id);
+
+        return response()->json(['message' => 'Shiprocket tracking sync was queued.'], 202);
+    }
+
+    public function destroy(Order $order)
+    {
+        return response()->json([
+            'message' => 'Orders are retained for inventory and financial audit. Cancel the order instead.',
+        ], 422);
+    }
+
+    private function releaseOrderInventory(Order $order, string $reason): void
+    {
+        $order->loadMissing('items.inventoryReservation');
+
+        foreach ($order->items as $item) {
+            if (! in_array($item->inventoryReservation?->state, [
+                InventoryReservationState::Reserved,
+                InventoryReservationState::Committed,
+            ], true)) {
+                continue;
+            }
+
+            $this->inventory->release(
+                $item,
+                $reason,
+                "order:{$order->id}:item:{$item->id}:cancel",
+                correlationId: 'order:'.$order->id,
+            );
+        }
+    }
+
+    private function consumeOrderInventory(Order $order): void
+    {
+        $order->loadMissing('items.inventoryReservation');
+
+        foreach ($order->items as $item) {
+            if ($item->inventoryReservation?->state !== InventoryReservationState::Committed) {
+                continue;
+            }
+
+            $this->inventory->consume(
+                $item,
+                "order:{$order->id}:item:{$item->id}:admin-handoff",
+                correlationId: 'order:'.$order->id,
+                reason: 'Admin confirmed courier handoff',
+            );
+        }
+    }
+
+    private function reacquireExceptionInventory(Order $order): void
+    {
+        $order->loadMissing('items.inventoryReservation');
+
+        foreach ($order->items as $item) {
+            if ($item->inventoryReservation?->state === InventoryReservationState::Committed) {
+                continue;
+            }
+
+            $this->inventory->commit(
+                $item,
+                "order:{$order->id}:item:{$item->id}:inventory-hold-recovery",
+                fromReserved: true,
+                correlationId: 'order:'.$order->id,
+                reason: 'Admin resolved paid inventory hold',
+            );
+        }
+
+        $order->inventory_status = OrderInventoryStatus::Committed;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\PaymentWebhookEvent;
 use App\Services\OrderService;
 use App\Services\RazorpayService;
 use Illuminate\Http\Request;
@@ -48,9 +49,24 @@ class RazorpayWebhookController extends Controller
 
         $razorpayOrderId = (string) ($payment['order_id'] ?? '');
         $paymentId = (string) ($payment['id'] ?? '');
+        $eventId = (string) ($request->header('X-Razorpay-Event-Id')
+            ?: ($data['id'] ?? hash('sha256', $payload)));
 
-        if ($razorpayOrderId === '' || $paymentId === '') {
+        if ($razorpayOrderId === '' || $paymentId === '' || $eventId === '') {
             return response()->json(['status' => 'ignored']);
+        }
+
+        $webhook = PaymentWebhookEvent::query()->firstOrCreate(
+            ['provider' => 'razorpay', 'event_id' => $eventId],
+            [
+                'event_type' => $event,
+                'payment_id' => $paymentId,
+                'status' => 'received',
+                'payload' => $data,
+            ],
+        );
+        if (! $webhook->wasRecentlyCreated && $webhook->status === 'processed') {
+            return response()->json(['status' => 'ok']);
         }
 
         $order = Order::query()->where('razorpay_order_id', $razorpayOrderId)->first();
@@ -64,9 +80,52 @@ class RazorpayWebhookController extends Controller
             return response()->json(['status' => 'ok']);
         }
 
+        $amount = (int) ($payment['amount'] ?? 0);
+        $currency = strtoupper((string) ($payment['currency'] ?? ''));
+        $paymentStatus = strtolower((string) ($payment['status'] ?? ''));
+        $expectedAmount = (int) round(((float) $order->total) * 100);
+        $paymentUsedByAnotherOrder = Order::query()
+            ->where('razorpay_payment_id', $paymentId)
+            ->whereKeyNot($order->id)
+            ->exists();
+
+        if (
+            $amount !== $expectedAmount
+            || $currency !== 'INR'
+            || ! in_array($paymentStatus, ['captured', 'authorized'], true)
+            || $paymentUsedByAnotherOrder
+        ) {
+            $webhook->forceFill([
+                'order_id' => $order->id,
+                'status' => 'rejected',
+                'last_error' => 'Payment attributes did not match the local order.',
+            ])->save();
+
+            Log::warning('Razorpay webhook payment mismatch', [
+                'order_id' => $order->id,
+                'payment_id' => $paymentId,
+                'amount' => $amount,
+                'currency' => $currency,
+                'status' => $paymentStatus,
+            ]);
+
+            return response()->json(['message' => 'Payment attributes do not match order.'], 422);
+        }
+
         try {
             $this->orders->markPaidFromWebhook($order, $paymentId);
+            $webhook->forceFill([
+                'order_id' => $order->id,
+                'status' => 'processed',
+                'processed_at' => now(),
+                'last_error' => null,
+            ])->save();
         } catch (ValidationException $e) {
+            $webhook->forceFill([
+                'order_id' => $order->id,
+                'status' => 'failed',
+                'last_error' => json_encode($e->errors()),
+            ])->save();
             Log::error('Razorpay webhook could not finalize order', [
                 'order_id' => $order->id,
                 'errors' => $e->errors(),
@@ -74,6 +133,11 @@ class RazorpayWebhookController extends Controller
 
             return response()->json(['message' => 'Unable to finalize order.'], 422);
         } catch (Throwable $e) {
+            $webhook->forceFill([
+                'order_id' => $order->id,
+                'status' => 'failed',
+                'last_error' => mb_substr($e->getMessage(), 0, 4000),
+            ])->save();
             Log::error('Razorpay webhook failed', [
                 'order_id' => $order->id,
                 'message' => $e->getMessage(),

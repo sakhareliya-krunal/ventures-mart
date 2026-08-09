@@ -33,7 +33,7 @@ class OrderPaymentTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_create_order_returns_razorpay_payload_without_clearing_cart_or_stock(): void
+    public function test_create_order_returns_razorpay_payload_and_reserves_stock_without_clearing_cart(): void
     {
         $user = User::factory()->create();
         $product = $this->makeProduct(['stock' => 5, 'price' => 200]);
@@ -73,7 +73,7 @@ class OrderPaymentTest extends TestCase
             'status' => 'AwaitingPayment',
         ]);
 
-        $this->assertSame(5, $product->fresh()->stock);
+        $this->assertSame(4, $product->fresh()->stock);
         $this->getJson('/api/cart')->assertJsonPath('item_count', 1);
     }
 

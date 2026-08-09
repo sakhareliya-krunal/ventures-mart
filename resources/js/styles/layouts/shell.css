@@ -48,14 +48,6 @@
   justify-content: flex-end;
 }
 
-.header-admin-link {
-  color: var(--color-ink);
-  font-size: 0.85rem;
-  font-weight: 800;
-  padding: 0.4rem 0.65rem;
-  text-decoration: none;
-}
-
 .desktop-nav a {
   color: var(--color-ink);
   font-size: 0.92rem;

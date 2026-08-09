@@ -90,6 +90,10 @@ textarea.is-invalid {
   grid-template-columns: repeat(3, 1fr);
 }
 
+.address-location-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .form-field-error {
   color: var(--color-danger);
   font-size: 0.85rem;

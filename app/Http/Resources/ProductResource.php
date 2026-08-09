@@ -2,12 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Product;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
 
-/** @mixin \App\Models\Product */
+/** @mixin Product */
 class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -18,6 +19,7 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'sku' => $this->sku,
+            'hsn' => $this->hsn,
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => $this->category?->slug),
             'category_name' => $this->whenLoaded('category', fn () => $this->category?->name),
@@ -33,6 +35,10 @@ class ProductResource extends JsonResource
             'details' => $this->details ?? [],
             'specifications' => $this->specifications ?? [],
             'stock' => (int) $this->stock,
+            'weight_kg' => $this->weight_kg !== null ? (float) $this->weight_kg : null,
+            'length_cm' => $this->length_cm !== null ? (float) $this->length_cm : null,
+            'breadth_cm' => $this->breadth_cm !== null ? (float) $this->breadth_cm : null,
+            'height_cm' => $this->height_cm !== null ? (float) $this->height_cm : null,
             'is_active' => (bool) $this->is_active,
             'variant_group_id' => $this->variant_group_id,
             'color_name' => $this->color_name,
@@ -53,19 +59,19 @@ class ProductResource extends JsonResource
         return $siblings
             ->filter(fn ($variant) => $variant->is_active || $variant->id === $this->id)
             ->map(fn ($variant) => [
-            'id' => $variant->id,
-            'slug' => $variant->slug,
-            'name' => $variant->name,
-            'image' => $variant->image,
-            'hover_image' => $variant->hover_image,
-            'price' => (float) $variant->price,
-            'compare_at_price' => $variant->compare_at_price !== null ? (float) $variant->compare_at_price : null,
-            'rating' => (float) $variant->rating,
-            'reviews' => (int) $variant->reviews,
-            'stock' => (int) $variant->stock,
-            'badge' => $variant->badge,
-            'color_name' => $variant->color_name,
-            'color_hex' => $variant->color_hex,
-        ])->values()->all();
+                'id' => $variant->id,
+                'slug' => $variant->slug,
+                'name' => $variant->name,
+                'image' => $variant->image,
+                'hover_image' => $variant->hover_image,
+                'price' => (float) $variant->price,
+                'compare_at_price' => $variant->compare_at_price !== null ? (float) $variant->compare_at_price : null,
+                'rating' => (float) $variant->rating,
+                'reviews' => (int) $variant->reviews,
+                'stock' => (int) $variant->stock,
+                'badge' => $variant->badge,
+                'color_name' => $variant->color_name,
+                'color_hex' => $variant->color_hex,
+            ])->values()->all();
     }
 }

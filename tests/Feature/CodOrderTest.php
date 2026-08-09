@@ -6,8 +6,11 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class CodOrderTest extends TestCase
@@ -50,10 +53,61 @@ class CodOrderTest extends TestCase
             'payment_status' => 'pending',
             'status' => 'Processing',
             'razorpay_order_id' => null,
+            'district' => 'Ahmedabad',
         ]);
 
         $this->assertSame(3, $product->fresh()->stock);
         $this->getJson('/api/cart')->assertJsonPath('item_count', 0);
+    }
+
+    public function test_cod_order_failure_is_not_reported_as_payment_initialization_failure(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->mock(OrderService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')
+                ->once()
+                ->andThrow(new RuntimeException('SQLSTATE[42S22]: Unknown column weight_kg'));
+        });
+
+        $this->postJson('/api/orders', $this->addressPayload([
+            'email' => $user->email,
+            'full_name' => $user->name,
+        ]))
+            ->assertStatus(500)
+            ->assertJson([
+                'message' => 'Unable to place your order. Please try again.',
+                'code' => 'order_create_failed',
+            ])
+            ->assertJsonMissing(['code' => 'payment_init_failed']);
+    }
+
+    public function test_cod_checkout_idempotency_key_prevents_duplicate_orders_and_stock_commit(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->makeProduct(['stock' => 5]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/cart', [
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ])->assertOk();
+
+        $payload = $this->addressPayload([
+            'email' => $user->email,
+            'full_name' => $user->name,
+        ]);
+        $first = $this->withHeader('Idempotency-Key', 'checkout-cod-test-1')
+            ->postJson('/api/orders', $payload)
+            ->assertCreated();
+        $second = $this->withHeader('Idempotency-Key', 'checkout-cod-test-1')
+            ->postJson('/api/orders', $payload)
+            ->assertCreated();
+
+        $this->assertSame($first->json('data.id'), $second->json('data.id'));
+        $this->assertSame(1, Order::query()->where('checkout_idempotency_key', 'checkout-cod-test-1')->count());
+        $this->assertSame(3, $product->fresh()->stock);
     }
 
     public function test_admin_can_mark_cod_payment_received(): void
@@ -100,6 +154,7 @@ class CodOrderTest extends TestCase
             'phone' => '9999999999',
             'address' => '12 Test Street',
             'city' => 'Ahmedabad',
+            'district' => 'Ahmedabad',
             'state' => 'Gujarat',
             'postal_code' => '380001',
             'subtotal' => 100,
@@ -132,6 +187,7 @@ class CodOrderTest extends TestCase
             'phone' => '9999999999',
             'address' => '12 Test Street',
             'city' => 'Ahmedabad',
+            'district' => 'Ahmedabad',
             'state' => 'Gujarat',
             'postal_code' => '380001',
             'payment_method' => 'cod',

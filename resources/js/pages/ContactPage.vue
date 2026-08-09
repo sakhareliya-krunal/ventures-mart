@@ -1,6 +1,6 @@
 <script setup>
-import { reactive, ref } from 'vue';
-import { Mail, MessageCircle, Phone } from '@lucide/vue';
+import { onBeforeUnmount, reactive, ref } from 'vue';
+import { Headphones, Mail, MessageCircle, Phone } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -14,11 +14,19 @@ const theme = useThemeStore();
 const error = ref('');
 const success = ref('');
 const submitting = ref(false);
+let successTimer = null;
 const form = reactive({
   name: '',
   email: '',
   message: '',
 });
+
+function clearSuccessTimer() {
+  if (successTimer) {
+    window.clearTimeout(successTimer);
+    successTimer = null;
+  }
+}
 
 const channels = [
   {
@@ -59,6 +67,7 @@ useHead(() =>
 );
 
 async function submit() {
+  clearSuccessTimer();
   error.value = '';
   success.value = '';
   submitting.value = true;
@@ -66,6 +75,10 @@ async function submit() {
   try {
     const { data } = await api.post('/contact', { ...form });
     success.value = data.message || 'Thanks! Your message has been received.';
+    successTimer = window.setTimeout(() => {
+      success.value = '';
+      successTimer = null;
+    }, 5000);
     form.name = '';
     form.email = '';
     form.message = '';
@@ -78,6 +91,8 @@ async function submit() {
     submitting.value = false;
   }
 }
+
+onBeforeUnmount(clearSuccessTimer);
 </script>
 
 <template>
@@ -102,6 +117,11 @@ async function submit() {
         >
           Email us
         </a>
+      </template>
+      <template #aside>
+        <Headphones :size="24" aria-hidden="true" />
+        <strong>3 easy ways</strong>
+        to reach our support team
       </template>
     </PageHero>
 
@@ -136,6 +156,7 @@ async function submit() {
         </div>
 
         <div class="contact-form-panel">
+          <span class="eyebrow">Tell us what you need</span>
           <h3 class="contact-form-panel__title">Send a message</h3>
           <form class="contact-form" @submit.prevent="submit">
             <p v-if="error" class="form-error">{{ error }}</p>

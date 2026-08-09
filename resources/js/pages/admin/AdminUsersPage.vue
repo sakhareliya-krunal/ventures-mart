@@ -5,6 +5,7 @@ import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { emailHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -91,7 +92,10 @@ watch(search, load);
         <tbody>
           <tr v-for="user in users" :key="user.id">
             <td data-label="Name">{{ user.name }}</td>
-            <td data-label="Email">{{ user.email }}</td>
+            <td data-label="Email">
+              <a v-if="user.email" :href="emailHref(user.email)">{{ user.email }}</a>
+              <template v-else>—</template>
+            </td>
             <td data-label="Actions">
               <div class="admin-actions">
                 <AppButton type="button" variant="danger" size="sm" @click="requestRemove(user.id)">

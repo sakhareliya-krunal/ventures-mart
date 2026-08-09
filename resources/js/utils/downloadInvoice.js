@@ -14,7 +14,7 @@ export async function downloadOrderInvoice(orderId, { admin = false } = {}) {
 }
 
 /**
- * Public invoice download by order number (QR / track page).
+ * Authenticated invoice download by order number (QR / track page).
  * @param {string} orderNumber
  */
 export async function downloadTrackedOrderInvoice(orderNumber) {

@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminOrderResource;
 use App\Models\Category;
 use App\Models\ContactMessage;
+use App\Models\InventoryAuditFlag;
+use App\Models\InventoryBalance;
+use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Models\Post;
 use App\Models\Product;
@@ -45,7 +48,7 @@ class DashboardController extends Controller
             ->get();
 
         $lowStockProducts = Product::query()
-            ->where('stock', '<=', 5)
+            ->whereRaw('stock <= COALESCE(low_stock_threshold, ?)', [config('inventory.default_low_stock_threshold')])
             ->orderBy('stock')
             ->orderBy('name')
             ->limit(6)
@@ -91,6 +94,24 @@ class DashboardController extends Controller
             'revenue_series' => $revenue['revenue_series'],
             'revenue_last_7_days' => $revenue['revenue_last_7_days'],
             'low_stock_products' => $lowStockProducts,
+            'inventory' => [
+                'on_hand' => (int) InventoryBalance::query()->sum('on_hand'),
+                'reserved' => (int) InventoryBalance::query()->sum('reserved'),
+                'committed' => (int) InventoryBalance::query()->sum('committed'),
+                'available' => (int) InventoryBalance::query()
+                    ->selectRaw('COALESCE(SUM(on_hand - reserved - committed), 0) as aggregate')
+                    ->value('aggregate'),
+                'low_stock_count' => InventoryBalance::query()
+                    ->whereRaw('(on_hand - reserved - committed) <= COALESCE(low_stock_threshold, ?)', [
+                        config('inventory.default_low_stock_threshold'),
+                    ])
+                    ->count(),
+                'expired_reservations' => InventoryReservation::query()
+                    ->where('state', 'reserved')
+                    ->where('expires_at', '<=', now())
+                    ->count(),
+                'open_audit_flags' => InventoryAuditFlag::query()->whereNull('resolved_at')->count(),
+            ],
             'recent_messages' => $recentMessages,
             'recent_posts' => $recentPosts,
             'recent_orders' => AdminOrderResource::collection($recentOrders),

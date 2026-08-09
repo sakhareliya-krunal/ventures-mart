@@ -1,13 +1,21 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import { LogOut, Package } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
+import SearchableSelect from '@/components/ui/SearchableSelect.vue';
 import api from '@/services/api';
+import { emailHref, phoneHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
+import {
+  cityForDistrictChange,
+  districtOptionsForState,
+  indiaStateOptions,
+  isDistrictInState,
+} from '@/utils/indiaLocations';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
@@ -38,6 +46,7 @@ const addressForm = reactive({
   phone: '',
   address: '',
   city: '',
+  district: '',
   state: '',
   postal_code: '',
   is_default: false,
@@ -47,6 +56,7 @@ const displayName = computed(() => auth.user?.name || 'Account');
 const displayEmail = computed(() => auth.user?.email || '');
 const avatarUrl = computed(() => auth.user?.avatar || '');
 const hasPassword = computed(() => Boolean(auth.user?.has_password));
+const districtOptions = computed(() => districtOptionsForState(addressForm.state));
 const avatarInitial = computed(() => {
   const name = displayName.value.trim();
   return name ? name.charAt(0).toUpperCase() : '?';
@@ -85,6 +95,7 @@ function resetAddressForm() {
   addressForm.address = '';
   addressForm.city = '';
   addressForm.state = '';
+  addressForm.district = '';
   addressForm.postal_code = '';
   addressForm.is_default = addresses.value.length === 0;
 }
@@ -97,6 +108,7 @@ function editAddress(item) {
   addressForm.address = item.address || '';
   addressForm.city = item.city || '';
   addressForm.state = item.state || '';
+  addressForm.district = item.district || '';
   addressForm.postal_code = item.postal_code || '';
   addressForm.is_default = Boolean(item.is_default);
   addressError.value = '';
@@ -138,6 +150,12 @@ async function savePassword() {
 async function saveAddress() {
   addressError.value = '';
   addressSuccess.value = '';
+
+  if (!addressForm.state || !addressForm.district) {
+    addressError.value = 'Select both a state and district.';
+    return;
+  }
+
   savingAddress.value = true;
 
   try {
@@ -159,6 +177,26 @@ async function saveAddress() {
     savingAddress.value = false;
   }
 }
+
+watch(
+  () => addressForm.state,
+  (state, previousState) => {
+    if (
+      state !== previousState
+      && addressForm.district
+      && !isDistrictInState(state, addressForm.district)
+    ) {
+      addressForm.district = '';
+    }
+  },
+);
+
+watch(
+  () => addressForm.district,
+  (district, previousDistrict) => {
+    addressForm.city = cityForDistrictChange(addressForm.city, district, previousDistrict);
+  },
+);
 
 async function setDefaultAddress(id) {
   await api.post(`/addresses/${id}/default`);
@@ -205,7 +243,9 @@ async function logout() {
           <div class="profile-identity__copy">
             <p class="profile-identity__eyebrow">Account</p>
             <h1>{{ displayName }}</h1>
-            <p class="profile-identity__email">{{ displayEmail }}</p>
+            <p class="profile-identity__email">
+              <a v-if="displayEmail" :href="emailHref(displayEmail)">{{ displayEmail }}</a>
+            </p>
             <p class="profile-identity__note">
               Name and email are managed by your account and can’t be edited here.
             </p>
@@ -296,8 +336,13 @@ async function logout() {
                 <span v-if="item.is_default" class="address-badge">Default</span>
               </div>
               <p>
-                {{ item.full_name }} · {{ item.phone }}<br />
-                {{ item.address }}, {{ item.city }}, {{ item.state }} {{ item.postal_code }}
+                {{ item.full_name }}
+                <template v-if="item.phone">
+                  · <a :href="phoneHref(item.phone)">{{ item.phone }}</a>
+                </template><br />
+                {{ item.address }}, {{ item.city }}
+                <template v-if="item.district">, {{ item.district }}</template>,
+                {{ item.state }} {{ item.postal_code }}
               </p>
             </div>
             <div class="address-card__actions">
@@ -329,9 +374,25 @@ async function logout() {
             <FormField v-model="addressForm.phone" label="Phone" required />
           </div>
           <FormField v-model="addressForm.address" label="Address" required />
-          <div class="form-grid">
-            <FormField v-model="addressForm.city" label="City" required />
-            <FormField v-model="addressForm.state" label="State" required />
+          <div class="form-grid address-location-grid">
+            <SearchableSelect
+              v-model="addressForm.state"
+              label="State"
+              :options="indiaStateOptions"
+              placeholder="Select state"
+              search-placeholder="Search states…"
+              required
+            />
+            <SearchableSelect
+              v-model="addressForm.district"
+              label="District"
+              :options="districtOptions"
+              placeholder="Select district"
+              search-placeholder="Search districts…"
+              :disabled="!addressForm.state"
+              required
+            />
+            <FormField v-model="addressForm.city" label="City / Town" required />
             <FormField v-model="addressForm.postal_code" label="Postal code" required />
           </div>
           <label class="checkbox-row">

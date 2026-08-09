@@ -35,6 +35,10 @@ export function friendlyApiError(err, fallback = 'Something went wrong. Please t
     return 'Unable to start payment. Please try again.';
   }
 
+  if (data.code === 'order_create_failed') {
+    return 'Unable to place your order. Please try again.';
+  }
+
   if (data.code === 'error_logs_unavailable') {
     if (typeof data.message === 'string' && data.message && !looksTechnical(data.message)) {
       return data.message;

@@ -1,10 +1,10 @@
 <script setup>
 import { computed, watch } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
-import { ChevronRight } from '@lucide/vue';
+import { ChevronRight, Clock3 } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
+import BlogCard from '@/components/blog/BlogCard.vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
@@ -22,18 +22,16 @@ const post = computed(() => posts.current);
 const relatedPosts = computed(() => posts.related || []);
 
 const bodyParts = computed(() => splitPostBody(safeHtml(post.value?.body || '')));
+const readingMinutes = computed(() => {
+  const words = stripHtml(post.value?.body || '').split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 210));
+});
 
 const lead = computed(() => {
   if (!post.value) return '';
   if (post.value.excerpt) return post.value.excerpt;
   return stripHtml(bodyParts.value.introHtml, 160);
 });
-
-const breadcrumbItems = computed(() => [
-  { label: 'Home', to: '/' },
-  { label: 'Blog', to: '/blog' },
-  { label: post.value?.title || 'Article' },
-]);
 
 useHead(() =>
   post.value
@@ -76,9 +74,6 @@ watch(slug, load, { immediate: true });
 <template>
   <LoadingSpinner v-if="posts.loading" page label="Loading post" />
   <div v-else-if="post" class="article-premium">
-    <div class="page-section article-premium__crumb-wrap">
-      <Breadcrumb :items="breadcrumbItems" />
-    </div>
     <section
       class="article-premium__hero"
       :class="{ 'article-premium__hero--fallback': !post.cover_image }"
@@ -104,6 +99,10 @@ watch(slug, load, { immediate: true });
           >
             {{ formatDate(post.published_at) }}
           </time>
+          <span class="article-premium__reading-time">
+            <Clock3 :size="16" aria-hidden="true" />
+            {{ readingMinutes }} min read
+          </span>
           <div class="article-premium__actions">
             <AppButton to="/shop" size="lg">
               Shop collection
@@ -114,6 +113,19 @@ watch(slug, load, { immediate: true });
         </div>
       </div>
     </section>
+
+    <nav
+      v-if="bodyParts.sections.length > 1"
+      class="article-premium__toc"
+      aria-label="Article sections"
+    >
+      <div class="page-section article-premium__toc-inner">
+        <span>In this story</span>
+        <a v-for="section in bodyParts.sections" :key="section.id" :href="`#${section.id}`">
+          {{ section.title }}
+        </a>
+      </div>
+    </nav>
 
     <section
       v-if="bodyParts.introHtml"
@@ -188,26 +200,11 @@ watch(slug, load, { immediate: true });
       class="article-premium__section article-premium__section--soft"
       aria-labelledby="blog-related-title"
     >
-      <div class="page-section article-premium__section-inner">
+      <div class="page-section article-premium__section-inner article-premium__section-inner--wide">
         <span class="eyebrow">Keep reading</span>
         <h2 id="blog-related-title">Related articles</h2>
         <div class="blog-grid">
-          <article v-for="item in relatedPosts" :key="item.id" class="blog-card">
-            <RouterLink :to="`/blog/${item.slug}`" class="blog-card__media">
-              <img
-                v-if="item.cover_image"
-                :src="item.cover_image"
-                :alt="item.title"
-                loading="lazy"
-              />
-            </RouterLink>
-            <div class="blog-card__copy">
-              <h3>
-                <RouterLink :to="`/blog/${item.slug}`">{{ item.title }}</RouterLink>
-              </h3>
-              <p>{{ item.excerpt }}</p>
-            </div>
-          </article>
+          <BlogCard v-for="item in relatedPosts" :key="item.id" :post="item" />
         </div>
       </div>
     </section>

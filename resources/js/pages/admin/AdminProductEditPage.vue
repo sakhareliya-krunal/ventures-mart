@@ -73,7 +73,10 @@ async function save() {
   fieldErrors.value = {};
 
   try {
-    await api.put(`/admin/products/${route.params.id}`, buildProductPayload(form));
+    await api.put(
+      `/admin/products/${route.params.id}`,
+      buildProductPayload(form, { includeStock: false }),
+    );
     await router.push({ name: 'admin-products', query: { notice: 'saved' } });
   } catch (err) {
     fieldErrors.value = err.response?.data?.errors || {};

@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted } from 'vue';
-import { ChevronRight } from '@lucide/vue';
+import { computed, onMounted } from 'vue';
+import { BookOpen, RefreshCw } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
-import { RouterLink } from 'vue-router';
+import BlogCard from '@/components/blog/BlogCard.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
@@ -13,6 +14,8 @@ import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const posts = usePostsStore();
+const featuredPost = computed(() => posts.list[0] || null);
+const remainingPosts = computed(() => posts.list.slice(1));
 
 useHead(() =>
   seoHeadFromServer({
@@ -22,28 +25,22 @@ useHead(() =>
   }),
 );
 
-function formatDate(value) {
-  if (!value) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
 onMounted(() => posts.fetchList());
 </script>
 
 <template>
   <div class="blog-page">
     <PageHero
-      eyebrow="Journal"
-      title="Blog"
-      lead="Practical guides for school lunches, creative play, and shopping with confidence—written for Indian families."
-    />
+      eyebrow="The Ventures Journal"
+      title="Ideas for happier everyday moments"
+      lead="Practical, thoughtful guides for school lunches, creative play, and confident family shopping."
+    >
+      <template #aside>
+        <BookOpen :size="24" aria-hidden="true" />
+        <strong>{{ posts.list.length || 'Fresh' }}</strong>
+        {{ posts.list.length === 1 ? 'story for your family' : 'stories for your family' }}
+      </template>
+    </PageHero>
 
     <section class="page-section blog-index" aria-labelledby="blog-index-title">
       <Breadcrumb
@@ -57,6 +54,15 @@ onMounted(() => posts.fetchList());
 
       <LoadingSpinner v-if="posts.loading" page label="Loading posts" />
 
+      <div v-else-if="posts.error" class="blog-index__error" role="alert">
+        <h2>We couldn’t load the journal</h2>
+        <p>{{ posts.error }}</p>
+        <AppButton type="button" variant="secondary" @click="posts.fetchList()">
+          <RefreshCw :size="17" aria-hidden="true" />
+          Try again
+        </AppButton>
+      </div>
+
       <EmptyState
         v-else-if="!posts.list.length"
         title="No posts yet"
@@ -65,31 +71,19 @@ onMounted(() => posts.fetchList());
         action-to="/shop"
       />
 
-      <div v-else class="blog-grid">
-        <article v-for="post in posts.list" :key="post.id" class="blog-card">
-          <RouterLink :to="`/blog/${post.slug}`" class="blog-card__media">
-            <img
-              v-if="post.cover_image"
-              :src="post.cover_image"
-              :alt="post.title"
-              loading="lazy"
-            />
-          </RouterLink>
-          <div class="blog-card__copy">
-            <time v-if="post.published_at" :datetime="post.published_at">
-              {{ formatDate(post.published_at) }}
-            </time>
-            <h3>
-              <RouterLink :to="`/blog/${post.slug}`">{{ post.title }}</RouterLink>
-            </h3>
-            <p>{{ post.excerpt }}</p>
-            <RouterLink class="blog-card__link" :to="`/blog/${post.slug}`">
-              Read more
-              <ChevronRight :size="16" />
-            </RouterLink>
+      <template v-else>
+        <BlogCard v-if="featuredPost" :post="featuredPost" featured />
+        <div v-if="remainingPosts.length" class="blog-index__section-heading">
+          <div>
+            <span class="eyebrow">More from the journal</span>
+            <h2>Latest stories</h2>
           </div>
-        </article>
-      </div>
+          <p>Helpful reading for playtime, mealtime, and everything in between.</p>
+        </div>
+        <div v-if="remainingPosts.length" class="blog-grid">
+          <BlogCard v-for="post in remainingPosts" :key="post.id" :post="post" />
+        </div>
+      </template>
     </section>
   </div>
 </template>

@@ -1,11 +1,22 @@
 <script setup>
+import { ShieldCheck } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import StaticPageLayout from '@/components/ui/StaticPageLayout.vue';
 import { footerContact } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
+const sections = [
+  { id: 'collect', label: 'What we collect' },
+  { id: 'cookies', label: 'Cookies' },
+  { id: 'use', label: 'How we use data' },
+  { id: 'sharing', label: 'Sharing' },
+  { id: 'retention', label: 'Retention' },
+  { id: 'choices', label: 'Your choices' },
+  { id: 'contact', label: 'Contact' },
+];
 
 useHead(() =>
   seoHeadFromServer({
@@ -22,9 +33,19 @@ useHead(() =>
     title="Privacy Policy"
     lead="How Ventures Mart collects and uses information when you browse, shop, or reach out for support."
     meta="Last updated: July 2026"
+    :sections="sections"
+    wide
   >
+    <template #aside>
+      <ShieldCheck :size="24" aria-hidden="true" />
+      <strong>Your data</strong>
+      handled for shopping and support
+    </template>
+    <template #actions>
+      <AppButton to="/contact" size="lg">Privacy question</AppButton>
+    </template>
     <div class="static-prose">
-      <section>
+      <section id="collect">
         <h2>What we collect</h2>
         <p>
           Depending on how you use the store, we may process account details (name, email, phone),
@@ -33,7 +54,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="cookies">
         <h2>Cookies and session</h2>
         <p>
           We use session cookies so you stay signed in and so your cart and wishlist remain available
@@ -41,7 +62,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="use">
         <h2>How we use your data</h2>
         <ul>
           <li>Process and fulfill orders for toys and lunch boxes</li>
@@ -51,7 +72,7 @@ useHead(() =>
         </ul>
       </section>
 
-      <section>
+      <section id="sharing">
         <h2>Sharing</h2>
         <p>
           We share personal information only when it is needed to fulfill an order or provide
@@ -59,7 +80,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="retention">
         <h2>Retention</h2>
         <p>
           Order and support records are kept for as long as needed for fulfillment, returns, and
@@ -67,7 +88,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="choices">
         <h2>Your choices</h2>
         <p>
           You can update account details after signing in, clear cart or wishlist items, and contact
@@ -75,7 +96,7 @@ useHead(() =>
         </p>
       </section>
 
-      <section>
+      <section id="contact">
         <h2>Contact</h2>
         <p>
           Questions about privacy?

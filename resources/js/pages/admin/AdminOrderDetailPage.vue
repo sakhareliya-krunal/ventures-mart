@@ -1,9 +1,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import InventoryReturnDialog from '@/components/admin/InventoryReturnDialog.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
-import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
@@ -13,6 +13,7 @@ import {
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from '@/utils/adminBadges';
+import { emailHref, phoneHref } from '@/utils/contactLinks';
 import { downloadOrderInvoice } from '@/utils/downloadInvoice';
 import { formatCurrency, unwrapData } from '@/utils/format';
 
@@ -21,15 +22,21 @@ const router = useRouter();
 const loading = ref(true);
 const saving = ref(false);
 const markingPaid = ref(false);
-const deleting = ref(false);
 const downloadingInvoice = ref(false);
-const confirmDeleteOpen = ref(false);
+const retryingShiprocket = ref(false);
+const syncingShiprocket = ref(false);
 const error = ref('');
 const order = ref(null);
 const status = ref('Processing');
+const returnDialogOpen = ref(false);
+const returnItem = ref(null);
+const processingReturn = ref(false);
+const returnError = ref('');
+const inventorySuccess = ref('');
 
 const statusOptions = [
   { value: 'AwaitingPayment', label: 'Awaiting payment' },
+  { value: 'InventoryHold', label: 'Inventory hold' },
   { value: 'Processing', label: 'Confirmed' },
   { value: 'Packed', label: 'Packed' },
   { value: 'Shipped', label: 'Shipped' },
@@ -61,9 +68,12 @@ const customerEmail = computed(
 );
 
 const cityLine = computed(() => {
-  const parts = [shipping.value.city, shipping.value.state, shipping.value.postal_code].filter(
-    Boolean,
-  );
+  const parts = [
+    shipping.value.city,
+    shipping.value.district,
+    shipping.value.state,
+    shipping.value.postal_code,
+  ].filter(Boolean);
   return parts.length ? parts.join(', ') : '—';
 });
 
@@ -77,6 +87,83 @@ const paymentMethodLabel = computed(() => {
 const canMarkPaid = computed(
   () => order.value?.payment_method === 'cod' && order.value?.payment_status === 'pending',
 );
+
+const shiprocketManaged = computed(() => Boolean(order.value?.shiprocket));
+
+function returnableQuantity(item) {
+  return Math.max(0, Number(item.shipped_quantity || 0) - Number(item.returned_quantity || 0));
+}
+
+function reservationLabel(item) {
+  const state = item.inventory_reservation?.state;
+  return state ? String(state).replaceAll('_', ' ') : 'Not allocated';
+}
+
+function reservationBadge(item) {
+  const state = item.inventory_reservation?.state;
+  if (['reserved', 'committed', 'consumed'].includes(state)) return 'admin-badge--info';
+  if (['released', 'expired', 'cancelled'].includes(state)) return 'admin-badge--warn';
+  return '';
+}
+
+function openReturn(item) {
+  returnItem.value = item;
+  returnError.value = '';
+  returnDialogOpen.value = true;
+}
+
+function idempotencyKey() {
+  return globalThis.crypto?.randomUUID?.() || `return-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function processReturn(values) {
+  processingReturn.value = true;
+  returnError.value = '';
+  inventorySuccess.value = '';
+  try {
+    await api.post('/admin/inventory/returns', {
+      ...values,
+      idempotency_key: idempotencyKey(),
+    });
+    returnDialogOpen.value = false;
+    inventorySuccess.value = 'Return processed and item quantities updated.';
+    await loadOrder();
+  } catch (err) {
+    returnError.value = err.response?.data?.message || 'Unable to process return.';
+  } finally {
+    processingReturn.value = false;
+  }
+}
+
+async function retryShiprocket() {
+  if (!order.value || retryingShiprocket.value) return;
+  retryingShiprocket.value = true;
+  error.value = '';
+  courierSuccess.value = '';
+  try {
+    const { data } = await api.post(`/admin/orders/${order.value.id}/shiprocket/retry`);
+    courierSuccess.value = data.message || 'Shiprocket fulfillment queued.';
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Unable to queue Shiprocket fulfillment.';
+  } finally {
+    retryingShiprocket.value = false;
+  }
+}
+
+async function syncShiprocket() {
+  if (!order.value || syncingShiprocket.value) return;
+  syncingShiprocket.value = true;
+  error.value = '';
+  courierSuccess.value = '';
+  try {
+    const { data } = await api.post(`/admin/orders/${order.value.id}/shiprocket/sync`);
+    courierSuccess.value = data.message || 'Shiprocket tracking sync queued.';
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Unable to queue Shiprocket tracking sync.';
+  } finally {
+    syncingShiprocket.value = false;
+  }
+}
 
 async function downloadInvoice() {
   if (!order.value?.id || downloadingInvoice.value) return;
@@ -116,7 +203,7 @@ function fillCourierForm(source) {
   courierForm.expected_delivery_at = toDateInput(source?.expected_delivery_at);
 }
 
-onMounted(async () => {
+async function loadOrder() {
   try {
     const { data } = await api.get(`/admin/orders/${route.params.id}`);
     order.value = unwrapData(data);
@@ -124,9 +211,12 @@ onMounted(async () => {
     fillCourierForm(order.value);
   } catch {
     error.value = 'Order not found.';
-  } finally {
-    loading.value = false;
   }
+}
+
+onMounted(async () => {
+  await loadOrder();
+  loading.value = false;
 });
 
 async function saveStatus() {
@@ -183,21 +273,6 @@ async function markPaymentReceived() {
   }
 }
 
-async function removeOrder() {
-  if (!order.value || deleting.value) return;
-  deleting.value = true;
-  error.value = '';
-  try {
-    await api.delete(`/admin/orders/${order.value.id}`);
-    confirmDeleteOpen.value = false;
-    await router.push({ name: 'admin-orders' });
-  } catch (err) {
-    error.value = err.response?.data?.message || 'Unable to delete order.';
-    confirmDeleteOpen.value = false;
-  } finally {
-    deleting.value = false;
-  }
-}
 </script>
 
 <template>
@@ -205,14 +280,6 @@ async function removeOrder() {
     <div class="admin-toolbar">
       <AppButton type="button" variant="ghost" @click="router.push('/admin/orders')">
         ← Back to orders
-      </AppButton>
-      <AppButton
-        v-if="order"
-        type="button"
-        variant="danger"
-        @click="confirmDeleteOpen = true"
-      >
-        Delete order
       </AppButton>
       <AppButton
         v-if="order?.invoice_available"
@@ -245,6 +312,9 @@ async function removeOrder() {
           <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
             {{ orderStatusLabel(order.status) }}
           </span>
+          <span v-if="order.inventory_status" class="admin-badge admin-badge--info">
+            Inventory {{ String(order.inventory_status).replaceAll('_', ' ') }}
+          </span>
           <span v-if="order.paid_at" class="admin-muted">
             Paid {{ new Date(order.paid_at).toLocaleString() }}
           </span>
@@ -253,6 +323,28 @@ async function removeOrder() {
 
       <p v-if="error" class="form-error">{{ error }}</p>
       <p v-if="courierSuccess" class="form-success">{{ courierSuccess }}</p>
+      <p v-if="inventorySuccess" class="form-success">{{ inventorySuccess }}</p>
+
+      <section
+        v-if="order.payment_expires_at || order.cancel_requested_at || order.cancelled_at"
+        class="admin-order-detail__section admin-order-inventory-timeline"
+      >
+        <h3>Payment &amp; cancellation timing</h3>
+        <div class="admin-order-inventory-timeline__items">
+          <span v-if="order.payment_expires_at">
+            Payment expires <strong>{{ new Date(order.payment_expires_at).toLocaleString() }}</strong>
+          </span>
+          <span v-if="order.cancel_requested_at">
+            Cancellation requested <strong>{{ new Date(order.cancel_requested_at).toLocaleString() }}</strong>
+          </span>
+          <span v-if="order.cancelled_at">
+            Cancelled <strong>{{ new Date(order.cancelled_at).toLocaleString() }}</strong>
+          </span>
+          <span v-if="order.cancellation_reason">
+            Reason <strong>{{ order.cancellation_reason }}</strong>
+          </span>
+        </div>
+      </section>
 
       <section class="admin-order-detail__section">
         <h3>Fulfillment</h3>
@@ -289,8 +381,11 @@ async function removeOrder() {
               <tr>
                 <th>Item</th>
                 <th>Qty</th>
+                <th>Allocation</th>
+                <th>Shipped / returned</th>
                 <th>Unit</th>
                 <th>Line</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -317,8 +412,44 @@ async function removeOrder() {
                   </div>
                 </td>
                 <td data-label="Qty">{{ item.quantity }}</td>
+                <td data-label="Allocation">
+                  <span class="admin-badge" :class="reservationBadge(item)">
+                    {{ reservationLabel(item) }}
+                  </span>
+                  <div v-if="item.inventory_reservation" class="admin-muted">
+                    {{ item.inventory_reservation.quantity }} allocated
+                  </div>
+                </td>
+                <td data-label="Shipped / returned">
+                  <span class="admin-order-item__quantities">
+                    {{ item.shipped_quantity || 0 }} shipped
+                    <small>{{ item.returned_quantity || 0 }} returned · {{ item.restocked_quantity || 0 }} restocked</small>
+                  </span>
+                </td>
                 <td data-label="Unit">{{ formatCurrency(item.unit_price) }}</td>
                 <td data-label="Line">{{ formatCurrency(item.line_total) }}</td>
+                <td data-label="Actions">
+                  <div class="admin-actions">
+                    <AppButton
+                      v-if="returnableQuantity(item) > 0"
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      @click="openReturn(item)"
+                    >
+                      Return
+                    </AppButton>
+                    <AppButton
+                      v-if="item.product_id"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      :to="`/admin/inventory?search=${encodeURIComponent(item.sku || item.name)}`"
+                    >
+                      Inventory
+                    </AppButton>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -334,43 +465,130 @@ async function removeOrder() {
           </div>
           <div class="admin-order-address-card__row">
             <dt>Email</dt>
-            <dd>{{ customerEmail }}</dd>
+            <dd>
+              <a v-if="customerEmail !== '—'" :href="emailHref(customerEmail)">{{ customerEmail }}</a>
+              <template v-else>—</template>
+            </dd>
           </div>
           <div class="admin-order-address-card__row">
             <dt>Phone</dt>
-            <dd>{{ shipping.phone || '—' }}</dd>
+            <dd>
+              <a v-if="shipping.phone" :href="phoneHref(shipping.phone)">{{ shipping.phone }}</a>
+              <template v-else>—</template>
+            </dd>
           </div>
           <div class="admin-order-address-card__row">
             <dt>Address</dt>
             <dd>{{ shipping.address || '—' }}</dd>
           </div>
           <div class="admin-order-address-card__row">
-            <dt>City / State / PIN</dt>
+            <dt>City / District / State / PIN</dt>
             <dd>{{ cityLine }}</dd>
           </div>
         </dl>
       </section>
 
       <section class="admin-order-detail__section">
+        <div class="admin-toolbar">
+          <h3>Shiprocket fulfillment</h3>
+          <div class="admin-order-detail__actions">
+            <AppButton
+              type="button"
+              variant="secondary"
+              :disabled="retryingShiprocket || order.status === 'Cancelled'"
+              @click="retryShiprocket"
+            >
+              {{ retryingShiprocket ? 'Queuing…' : order.shiprocket ? 'Retry fulfillment' : 'Send to Shiprocket' }}
+            </AppButton>
+            <AppButton
+              v-if="order.shiprocket?.awb_code"
+              type="button"
+              variant="ghost"
+              :disabled="syncingShiprocket"
+              @click="syncShiprocket"
+            >
+              {{ syncingShiprocket ? 'Queuing…' : 'Sync tracking' }}
+            </AppButton>
+          </div>
+        </div>
+        <dl v-if="order.shiprocket" class="admin-order-address-card">
+          <div class="admin-order-address-card__row">
+            <dt>Sync status</dt>
+            <dd>{{ order.shiprocket.sync_status || '—' }} · {{ order.shiprocket.stage || '—' }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Shiprocket IDs</dt>
+            <dd>
+              Order {{ order.shiprocket.shiprocket_order_id || '—' }} · Shipment
+              {{ order.shiprocket.shipment_id || '—' }}
+            </dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Courier / AWB</dt>
+            <dd>
+              {{ order.shiprocket.courier_name || '—' }} · {{ order.shiprocket.awb_code || '—' }}
+            </dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Pickup</dt>
+            <dd>{{ order.shiprocket.pickup_status || 'Not scheduled' }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Shipment status</dt>
+            <dd>{{ order.shiprocket.shipment_status || 'Awaiting first sync' }}</dd>
+          </div>
+          <div v-if="order.shiprocket.last_synced_at" class="admin-order-address-card__row">
+            <dt>Last synced</dt>
+            <dd>{{ new Date(order.shiprocket.last_synced_at).toLocaleString() }}</dd>
+          </div>
+          <div v-if="order.shiprocket.last_error" class="admin-order-address-card__row">
+            <dt>Last error</dt>
+            <dd class="form-error">{{ order.shiprocket.last_error }}</dd>
+          </div>
+        </dl>
+        <p v-else class="admin-muted">
+          No Shiprocket shipment has been created yet. Automatic fulfillment runs after order
+          confirmation when the integration is enabled.
+        </p>
+      </section>
+
+      <section class="admin-order-detail__section">
         <h3>Courier / tracking</h3>
         <form class="admin-form" @submit.prevent="saveCourier">
-          <FormField v-model="courierForm.courier_partner" label="Courier partner" />
-          <FormField v-model="courierForm.awb_number" label="AWB number" />
-          <FormField v-model="courierForm.tracking_number" label="Tracking number" />
+          <p v-if="shiprocketManaged" class="admin-muted">
+            These fields are managed automatically by Shiprocket.
+          </p>
+          <FormField
+            v-model="courierForm.courier_partner"
+            label="Courier partner"
+            :disabled="shiprocketManaged"
+          />
+          <FormField
+            v-model="courierForm.awb_number"
+            label="AWB number"
+            :disabled="shiprocketManaged"
+          />
+          <FormField
+            v-model="courierForm.tracking_number"
+            label="Tracking number"
+            :disabled="shiprocketManaged"
+          />
           <div class="admin-form__grid">
             <FormField
               v-model="courierForm.dispatched_at"
               label="Dispatched on"
               type="date"
+              :disabled="shiprocketManaged"
             />
             <FormField
               v-model="courierForm.expected_delivery_at"
               label="Expected delivery"
               type="date"
+              :disabled="shiprocketManaged"
             />
           </div>
           <div class="admin-form__actions">
-            <AppButton type="submit" :disabled="savingCourier">
+            <AppButton type="submit" :disabled="savingCourier || shiprocketManaged">
               {{ savingCourier ? 'Saving…' : 'Save courier' }}
             </AppButton>
           </div>
@@ -420,16 +638,13 @@ async function removeOrder() {
       </section>
     </div>
 
-    <ConfirmDialog
-      v-model:open="confirmDeleteOpen"
-      title="Delete order?"
-      message="This order will be permanently removed. Stock will be restored when applicable."
-      confirm-label="Delete"
-      busy-label="Deleting…"
-      :busy="deleting"
-      :close-on-confirm="false"
-      danger
-      @confirm="removeOrder"
+    <InventoryReturnDialog
+      :open="returnDialogOpen"
+      :item="returnItem"
+      :busy="processingReturn"
+      :error="returnError"
+      @close="returnDialogOpen = false"
+      @submit="processReturn"
     />
   </div>
 </template>

@@ -26,17 +26,17 @@ export const homeRails = {
   lunch: {
     title: 'Lunch boxes for every school day',
     description: 'Steel and kids tiffins made for packing, spills, and real routines.',
-    action: { label: 'Shop lunch boxes', href: '/category/lunch-box' },
+    action: { label: 'See all', href: '/category/lunch-box' },
   },
   toys: {
     title: 'Toys worth playing with',
     description: 'Creative picks for building, pretend kitchens, and soft companions.',
-    action: { label: 'Shop toys', href: '/category/toys' },
+    action: { label: 'See all', href: '/category/toys' },
   },
   sale: {
     title: 'Limited savings',
     description: 'Select toys and lunch boxes with clear, time-bound prices.',
-    action: { label: 'Shop all deals', href: '/shop' },
+    action: { label: 'See all', href: '/shop' },
   },
   blog: {
     title: 'From the blog',
@@ -50,16 +50,19 @@ export const homeServices = [
     title: 'Free shipping',
     text: 'On every order across India',
     imageKey: 'serviceShipping',
+    href: '/shipping',
   },
   {
-    title: 'Family support',
+    title: 'Customer support',
     text: 'Help when you need it—WhatsApp ready',
     imageKey: 'serviceSupport',
+    href: '/contact',
   },
   {
     title: '7-day replacement',
     text: 'Clear support if something arrives wrong',
     imageKey: 'serviceReturns',
+    href: '/returns',
   },
 ];
 

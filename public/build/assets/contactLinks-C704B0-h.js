@@ -1,0 +1,1 @@
+function e(e){let t=String(e??``).trim();return t?`mailto:${t}`:``}function t(e){let t=String(e??``).trim(),n=t.replace(/\D/g,``);return n?`tel:${t.startsWith(`+`)?`+`:``}${n}`:``}export{t as n,e as t};

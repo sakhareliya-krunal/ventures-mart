@@ -1,4 +1,5 @@
 <script setup>
+import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import { homeServices } from '@/constants/home';
 
@@ -10,12 +11,18 @@ const services = homeServices.map((service) => ({
 
 <template>
   <section class="service-strip" aria-label="Shopping promises">
-    <div v-for="service in services" :key="service.title" class="service-item">
+    <RouterLink
+      v-for="service in services"
+      :key="service.title"
+      class="service-item"
+      :to="service.href"
+      :aria-label="`${service.title}: ${service.text}`"
+    >
       <img :src="service.image" :alt="service.title" loading="lazy" />
       <div>
         <h3>{{ service.title }}</h3>
         <p>{{ service.text }}</p>
       </div>
-    </div>
+    </RouterLink>
   </section>
 </template>

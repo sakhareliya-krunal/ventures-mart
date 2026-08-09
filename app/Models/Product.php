@@ -6,6 +6,7 @@ use App\Models\Concerns\HasSeo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -32,6 +33,12 @@ class Product extends Model
         'details',
         'specifications',
         'stock',
+        'low_stock_threshold',
+        'reorder_point',
+        'weight_kg',
+        'length_cm',
+        'breadth_cm',
+        'height_cm',
         'is_active',
         'variant_group_id',
         'color_name',
@@ -45,6 +52,13 @@ class Product extends Model
             'price' => 'float',
             'compare_at_price' => 'float',
             'rating' => 'float',
+            'weight_kg' => 'float',
+            'length_cm' => 'float',
+            'breadth_cm' => 'float',
+            'height_cm' => 'float',
+            'stock' => 'integer',
+            'low_stock_threshold' => 'integer',
+            'reorder_point' => 'integer',
             'tags' => 'array',
             'details' => 'array',
             'specifications' => 'array',
@@ -61,6 +75,34 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function inventoryBalance(): HasOne
+    {
+        return $this->hasOne(InventoryBalance::class);
+    }
+
+    public function inventoryLedgerEntries(): HasMany
+    {
+        return $this->hasMany(InventoryLedgerEntry::class);
+    }
+
+    public function inventoryReservations(): HasMany
+    {
+        return $this->hasMany(InventoryReservation::class);
+    }
+
+    public function availableStock(): int
+    {
+        $balance = $this->relationLoaded('inventoryBalance')
+            ? $this->inventoryBalance
+            : $this->inventoryBalance()->first();
+
+        if ($balance) {
+            return $balance->available();
+        }
+
+        return (int) $this->stock;
     }
 
     public function cartItems(): HasMany

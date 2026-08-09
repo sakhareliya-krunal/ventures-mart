@@ -5,6 +5,7 @@ import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { emailHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 import { useAuthStore } from '@/stores/auth';
 
@@ -139,7 +140,10 @@ function openCreateAdmin() {
           <tbody>
             <tr v-for="user in admins" :key="user.id">
               <td data-label="Name">{{ user.name }}</td>
-              <td data-label="Email">{{ user.email }}</td>
+            <td data-label="Email">
+              <a v-if="user.email" :href="emailHref(user.email)">{{ user.email }}</a>
+              <template v-else>—</template>
+            </td>
             </tr>
           </tbody>
         </table>

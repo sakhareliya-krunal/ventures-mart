@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\Inventory\InventoryService;
 use App\Services\SeoAutoGenerator;
 use App\Services\SeoCache;
 use App\Services\SeoRedirectService;
@@ -18,8 +19,8 @@ class ProductController extends Controller
         private readonly SeoService $seo,
         private readonly SeoAutoGenerator $autoSeo,
         private readonly SeoRedirectService $redirects,
-    ) {
-    }
+        private readonly InventoryService $inventory,
+    ) {}
 
     public function index(Request $request)
     {
@@ -47,6 +48,7 @@ class ProductController extends Controller
         unset($validated['seo'], $validated['faqs']);
 
         $product = Product::query()->create($validated);
+        $this->inventory->ensureBalance($product);
         $product->load('category');
 
         $merged = $this->autoSeo->syncSeoSlug(
@@ -78,6 +80,7 @@ class ProductController extends Controller
         $seoPayload = $validated['seo'] ?? null;
         $faqsPayload = $validated['faqs'] ?? null;
         unset($validated['seo'], $validated['faqs']);
+        unset($validated['stock']);
 
         $product->fill($validated)->save();
         $this->redirects->redirectSlugChange('/product/'.$oldSlug, '/product/'.$product->slug);
@@ -101,10 +104,10 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        $product->delete();
+        $product->forceFill(['is_active' => false])->save();
         SeoCache::forgetSitemap();
 
-        return response()->json(['message' => 'Product deleted.']);
+        return response()->json(['message' => 'Product hidden. Inventory history was preserved.']);
     }
 
     private function validated(Request $request, ?Product $product = null): array
@@ -123,6 +126,7 @@ class ProductController extends Controller
                 'max:120',
                 Rule::unique('products', 'sku')->ignore($product?->id),
             ],
+            'hsn' => ['nullable', 'string', 'max:32'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
@@ -131,6 +135,10 @@ class ProductController extends Controller
             'badge' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string'],
             'stock' => ['required', 'integer', 'min:0'],
+            'weight_kg' => ['nullable', 'numeric', 'gt:0', 'max:99999'],
+            'length_cm' => ['nullable', 'numeric', 'gt:0.5', 'max:99999'],
+            'breadth_cm' => ['nullable', 'numeric', 'gt:0.5', 'max:99999'],
+            'height_cm' => ['nullable', 'numeric', 'gt:0.5', 'max:99999'],
             'is_active' => ['sometimes', 'boolean'],
             'featured' => ['sometimes', 'boolean'],
             'tags' => ['nullable', 'array'],

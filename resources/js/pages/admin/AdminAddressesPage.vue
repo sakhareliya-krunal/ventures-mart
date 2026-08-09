@@ -5,6 +5,7 @@ import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
+import { emailHref, phoneHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
 const loading = ref(true);
@@ -73,13 +74,19 @@ watch(search, load);
           <tr v-for="address in addresses" :key="address.id">
             <td data-label="Customer">
               <strong>{{ address.user?.name || '—' }}</strong>
-              <div class="admin-muted">{{ address.user?.email }}</div>
+              <div v-if="address.user?.email" class="admin-muted">
+                <a :href="emailHref(address.user.email)">{{ address.user.email }}</a>
+              </div>
             </td>
             <td data-label="Address">
               <strong>{{ address.label }}</strong> · {{ address.full_name }}<br />
-              {{ address.address }}, {{ address.city }}, {{ address.state }}
+              {{ address.address }}, {{ address.city }}
+              <template v-if="address.district">, {{ address.district }}</template>,
+              {{ address.state }}
               {{ address.postal_code }}
-              <div class="admin-muted">{{ address.phone }}</div>
+              <div v-if="address.phone" class="admin-muted">
+                <a :href="phoneHref(address.phone)">{{ address.phone }}</a>
+              </div>
             </td>
             <td data-label="Default">{{ address.is_default ? 'Yes' : 'No' }}</td>
             <td data-label="Actions">

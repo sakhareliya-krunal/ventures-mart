@@ -2,8 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\InventoryReservationState;
+use App\Enums\OrderInventoryStatus;
+use App\Exceptions\InsufficientInventoryException;
+use App\Exceptions\PaymentInitializationException;
+use App\Jobs\FulfillShiprocketOrder;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Inventory\InventoryService;
 use App\Support\GstState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +24,8 @@ class OrderService
         private readonly CartService $cart,
         private readonly ProductQueryService $products,
         private readonly RazorpayService $razorpay,
-    ) {
-    }
+        private readonly InventoryService $inventory,
+    ) {}
 
     /**
      * Create an order. Razorpay orders stay unpaid until verify; COD finalizes stock/cart immediately.
@@ -30,6 +36,7 @@ class OrderService
      *     phone: string,
      *     address: string,
      *     city: string,
+     *     district?: string|null,
      *     state: string,
      *     postal_code: string,
      *     payment_method: string
@@ -38,16 +45,30 @@ class OrderService
     public function create(Request $request, array $payload): Order
     {
         $paymentMethod = $payload['payment_method'];
+        $idempotencyKey = trim((string) $request->header('Idempotency-Key', ''));
+        $idempotencyKey = $idempotencyKey !== '' ? mb_substr($idempotencyKey, 0, 100) : null;
+
+        if ($idempotencyKey) {
+            $existing = Order::query()
+                ->where('checkout_idempotency_key', $idempotencyKey)
+                ->where('user_id', $request->user()?->id)
+                ->first();
+
+            if ($existing) {
+                return $existing->load('items');
+            }
+        }
+
         $cartItems = $this->cart->items($request);
 
         if ($cartItems->isEmpty()) {
             throw ValidationException::withMessages(['cart' => 'Your cart is empty.']);
         }
 
-        $order = DB::transaction(function () use ($request, $payload, $cartItems, $paymentMethod) {
+        $order = DB::transaction(function () use ($request, $payload, $cartItems, $paymentMethod, $idempotencyKey) {
             $lines = [];
 
-            foreach ($cartItems as $item) {
+            foreach ($cartItems->sortBy('product_id') as $item) {
                 /** @var Product $product */
                 $product = Product::query()->lockForUpdate()->find($item->product_id);
 
@@ -78,12 +99,14 @@ class OrderService
 
             $order = Order::query()->create([
                 'number' => 'VM-'.Str::upper(Str::random(8)),
+                'checkout_idempotency_key' => $idempotencyKey,
                 'user_id' => $request->user()?->id,
                 'full_name' => $payload['full_name'],
                 'email' => $payload['email'],
                 'phone' => $payload['phone'],
                 'address' => $payload['address'],
                 'city' => $payload['city'],
+                'district' => $payload['district'] ?? null,
                 'state' => $normalizedState,
                 'postal_code' => $payload['postal_code'],
                 'seller_state' => GstState::sellerState(),
@@ -98,6 +121,9 @@ class OrderService
                 'status' => $isCod ? 'Processing' : 'AwaitingPayment',
                 'payment_status' => 'pending',
                 'payment_method' => $paymentMethod,
+                'payment_expires_at' => $isCod
+                    ? null
+                    : now()->addMinutes((int) config('inventory.payment_reservation_ttl_minutes', 15)),
             ]);
 
             foreach ($lines as $line) {
@@ -111,13 +137,20 @@ class OrderService
                     'product_image' => $product->image,
                     'unit_price' => $product->price,
                     'quantity' => $line['quantity'],
+                    'weight_kg' => $product->weight_kg ?: config('services.shiprocket.fallback_weight_kg', 0.5),
+                    'length_cm' => $product->length_cm ?: config('services.shiprocket.fallback_length_cm', 20),
+                    'breadth_cm' => $product->breadth_cm ?: config('services.shiprocket.fallback_breadth_cm', 15),
+                    'height_cm' => $product->height_cm ?: config('services.shiprocket.fallback_height_cm', 10),
                     'line_total' => round($product->price * $line['quantity'], 2),
                 ]);
             }
 
             if ($isCod) {
                 $order->load('items');
-                $this->decrementStockForOrder($order);
+                $this->commitInventoryForOrder($order);
+            } else {
+                $order->load('items');
+                $this->reserveInventoryForOrder($order);
             }
 
             return $order->load('items');
@@ -125,6 +158,7 @@ class OrderService
 
         if ($paymentMethod === 'cod') {
             $this->cart->clear($request);
+            $this->dispatchShiprocketFulfillment($order);
 
             return $order->fresh('items');
         }
@@ -132,9 +166,16 @@ class OrderService
         try {
             $razorpayOrder = $this->razorpay->createOrder($order);
         } catch (Throwable $e) {
-            $order->forceFill(['payment_status' => 'failed'])->save();
+            $this->releaseInventoryForOrder($order, 'Razorpay initialization failed', 'payment-init-failed');
+            $order->forceFill([
+                'payment_status' => 'failed',
+                'inventory_status' => OrderInventoryStatus::Released,
+            ])->save();
 
-            throw $e;
+            throw new PaymentInitializationException(
+                'Unable to start payment. Please try again.',
+                previous: $e,
+            );
         }
 
         $order->forceFill([
@@ -150,6 +191,8 @@ class OrderService
     public function verifyPayment(Request $request, Order $order, array $payload): Order
     {
         if ($order->payment_status === 'paid') {
+            $this->dispatchShiprocketFulfillment($order);
+
             return $order->load('items');
         }
 
@@ -172,6 +215,7 @@ class OrderService
         );
 
         if (! $valid) {
+            $this->releaseInventoryForOrder($order, 'Razorpay signature verification failed', 'signature-failed');
             $order->forceFill(['payment_status' => 'failed'])->save();
             app(ApplicationErrorRecorder::class)->recordPaymentFailure(
                 'Razorpay signature verification failed',
@@ -188,7 +232,7 @@ class OrderService
             ]);
         }
 
-        return DB::transaction(function () use ($request, $order, $payload) {
+        $paidOrder = DB::transaction(function () use ($request, $order, $payload) {
             /** @var Order $locked */
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             $locked->load('items');
@@ -202,6 +246,10 @@ class OrderService
 
             return $locked->load('items');
         });
+
+        $this->dispatchShiprocketFulfillment($paidOrder);
+
+        return $paidOrder;
     }
 
     /**
@@ -210,10 +258,12 @@ class OrderService
     public function markPaidFromWebhook(Order $order, string $paymentId): Order
     {
         if ($order->payment_status === 'paid') {
+            $this->dispatchShiprocketFulfillment($order);
+
             return $order->load('items');
         }
 
-        return DB::transaction(function () use ($order, $paymentId) {
+        $paidOrder = DB::transaction(function () use ($order, $paymentId) {
             /** @var Order $locked */
             $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
             $locked->load('items');
@@ -226,11 +276,35 @@ class OrderService
 
             return $locked->load('items');
         });
+
+        $this->dispatchShiprocketFulfillment($paidOrder);
+
+        return $paidOrder;
     }
 
     private function finalizePaidOrder(Order $order, string $paymentId, ?string $signature): void
     {
-        $this->decrementStockForOrder($order);
+        try {
+            $this->commitInventoryForOrder($order);
+        } catch (InsufficientInventoryException $exception) {
+            $order->forceFill([
+                'payment_status' => 'paid',
+                'payment_method' => 'razorpay',
+                'razorpay_payment_id' => $paymentId,
+                'razorpay_signature' => $signature,
+                'paid_at' => now(),
+                'status' => 'InventoryHold',
+                'inventory_status' => OrderInventoryStatus::Exception,
+            ])->save();
+
+            app(ApplicationErrorRecorder::class)->recordThrowable($exception, [
+                'order_id' => $order->id,
+                'order_number' => $order->number,
+                'phase' => 'late_payment_inventory_reacquisition',
+            ], 'inventory');
+
+            return;
+        }
 
         $order->forceFill([
             'payment_status' => 'paid',
@@ -239,22 +313,93 @@ class OrderService
             'razorpay_signature' => $signature,
             'paid_at' => now(),
             'status' => 'Processing',
+            'cancelled_at' => null,
+            'cancellation_reason' => null,
         ])->save();
     }
 
-    private function decrementStockForOrder(Order $order): void
+    private function commitInventoryForOrder(Order $order): void
     {
         foreach ($order->items as $item) {
             /** @var Product|null $product */
             $product = Product::query()->lockForUpdate()->find($item->product_id);
+            $reservation = $item->inventoryReservation()->first();
+            $hasPaymentReservation = $order->payment_method === 'razorpay' && $reservation !== null;
 
-            if (! $product || ! $product->is_active || $product->stock < $item->quantity) {
+            if (
+                ! $product
+                || ! $product->is_active
+                || (! $hasPaymentReservation && $product->stock < $item->quantity)
+            ) {
                 throw ValidationException::withMessages([
                     'stock' => ($product?->name ?? 'A product').' is no longer available in the required quantity.',
                 ]);
             }
 
-            $product->decrement('stock', $item->quantity);
+            $this->inventory->commit(
+                $item,
+                "order:{$order->id}:item:{$item->id}:commit",
+                fromReserved: $order->payment_method === 'razorpay' && $reservation !== null,
+                correlationId: 'order:'.$order->id,
+                reason: $order->payment_method === 'cod'
+                    ? 'COD order commitment'
+                    : 'Razorpay payment confirmed',
+            );
+        }
+    }
+
+    private function reserveInventoryForOrder(Order $order): void
+    {
+        foreach ($order->items as $item) {
+            $this->inventory->reserve(
+                $item,
+                $order->payment_expires_at,
+                "order:{$order->id}:item:{$item->id}:reserve",
+                correlationId: 'order:'.$order->id,
+                reason: 'Razorpay checkout reservation',
+            );
+        }
+    }
+
+    private function releaseInventoryForOrder(Order $order, string $reason, string $suffix): void
+    {
+        $order->loadMissing('items.inventoryReservation');
+
+        foreach ($order->items as $item) {
+            $reservation = $item->inventoryReservation;
+            if (! $reservation || ! in_array($reservation->state, [
+                InventoryReservationState::Reserved,
+                InventoryReservationState::Committed,
+            ], true)) {
+                continue;
+            }
+
+            $this->inventory->release(
+                $item,
+                $reason,
+                "order:{$order->id}:item:{$item->id}:{$suffix}",
+                correlationId: 'order:'.$order->id,
+            );
+        }
+    }
+
+    private function dispatchShiprocketFulfillment(Order $order): void
+    {
+        if (
+            ! (bool) config('services.shiprocket.enabled')
+            || $order->inventory_status === OrderInventoryStatus::Exception
+        ) {
+            return;
+        }
+
+        try {
+            FulfillShiprocketOrder::dispatch($order->id);
+        } catch (Throwable $e) {
+            app(ApplicationErrorRecorder::class)->recordThrowable($e, [
+                'order_id' => $order->id,
+                'order_number' => $order->number,
+                'phase' => 'shiprocket_enqueue',
+            ], 'fulfillment');
         }
     }
 

@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Address;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Address */
+/** @mixin Address */
 class AddressResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -17,6 +18,7 @@ class AddressResource extends JsonResource
             'phone' => $this->phone,
             'address' => $this->address,
             'city' => $this->city,
+            'district' => $this->district,
             'state' => $this->state,
             'postal_code' => $this->postal_code,
             'is_default' => (bool) $this->is_default,

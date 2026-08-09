@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Address;
-use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -48,11 +47,15 @@ class ProfileAddressTest extends TestCase
             'phone' => '9999999999',
             'address' => '12 Test Street',
             'city' => 'Ahmedabad',
+            'district' => 'Ahmedabad',
             'state' => 'Gujarat',
             'postal_code' => '380001',
         ]);
 
-        $create->assertCreated()->assertJsonPath('data.is_default', true);
+        $create
+            ->assertCreated()
+            ->assertJsonPath('data.is_default', true)
+            ->assertJsonPath('data.district', 'Ahmedabad');
         $addressId = $create->json('data.id');
 
         $this->getJson('/api/addresses')
@@ -65,9 +68,13 @@ class ProfileAddressTest extends TestCase
             'phone' => '9999999999',
             'address' => '99 Office Road',
             'city' => 'Ahmedabad',
+            'district' => 'Gandhinagar',
             'state' => 'Gujarat',
             'postal_code' => '380002',
-        ])->assertOk()->assertJsonPath('data.label', 'Office');
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.label', 'Office')
+            ->assertJsonPath('data.district', 'Gandhinagar');
 
         $this->deleteJson("/api/addresses/{$addressId}")
             ->assertOk();

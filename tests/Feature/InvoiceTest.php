@@ -202,6 +202,35 @@ class InvoiceTest extends TestCase
         $this->assertStringContainsString('AWB123', $html);
     }
 
+    public function test_invoice_uses_shiprocket_tracking_id_and_rejects_unsafe_url(): void
+    {
+        $order = $this->makeOrder([
+            'payment_method' => 'cod',
+            'status' => 'Shipped',
+            'courier_partner' => 'Old courier',
+            'awb_number' => 'OLD-AWB',
+        ]);
+        $order->shiprocketShipment()->create([
+            'sync_status' => 'completed',
+            'stage' => 'pickup_scheduled',
+            'courier_name' => 'Delhivery Surface',
+            'awb_code' => 'AWB-SR-123',
+            'shipment_status' => 'IN TRANSIT',
+            'tracking_url' => 'javascript:alert(1)',
+        ]);
+
+        $service = app(InvoiceService::class);
+        $data = $service->buildViewData($service->ensureIssued($order));
+        $html = view('invoices.tax-invoice', $data)->render();
+
+        $this->assertSame('AWB-SR-123', $data['courier']['tracking_id']);
+        $this->assertNull($data['courier']['tracking_url']);
+        $this->assertStringContainsString('Tracking ID (AWB)', $html);
+        $this->assertStringContainsString('AWB-SR-123', $html);
+        $this->assertStringContainsString('IN TRANSIT', $html);
+        $this->assertStringNotContainsString('javascript:', $html);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

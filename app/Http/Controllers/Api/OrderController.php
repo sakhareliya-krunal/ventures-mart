@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\PaymentInitializationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Http\Resources\OrderResource;
@@ -10,7 +11,8 @@ use App\Services\ApplicationErrorRecorder;
 use App\Services\InvoiceService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use RuntimeException;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class OrderController extends Controller
 {
@@ -44,7 +46,9 @@ class OrderController extends Controller
 
         try {
             $order = $this->orders->create($request, $validated);
-        } catch (RuntimeException $e) {
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (PaymentInitializationException $e) {
             app(ApplicationErrorRecorder::class)->recordPaymentFailure(
                 $e->getMessage(),
                 [
@@ -56,9 +60,24 @@ class OrderController extends Controller
             );
 
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => 'Unable to start payment. Please try again.',
                 'code' => 'payment_init_failed',
             ], 502);
+        } catch (Throwable $e) {
+            app(ApplicationErrorRecorder::class)->recordThrowable(
+                $e,
+                [
+                    'phase' => 'order_create',
+                    'code' => 'order_create_failed',
+                    'payment_method' => $validated['payment_method'] ?? null,
+                ],
+                'order',
+            );
+
+            return response()->json([
+                'message' => 'Unable to place your order. Please try again.',
+                'code' => 'order_create_failed',
+            ], 500);
         }
 
         $payload = [

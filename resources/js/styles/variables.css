@@ -17,11 +17,20 @@
   --color-success-soft: #e6faf3;
   --color-success-border: #99ebc9;
   --color-danger-border: #f5b5c4;
+  --color-surface-soft: #f9fbff;
+  --color-surface-raised: rgba(255, 255, 255, 0.92);
+  --color-brand-wash: #edf3ff;
+  --color-brand-glow: rgba(230, 30, 77, 0.12);
   --shadow-sm: 0 8px 24px rgba(11, 46, 138, 0.08);
   --shadow-md: 0 18px 45px rgba(11, 46, 138, 0.12);
+  --shadow-lg: 0 28px 70px rgba(7, 31, 99, 0.16);
   --radius-sm: 8px;
   --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
   --container: 1180px;
+  --content-measure: 720px;
+  --section-space: clamp(3rem, 7vw, 6rem);
   --font-sans: "Poppins", sans-serif;
   font-family: var(--font-sans);
 }

@@ -5,27 +5,32 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\OrderShipmentDetails;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class OrderTrackController extends Controller
 {
-    public function __construct(private readonly InvoiceService $invoices)
-    {
-    }
+    public function __construct(
+        private readonly InvoiceService $invoices,
+        private readonly OrderShipmentDetails $shipments,
+    ) {}
 
-    public function show(string $number): JsonResponse
+    public function show(Request $request, string $number): JsonResponse
     {
         $order = $this->findByNumber($number);
+        $this->authorizeOrder($request, $order);
 
         return response()->json([
             'data' => $this->trackPayload($order),
         ]);
     }
 
-    public function invoice(string $number): Response
+    public function invoice(Request $request, string $number): Response
     {
         $order = $this->findByNumber($number);
+        $this->authorizeOrder($request, $order);
 
         return $this->invoices->streamPdf($order);
     }
@@ -33,7 +38,7 @@ class OrderTrackController extends Controller
     private function findByNumber(string $number): Order
     {
         $order = Order::query()
-            ->with('items')
+            ->with(['items', 'shiprocketShipment'])
             ->where('number', $number)
             ->first();
 
@@ -53,38 +58,44 @@ class OrderTrackController extends Controller
         $returnEligible = $status === 'Delivered'
             && $order->updated_at
             && $order->updated_at->gte(now()->subDays(7));
-
-        $hasCourier = filled($order->courier_partner)
-            || filled($order->awb_number)
-            || filled($order->tracking_number)
-            || filled($order->dispatched_at)
-            || filled($order->expected_delivery_at);
+        $shipment = $this->shipments->forCustomer($order);
 
         return [
             'number' => $order->number,
+            'invoice_number' => $order->invoice_number,
             'status' => $status,
             'status_label' => $this->statusLabel($status),
             'timeline' => $timeline,
             'payment_method' => $order->payment_method,
             'payment_status' => $order->payment_status,
             'created_at' => $order->created_at?->toIso8601String(),
+            'paid_at' => $order->paid_at?->toIso8601String(),
+            'invoice_issued_at' => $order->invoice_issued_at?->toIso8601String(),
             'expected_delivery_at' => $order->expected_delivery_at?->toIso8601String(),
             'dispatched_at' => $order->dispatched_at?->toIso8601String(),
+            'customer' => [
+                'full_name' => $order->full_name,
+                'email' => $order->email,
+                'phone' => $order->phone,
+            ],
+            'address' => [
+                'address' => $order->address,
+                'city' => $order->city,
+                'district' => $order->district,
+                'state' => $order->state,
+                'postal_code' => $order->postal_code,
+            ],
             'location' => [
                 'city' => $order->city,
+                'district' => $order->district,
                 'state' => $order->state,
             ],
-            'courier' => [
-                'partner' => $order->courier_partner,
-                'awb_number' => $order->awb_number,
-                'tracking_number' => $order->tracking_number,
-                'dispatched_at' => $order->dispatched_at?->toIso8601String(),
-                'expected_delivery_at' => $order->expected_delivery_at?->toIso8601String(),
-                'has_details' => $hasCourier,
-            ],
+            'shipment' => $shipment,
+            'courier' => $shipment,
             'items' => $order->items->map(fn ($item) => [
                 'name' => $item->product_name,
                 'sku' => $item->product_sku,
+                'hsn' => $item->hsn,
                 'image' => $item->product_image,
                 'unit_price' => (float) $item->unit_price,
                 'quantity' => (int) $item->quantity,
@@ -112,13 +123,25 @@ class OrderTrackController extends Controller
         ];
     }
 
+    private function authorizeOrder(Request $request, Order $order): void
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+        abort_unless(
+            (bool) $user->is_admin
+            || $order->user_id === $user->id
+            || ($order->user_id === null && $order->email === $user->email),
+            403,
+        );
+    }
+
     /**
      * @return array{confirmed: bool, packed: bool, shipped: bool, delivered: bool}
      */
     private function timeline(string $status): array
     {
         $rank = match ($status) {
-            'Processing' => 1,
+            'Processing', 'InventoryHold' => 1,
             'Packed' => 2,
             'Shipped' => 3,
             'Delivered' => 4,
@@ -137,6 +160,7 @@ class OrderTrackController extends Controller
     {
         return match ($status) {
             'AwaitingPayment' => 'Awaiting payment',
+            'InventoryHold' => 'Inventory review',
             'Processing' => 'Confirmed',
             'Packed' => 'Packed',
             'Shipped' => 'Shipped',

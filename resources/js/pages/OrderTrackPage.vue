@@ -4,8 +4,11 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import {
   Download,
+  ExternalLink,
   Headphones,
+  MapPin,
   Package,
+  ReceiptText,
   RefreshCw,
   Truck,
 } from '@lucide/vue';
@@ -13,6 +16,7 @@ import AppButton from '@/components/ui/AppButton.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { footerContact, footerWhatsApp } from '@/constants/footer';
 import api from '@/services/api';
+import { emailHref, phoneHref } from '@/utils/contactLinks';
 import { downloadTrackedOrderInvoice } from '@/utils/downloadInvoice';
 import { formatCurrency, unwrapData } from '@/utils/format';
 import { useThemeStore } from '@/stores/theme';
@@ -73,6 +77,17 @@ function formatDate(value) {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+  });
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -168,6 +183,9 @@ onMounted(loadTrack);
           <p v-else-if="track.status === 'AwaitingPayment'" class="order-track__note">
             Waiting for payment confirmation.
           </p>
+          <p v-else-if="track.status === 'InventoryHold'" class="order-track__note order-track__note--danger">
+            Payment was received, but inventory needs review before shipment. Support will contact you if needed.
+          </p>
         </div>
 
         <div class="order-track-card">
@@ -182,12 +200,16 @@ onMounted(loadTrack);
                 <dd>{{ track.courier.partner }}</dd>
               </div>
               <div v-if="track.courier.awb_number">
-                <dt>AWB</dt>
+                <dt>Tracking ID (AWB)</dt>
                 <dd>{{ track.courier.awb_number }}</dd>
               </div>
-              <div v-if="track.courier.tracking_number">
-                <dt>Tracking</dt>
-                <dd>{{ track.courier.tracking_number }}</dd>
+              <div v-if="track.shipment?.shipment_status">
+                <dt>Shipment status</dt>
+                <dd>{{ track.shipment.shipment_status }}</dd>
+              </div>
+              <div v-if="track.shipment?.pickup_status">
+                <dt>Pickup status</dt>
+                <dd>{{ track.shipment.pickup_status }}</dd>
               </div>
               <div v-if="track.courier.dispatched_at">
                 <dt>Dispatched</dt>
@@ -197,7 +219,21 @@ onMounted(loadTrack);
                 <dt>Estimated delivery</dt>
                 <dd>{{ formatDate(track.courier.expected_delivery_at) }}</dd>
               </div>
+              <div v-if="track.shipment?.last_synced_at">
+                <dt>Last updated</dt>
+                <dd>{{ formatDateTime(track.shipment.last_synced_at) }}</dd>
+              </div>
             </dl>
+            <a
+              v-if="track.shipment?.tracking_url"
+              class="button button--primary order-track__track-link"
+              :href="track.shipment.tracking_url"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink :size="16" aria-hidden="true" />
+              Track shipment
+            </a>
           </template>
           <p v-else class="order-track__note">
             Tracking details will appear here once your order is handed to the courier.
@@ -218,7 +254,19 @@ onMounted(loadTrack);
             </div>
             <div>
               <dt>Order date</dt>
-              <dd>{{ formatDate(track.created_at) || '—' }}</dd>
+              <dd>{{ formatDateTime(track.created_at) || '—' }}</dd>
+            </div>
+            <div v-if="track.paid_at">
+              <dt>Paid on</dt>
+              <dd>{{ formatDateTime(track.paid_at) }}</dd>
+            </div>
+            <div v-if="track.invoice_number">
+              <dt>Invoice number</dt>
+              <dd>{{ track.invoice_number }}</dd>
+            </div>
+            <div v-if="track.invoice_issued_at">
+              <dt>Invoice issued</dt>
+              <dd>{{ formatDate(track.invoice_issued_at) }}</dd>
             </div>
             <div>
               <dt>Estimated delivery</dt>
@@ -230,11 +278,13 @@ onMounted(loadTrack);
                 }}
               </dd>
             </div>
-            <div v-if="track.location?.city || track.location?.state">
+            <div v-if="track.location?.city || track.location?.district || track.location?.state">
               <dt>Ship to</dt>
               <dd>
                 {{
-                  [track.location.city, track.location.state].filter(Boolean).join(', ')
+                  [track.location.city, track.location.district, track.location.state]
+                    .filter(Boolean)
+                    .join(', ')
                 }}
               </dd>
             </div>
@@ -242,7 +292,57 @@ onMounted(loadTrack);
         </div>
 
         <div class="order-track-card">
-          <h2>Ordered products</h2>
+          <h2>
+            <MapPin :size="18" aria-hidden="true" />
+            Delivery details
+          </h2>
+          <dl class="order-track-facts">
+            <div>
+              <dt>Customer</dt>
+              <dd>{{ track.customer?.full_name || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>
+                <a v-if="track.customer?.email" :href="emailHref(track.customer.email)">
+                  {{ track.customer.email }}
+                </a>
+                <template v-else>—</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>
+                <a v-if="track.customer?.phone" :href="phoneHref(track.customer.phone)">
+                  {{ track.customer.phone }}
+                </a>
+                <template v-else>—</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Delivery address</dt>
+              <dd class="order-track__address">
+                {{
+                  [
+                    track.address?.address,
+                    track.address?.city,
+                    track.address?.district,
+                    track.address?.state,
+                    track.address?.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(', ')
+                }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="order-track-card">
+          <h2>
+            <ReceiptText :size="18" aria-hidden="true" />
+            Ordered products
+          </h2>
           <ul class="order-track-items">
             <li v-for="(item, index) in track.items || []" :key="`${item.sku}-${index}`">
               <img
@@ -256,6 +356,11 @@ onMounted(loadTrack);
               <div>
                 <strong>{{ item.name }}</strong>
                 <p>×{{ item.quantity }} · {{ formatCurrency(item.unit_price) }}</p>
+                <p v-if="item.sku || item.hsn">
+                  <span v-if="item.sku">SKU: {{ item.sku }}</span>
+                  <span v-if="item.sku && item.hsn"> · </span>
+                  <span v-if="item.hsn">HSN: {{ item.hsn }}</span>
+                </p>
               </div>
               <strong>{{ formatCurrency(item.line_total) }}</strong>
             </li>
@@ -335,11 +440,13 @@ onMounted(loadTrack);
         </p>
         <p class="order-track__support">
           Email
-          <a :href="`mailto:${track.support?.email || footerContact.email}`">
+          <a :href="emailHref(track.support?.email || footerContact.email)">
             {{ track.support?.email || footerContact.email }}
           </a>
           · Call
-          <a :href="footerContact.phoneHref">{{ track.support?.phone || footerContact.phone }}</a>
+          <a :href="phoneHref(track.support?.phone || footerContact.phone)">
+            {{ track.support?.phone || footerContact.phone }}
+          </a>
           ·
           <a :href="footerWhatsApp.href" target="_blank" rel="noopener noreferrer">
             WhatsApp

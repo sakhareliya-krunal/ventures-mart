@@ -23,7 +23,17 @@ const revenueRanges = [
 
 const loading = ref(true);
 const chartLoading = ref(false);
-const revenueRange = ref('week');
+const revenueRange = ref('day');
+const barsScroll = ref(null);
+
+function onChartWheel(e) {
+  const el = barsScroll.value;
+  if (!el || el.scrollWidth <= el.clientWidth) return;
+  const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+  if (!delta) return;
+  el.scrollLeft += delta;
+  e.preventDefault();
+}
 const stats = ref({
   orders_count: 0,
   products_count: 0,
@@ -45,8 +55,8 @@ const stats = ref({
     Delivered: 0,
     Cancelled: 0,
   },
-  revenue_range: 'week',
-  revenue_period_label: 'Last 7 days',
+  revenue_range: 'day',
+  revenue_period_label: 'Today',
   revenue_period_total: 0,
   revenue_period_orders: 0,
   revenue_series: [],
@@ -151,6 +161,15 @@ function statusShare(status) {
 
 function barHeight(total) {
   return `${Math.max(6, Math.round((Number(total) / maxRevenuePoint.value) * 100))}%`;
+}
+
+const compactValueFormatter = new Intl.NumberFormat('en-IN', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+function compactValue(total) {
+  return `₹${compactValueFormatter.format(Number(total) || 0)}`;
 }
 
 function isPublished(post) {
@@ -275,24 +294,28 @@ onMounted(() => loadStats());
             </button>
           </div>
         </div>
-        <div
-          class="admin-dash-bars"
-          :class="{ 'is-loading': chartLoading }"
-          :data-points="revenueSeries.length"
-          role="img"
-          :aria-label="`Revenue for ${stats.revenue_period_label}`"
-        >
+        <div class="admin-dash-bars-scroll" ref="barsScroll" @wheel="onChartWheel">
           <div
-            v-for="(point, index) in revenueSeries"
-            :key="pointKey(point, index)"
-            class="admin-dash-bar"
-            :title="`${point.key || point.date}: ${formatCurrency(point.total)}`"
+            class="admin-dash-bars"
+            :class="{ 'is-loading': chartLoading }"
+            :data-range="revenueRange"
+            :data-points="revenueSeries.length"
+            role="img"
+            :aria-label="`Revenue for ${stats.revenue_period_label}`"
           >
-            <div class="admin-dash-bar__track">
-              <div class="admin-dash-bar__fill" :style="{ height: barHeight(point.total) }" />
+            <div
+              v-for="(point, index) in revenueSeries"
+              :key="pointKey(point, index)"
+              class="admin-dash-bar"
+              :class="{ 'is-empty': !(Number(point.total) > 0) }"
+              :title="`${point.key || point.date}: ${formatCurrency(point.total)}`"
+            >
+              <div class="admin-dash-bar__track">
+                <div class="admin-dash-bar__fill" :style="{ height: barHeight(point.total) }" />
+              </div>
+              <span class="admin-dash-bar__label">{{ point.label }}</span>
+              <span class="admin-dash-bar__value">{{ compactValue(point.total) }}</span>
             </div>
-            <span class="admin-dash-bar__label">{{ point.label }}</span>
-            <span class="admin-dash-bar__value">{{ formatCurrency(point.total) }}</span>
           </div>
         </div>
       </section>

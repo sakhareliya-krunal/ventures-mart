@@ -89,10 +89,10 @@ async function remove() {
     await api.delete(`/admin/products/${id}`);
     pendingDeleteId.value = null;
     confirmOpen.value = false;
-    flashSuccess('Product deleted.');
+    flashSuccess('Product hidden. Inventory history was preserved.');
     await load({ silent: true });
   } catch (err) {
-    listError.value = apiErrorMessage(err, 'Unable to delete product.');
+    listError.value = apiErrorMessage(err, 'Unable to hide product.');
     pendingDeleteId.value = null;
   } finally {
     deleting.value = false;
@@ -164,7 +164,14 @@ onBeforeUnmount(() => {
               </td>
               <td data-label="SKU">{{ product.sku || '—' }}</td>
               <td data-label="Price">{{ formatCurrency(product.price) }}</td>
-              <td data-label="Stock">{{ product.stock }}</td>
+              <td data-label="Stock">
+                <RouterLink
+                  :to="{ name: 'admin-inventory', query: { search: product.sku || product.name } }"
+                  class="admin-products-table__stock-link"
+                >
+                  {{ product.stock }}
+                </RouterLink>
+              </td>
               <td data-label="Status">
                 <span
                   class="admin-badge admin-products-table__status"
@@ -179,7 +186,7 @@ onBeforeUnmount(() => {
                     Edit
                   </AppButton>
                   <AppButton type="button" variant="danger" size="sm" @click="requestRemove(product.id)">
-                    Delete
+                    Hide
                   </AppButton>
                 </div>
               </td>
@@ -192,10 +199,10 @@ onBeforeUnmount(() => {
 
     <ConfirmDialog
       v-model:open="confirmOpen"
-      title="Delete product?"
-      message="This product will be permanently removed from the catalog."
-      confirm-label="Delete"
-      busy-label="Deleting…"
+      title="Hide product?"
+      message="This product will be removed from the storefront while its inventory and order history remain available."
+      confirm-label="Hide"
+      busy-label="Hiding…"
       :busy="deleting"
       :close-on-confirm="false"
       danger

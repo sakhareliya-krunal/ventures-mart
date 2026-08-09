@@ -1,5 +1,5 @@
 <script setup>
-import { ChevronRight, Package, ShieldCheck, Truck } from '@lucide/vue';
+import { ChevronRight, HeartHandshake, Package, ShieldCheck, Sparkles, Truck } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import CategoryPillars from '@/components/home/CategoryPillars.vue';
@@ -51,7 +51,29 @@ const values = [
         </AppButton>
         <AppButton to="/contact" variant="secondary" size="lg">Contact us</AppButton>
       </template>
+      <template #aside>
+        <Sparkles :size="24" aria-hidden="true" />
+        <strong>Thoughtfully curated</strong>
+        for real family routines
+      </template>
     </PageHero>
+
+    <section class="page-section about-story" aria-labelledby="about-story-title">
+      <div class="about-story__copy">
+        <span class="eyebrow">Our point of view</span>
+        <h2 id="about-story-title">Fewer, better choices for everyday family life</h2>
+        <p>
+          Ventures Mart brings playtime and mealtime essentials into one easy-to-browse store. We
+          focus on products that feel useful, joyful, and simple to choose—backed by clear delivery
+          and responsive support.
+        </p>
+      </div>
+      <div class="about-story__visual" aria-label="Serving families across India">
+        <HeartHandshake :size="36" aria-hidden="true" />
+        <strong>India-wide</strong>
+        <span>Thoughtful products, securely packed and supported from order to delivery.</span>
+      </div>
+    </section>
 
     <CategoryPillars
       eyebrow="What we sell"

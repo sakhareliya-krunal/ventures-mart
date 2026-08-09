@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { ChevronLeft, ChevronRight, ImagePlus, Trash2 } from '@lucide/vue';
+import { RouterLink } from 'vue-router';
 import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -140,6 +141,11 @@ function addPath() {
             <small v-if="fieldError('sku')" class="admin-field__error">{{ fieldError('sku') }}</small>
           </label>
           <label class="admin-field">
+            <span>HSN code</span>
+            <input v-model="form.hsn" type="text" autocomplete="off" />
+            <small v-if="fieldError('hsn')" class="admin-field__error">{{ fieldError('hsn') }}</small>
+          </label>
+          <label class="admin-field">
             <span>Category <em>*</em></span>
             <AppSelect
               v-model="form.category_id"
@@ -149,6 +155,43 @@ function addPath() {
             />
             <small v-if="fieldError('category_id')" class="admin-field__error">
               {{ fieldError('category_id') }}
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section class="admin-product-form__section">
+        <h3>Shipping package</h3>
+        <p class="admin-muted admin-product-form__hint">
+          Measurements are per unit. Blank values use the configured Shiprocket fallback.
+        </p>
+        <div class="admin-product-form__grid admin-product-form__grid--3">
+          <label class="admin-field">
+            <span>Weight (kg)</span>
+            <input v-model="form.weight_kg" type="number" min="0.001" step="0.001" />
+            <small v-if="fieldError('weight_kg')" class="admin-field__error">
+              {{ fieldError('weight_kg') }}
+            </small>
+          </label>
+          <label class="admin-field">
+            <span>Length (cm)</span>
+            <input v-model="form.length_cm" type="number" min="0.51" step="0.01" />
+            <small v-if="fieldError('length_cm')" class="admin-field__error">
+              {{ fieldError('length_cm') }}
+            </small>
+          </label>
+          <label class="admin-field">
+            <span>Breadth (cm)</span>
+            <input v-model="form.breadth_cm" type="number" min="0.51" step="0.01" />
+            <small v-if="fieldError('breadth_cm')" class="admin-field__error">
+              {{ fieldError('breadth_cm') }}
+            </small>
+          </label>
+          <label class="admin-field">
+            <span>Height (cm)</span>
+            <input v-model="form.height_cm" type="number" min="0.51" step="0.01" />
+            <small v-if="fieldError('height_cm')" class="admin-field__error">
+              {{ fieldError('height_cm') }}
             </small>
           </label>
         </div>
@@ -169,11 +212,17 @@ function addPath() {
               {{ fieldError('compare_at_price') }}
             </small>
           </label>
-          <label class="admin-field">
+          <label v-if="!editing" class="admin-field">
             <span>Stock <em>*</em></span>
             <input v-model.number="form.stock" type="number" min="0" />
             <small v-if="fieldError('stock')" class="admin-field__error">{{ fieldError('stock') }}</small>
           </label>
+          <div v-else class="admin-field admin-product-form__stock-readonly">
+            <span>Stock</span>
+            <strong>{{ form.stock }}</strong>
+            <RouterLink to="/admin/inventory">Manage stock in Inventory →</RouterLink>
+            <small class="admin-muted">Stock changes are audited and cannot be edited from the catalog.</small>
+          </div>
         </div>
       </section>
 

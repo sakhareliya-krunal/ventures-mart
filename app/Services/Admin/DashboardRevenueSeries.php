@@ -78,7 +78,7 @@ class DashboardRevenueSeries
             $key = str_pad((string) $hour, 2, '0', STR_PAD_LEFT);
             $series[] = [
                 'key' => $key,
-                'label' => (string) $hour,
+                'label' => $start->copy()->addHours($hour)->format('g A'),
                 'total' => (float) ($totals[$key] ?? $totals[(string) $hour] ?? 0),
             ];
         }
@@ -91,7 +91,7 @@ class DashboardRevenueSeries
      */
     private function weekSeries(): array
     {
-        $start = Carbon::today()->subDays(6)->startOfDay();
+        $start = Carbon::now()->startOfWeek(Carbon::MONDAY);
         $totals = $this->groupedTotals('day', $start);
         $series = [];
 
@@ -113,11 +113,12 @@ class DashboardRevenueSeries
      */
     private function monthSeries(): array
     {
-        $start = Carbon::today()->subDays(29)->startOfDay();
+        $start = Carbon::now()->startOfMonth();
+        $days = (int) $start->daysInMonth;
         $totals = $this->groupedTotals('day', $start);
         $series = [];
 
-        for ($i = 0; $i < 30; $i++) {
+        for ($i = 0; $i < $days; $i++) {
             $day = $start->copy()->addDays($i);
             $key = $day->toDateString();
             $series[] = [
@@ -135,7 +136,7 @@ class DashboardRevenueSeries
      */
     private function yearSeries(): array
     {
-        $start = Carbon::today()->startOfMonth()->subMonths(11)->startOfDay();
+        $start = Carbon::now()->startOfYear();
         $totals = $this->groupedTotals('month', $start);
         $series = [];
 
@@ -194,10 +195,10 @@ class DashboardRevenueSeries
     {
         return [
             'start' => match ($range) {
-                'day' => Carbon::today()->startOfDay(),
-                'month' => Carbon::today()->subDays(29)->startOfDay(),
-                'year' => Carbon::today()->startOfMonth()->subMonths(11)->startOfDay(),
-                default => Carbon::today()->subDays(6)->startOfDay(),
+                'day' => Carbon::now()->startOfDay(),
+                'month' => Carbon::now()->startOfMonth(),
+                'year' => Carbon::now()->startOfYear(),
+                default => Carbon::now()->startOfWeek(Carbon::MONDAY),
             },
         ];
     }
@@ -206,9 +207,9 @@ class DashboardRevenueSeries
     {
         return match ($range) {
             'day' => 'Today',
-            'month' => 'Last 30 days',
-            'year' => 'Last 12 months',
-            default => 'Last 7 days',
+            'month' => Carbon::now()->format('F Y'),
+            'year' => (string) Carbon::now()->year,
+            default => 'This week',
         };
     }
 

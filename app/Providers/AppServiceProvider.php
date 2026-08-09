@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\HandleInventoryChanged;
 use App\Listeners\PersistFailedJobApplicationErrors;
 use App\Listeners\PersistLoggedApplicationErrors;
 use App\Services\ApplicationErrorRecorder;
@@ -44,5 +45,6 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(MessageLogged::class, PersistLoggedApplicationErrors::class);
         Event::listen(JobFailed::class, PersistFailedJobApplicationErrors::class);
+        Event::listen('inventory.changed', HandleInventoryChanged::class);
     }
 }

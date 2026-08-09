@@ -7,8 +7,16 @@ import OrderSummary from '@/components/cart/OrderSummary.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import PageHero from '@/components/ui/PageHero.vue';
+import SearchableSelect from '@/components/ui/SearchableSelect.vue';
 import api from '@/services/api';
+import { phoneHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
+import {
+  cityForDistrictChange,
+  districtOptionsForState,
+  indiaStateOptions,
+  isDistrictInState,
+} from '@/utils/indiaLocations';
 import { friendlyApiError } from '@/utils/apiError';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
@@ -22,14 +30,15 @@ const cart = useCartStore();
 const ui = useUiStore();
 const router = useRouter();
 
-const FIELD_KEYS = ['full_name', 'email', 'phone', 'address', 'city', 'state', 'postal_code'];
+const FIELD_KEYS = ['full_name', 'email', 'phone', 'address', 'city', 'district', 'state', 'postal_code'];
 
 const FIELD_LABELS = {
   full_name: 'Full name',
   email: 'Email',
   phone: 'Phone',
   address: 'Address',
-  city: 'City',
+  city: 'City / Town',
+  district: 'District',
   state: 'State',
   postal_code: 'Postal code',
 };
@@ -41,10 +50,12 @@ const fieldErrors = reactive({
   phone: '',
   address: '',
   city: '',
+  district: '',
   state: '',
   postal_code: '',
 });
 const submitting = ref(false);
+const checkoutIdempotencyKey = ref('');
 const paymentMethod = ref('razorpay');
 const address = reactive({
   full_name: '',
@@ -52,6 +63,7 @@ const address = reactive({
   phone: '',
   address: '',
   city: '',
+  district: '',
   state: '',
   postal_code: '',
 });
@@ -68,6 +80,7 @@ const addForm = reactive({
   phone: '',
   address: '',
   city: '',
+  district: '',
   state: '',
   postal_code: '',
   is_default: false,
@@ -76,7 +89,11 @@ const addForm = reactive({
 let bannerTimer = null;
 
 const isLoggedIn = computed(() => Boolean(auth.user));
-const showShippingFields = computed(() => !isLoggedIn.value || savedAddresses.value.length === 0);
+const showShippingFields = computed(
+  () => !isLoggedIn.value || savedAddresses.value.length === 0 || !address.district,
+);
+const checkoutDistrictOptions = computed(() => districtOptionsForState(address.state));
+const savedAddressDistrictOptions = computed(() => districtOptionsForState(addForm.state));
 const addressFormTitle = computed(() => (editingAddressId.value ? 'Edit address' : 'Add address'));
 const addressFormSubmitLabel = computed(() => {
   if (savingAddress.value) return 'Saving…';
@@ -196,6 +213,7 @@ function applySavedAddress(item) {
   address.address = item.address || '';
   address.city = item.city || '';
   address.state = item.state || '';
+  address.district = item.district || '';
   address.postal_code = item.postal_code || '';
   selectedAddressId.value = item.id;
   clearFieldErrors();
@@ -218,6 +236,7 @@ function resetAddForm() {
   addForm.address = '';
   addForm.city = '';
   addForm.state = '';
+  addForm.district = '';
   addForm.postal_code = '';
   addForm.is_default = savedAddresses.value.length === 0;
   addError.value = '';
@@ -240,6 +259,7 @@ function openEditForm(item, event) {
   addForm.address = item.address || '';
   addForm.city = item.city || '';
   addForm.state = item.state || '';
+  addForm.district = item.district || '';
   addForm.postal_code = item.postal_code || '';
   addForm.is_default = Boolean(item.is_default);
   addError.value = '';
@@ -285,7 +305,7 @@ async function loadAddresses({ selectId = null } = {}) {
 async function saveAddressForm() {
   if (savingAddress.value || !auth.user) return;
 
-  const required = ['full_name', 'phone', 'address', 'city', 'state', 'postal_code'];
+  const required = ['full_name', 'phone', 'address', 'city', 'district', 'state', 'postal_code'];
   for (const key of required) {
     if (!String(addForm[key] || '').trim()) {
       addError.value = 'Complete every address field before saving.';
@@ -302,6 +322,7 @@ async function saveAddressForm() {
     phone: addForm.phone,
     address: addForm.address,
     city: addForm.city,
+    district: addForm.district,
     state: addForm.state,
     postal_code: addForm.postal_code,
     is_default: Boolean(addForm.is_default) || savedAddresses.value.length === 0,
@@ -409,8 +430,42 @@ async function refreshTotalsForState() {
 
 watch(
   () => address.state,
-  () => {
+  (state, previousState) => {
+    if (
+      state !== previousState
+      && address.district
+      && !isDistrictInState(state, address.district)
+    ) {
+      address.district = '';
+    }
     refreshTotalsForState();
+  },
+);
+
+watch(
+  () => addForm.state,
+  (state, previousState) => {
+    if (
+      state !== previousState
+      && addForm.district
+      && !isDistrictInState(state, addForm.district)
+    ) {
+      addForm.district = '';
+    }
+  },
+);
+
+watch(
+  () => address.district,
+  (district, previousDistrict) => {
+    address.city = cityForDistrictChange(address.city, district, previousDistrict);
+  },
+);
+
+watch(
+  () => addForm.district,
+  (district, previousDistrict) => {
+    addForm.city = cityForDistrictChange(addForm.city, district, previousDistrict);
   },
 );
 
@@ -455,13 +510,18 @@ async function submit() {
   }
 
   submitting.value = true;
+  checkoutIdempotencyKey.value ||= globalThis.crypto?.randomUUID?.()
+    || `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const requestConfig = {
+    headers: { 'Idempotency-Key': checkoutIdempotencyKey.value },
+  };
 
   try {
     if (paymentMethod.value === 'cod') {
       const { data } = await api.post('/orders', {
         ...address,
         payment_method: 'cod',
-      });
+      }, requestConfig);
       const order = unwrapData(data) || data.data;
 
       if (!order?.id) {
@@ -478,7 +538,7 @@ async function submit() {
     const { data } = await api.post('/orders', {
       ...address,
       payment_method: 'razorpay',
-    });
+    }, requestConfig);
     const order = unwrapData(data) || data.data;
     const razorpay = data.razorpay;
 
@@ -497,6 +557,9 @@ async function submit() {
     ui.showToast('Payment successful. Your order is confirmed.', { type: 'success' });
     await goToConfirmation(order.id);
   } catch (err) {
+    if (err?.response) {
+      checkoutIdempotencyKey.value = '';
+    }
     const isClientError = Boolean(err?.message) && !err.response;
 
     if (err?.response?.status === 422) {
@@ -564,9 +627,17 @@ async function submit() {
                     <strong>{{ item.label || 'Address' }}</strong>
                     <span v-if="item.is_default" class="checkout-addresses__badge">Default</span>
                   </span>
-                  <small>{{ item.full_name }} · {{ item.phone }}</small>
                   <small>
-                    {{ item.address }}, {{ item.city }}, {{ item.state }} {{ item.postal_code }}
+                    {{ item.full_name }}
+                    <template v-if="item.phone">
+                      ·
+                      <a :href="phoneHref(item.phone)" @click.stop>{{ item.phone }}</a>
+                    </template>
+                  </small>
+                  <small>
+                    {{ item.address }}, {{ item.city }}
+                    <template v-if="item.district">, {{ item.district }}</template>,
+                    {{ item.state }} {{ item.postal_code }}
                   </small>
                 </span>
                 <button
@@ -590,9 +661,25 @@ async function submit() {
               <FormField v-model="addForm.full_name" label="Full name" required />
               <FormField v-model="addForm.phone" label="Phone" required />
               <FormField v-model="addForm.address" label="Address" required />
-              <div class="form-grid">
-                <FormField v-model="addForm.city" label="City" required />
-                <FormField v-model="addForm.state" label="State" required />
+              <div class="form-grid address-location-grid">
+                <SearchableSelect
+                  v-model="addForm.state"
+                  label="State"
+                  :options="indiaStateOptions"
+                  placeholder="Select state"
+                  search-placeholder="Search states…"
+                  required
+                />
+                <SearchableSelect
+                  v-model="addForm.district"
+                  label="District"
+                  :options="savedAddressDistrictOptions"
+                  placeholder="Select district"
+                  search-placeholder="Search districts…"
+                  :disabled="!addForm.state"
+                  required
+                />
+                <FormField v-model="addForm.city" label="City / Town" required />
                 <FormField v-model="addForm.postal_code" label="Postal code" required />
               </div>
               <label class="checkout-addresses__default">
@@ -636,18 +723,31 @@ async function submit() {
               required
               :error="fieldErrors.address"
             />
-            <div class="form-grid">
-              <FormField
-                v-model="address.city"
-                label="City"
-                required
-                :error="fieldErrors.city"
-              />
-              <FormField
+            <div class="form-grid address-location-grid">
+              <SearchableSelect
                 v-model="address.state"
                 label="State"
+                :options="indiaStateOptions"
+                placeholder="Select state"
+                search-placeholder="Search states…"
                 required
                 :error="fieldErrors.state"
+              />
+              <SearchableSelect
+                v-model="address.district"
+                label="District"
+                :options="checkoutDistrictOptions"
+                placeholder="Select district"
+                search-placeholder="Search districts…"
+                :disabled="!address.state"
+                required
+                :error="fieldErrors.district"
+              />
+              <FormField
+                v-model="address.city"
+                label="City / Town"
+                required
+                :error="fieldErrors.city"
               />
               <FormField
                 v-model="address.postal_code"

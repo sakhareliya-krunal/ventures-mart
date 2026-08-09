@@ -115,13 +115,6 @@ function openCart() {
 
       <div class="header-actions">
         <RouterLink
-          v-if="auth.isAdmin"
-          class="header-admin-link"
-          to="/admin"
-        >
-          Admin
-        </RouterLink>
-        <RouterLink
           class="icon-link"
           :to="profileTo"
           :aria-label="auth.user ? 'Account profile' : 'Sign in'"
