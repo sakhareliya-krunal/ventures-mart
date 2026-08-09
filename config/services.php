@@ -47,10 +47,12 @@ return [
 
     'shiprocket' => [
         'enabled' => env('SHIPROCKET_ENABLED', false),
+        'default_fulfillment_method' => env('ORDER_FULFILLMENT_METHOD', 'shiprocket'),
         'base_url' => env('SHIPROCKET_BASE_URL', 'https://apiv2.shiprocket.in/v1/external'),
         'email' => env('SHIPROCKET_EMAIL'),
         'password' => env('SHIPROCKET_PASSWORD'),
         'pickup_location' => env('SHIPROCKET_PICKUP_LOCATION'),
+        'webhook_token' => env('SHIPROCKET_WEBHOOK_TOKEN'),
         'timeout' => (int) env('SHIPROCKET_TIMEOUT', 20),
         'fallback_weight_kg' => (float) env('SHIPROCKET_FALLBACK_WEIGHT_KG', 0.5),
         'fallback_length_cm' => (float) env('SHIPROCKET_FALLBACK_LENGTH_CM', 20),

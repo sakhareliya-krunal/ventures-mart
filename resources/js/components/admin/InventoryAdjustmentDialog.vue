@@ -2,6 +2,7 @@
 import { computed, reactive, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import AppSelect from '@/components/ui/AppSelect.vue';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -17,16 +18,28 @@ const form = reactive({
   reason: '',
 });
 
+const operationOptions = [
+  { value: 'receive', label: 'Receive stock' },
+  { value: 'decrease', label: 'Remove stock' },
+  { value: 'damage', label: 'Write off damaged stock' },
+  { value: 'set_count', label: 'Set physical count' },
+  { value: 'set_available', label: 'Set available quantity' },
+  { value: 'mark_out_of_stock', label: 'Out of Stock' },
+];
+
 const isBulk = computed(() => props.products.length > 1);
 const title = computed(() => (isBulk.value ? `Adjust ${props.products.length} products` : 'Adjust inventory'));
-const quantity = computed(() => Number(form.quantity));
-const valid = computed(
-  () =>
+const isOutOfStock = computed(() => form.operation === 'mark_out_of_stock');
+const quantity = computed(() => (isOutOfStock.value ? 0 : Number(form.quantity)));
+const valid = computed(() => {
+  if (String(form.reason || '').trim().length < 3) return false;
+  if (isOutOfStock.value) return true;
+  return (
     Number.isInteger(quantity.value) &&
     quantity.value >= 0 &&
-    (['set_count', 'set_available'].includes(form.operation) || quantity.value > 0) &&
-    String(form.reason || '').trim().length >= 3,
-);
+    (['set_count', 'set_available'].includes(form.operation) || quantity.value > 0)
+  );
+});
 
 watch(
   () => props.open,
@@ -46,7 +59,7 @@ function close() {
 function submit() {
   if (!valid.value || props.busy) return;
   emit('submit', {
-    operation: form.operation,
+    operation: isOutOfStock.value ? 'set_available' : form.operation,
     quantity: quantity.value,
     reason: form.reason.trim(),
   });
@@ -82,16 +95,15 @@ function submit() {
 
         <label class="admin-field">
           <span>Operation <em>*</em></span>
-          <select v-model="form.operation">
-            <option value="receive">Receive stock</option>
-            <option value="decrease">Remove stock</option>
-            <option value="damage">Write off damaged stock</option>
-            <option value="set_count">Set physical count</option>
-            <option value="set_available">Set available quantity</option>
-          </select>
+          <AppSelect
+            v-model="form.operation"
+            :options="operationOptions"
+            placeholder="Select operation"
+            aria-label="Stock adjustment operation"
+          />
         </label>
 
-        <label class="admin-field">
+        <label v-if="!isOutOfStock" class="admin-field">
           <span>Quantity <em>*</em></span>
           <input
             v-model="form.quantity"
@@ -106,6 +118,9 @@ function submit() {
             Enter a whole number of zero or more.
           </small>
         </label>
+        <p v-else class="admin-muted inventory-adjustment__oos-note">
+          Available quantity will be set to <strong>0</strong> (Out of Stock).
+        </p>
 
         <label class="admin-field">
           <span>Reason <em>*</em></span>
@@ -123,7 +138,7 @@ function submit() {
         <footer class="admin-modal__footer">
           <AppButton type="button" variant="ghost" :disabled="busy" @click="close">Cancel</AppButton>
           <AppButton type="submit" :disabled="busy || !valid">
-            {{ busy ? 'Saving…' : 'Apply adjustment' }}
+            {{ busy ? 'Saving…' : isOutOfStock ? 'Mark Out of Stock' : 'Apply adjustment' }}
           </AppButton>
         </footer>
       </form>

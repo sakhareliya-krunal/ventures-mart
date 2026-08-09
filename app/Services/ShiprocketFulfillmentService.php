@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\InventoryReservationState;
+use App\Enums\FulfillmentMethod;
 use App\Exceptions\ShiprocketException;
 use App\Models\Order;
 use App\Models\ShiprocketShipment;
@@ -15,10 +15,17 @@ class ShiprocketFulfillmentService
         private readonly ShiprocketService $shiprocket,
         private readonly ShiprocketParcel $parcels,
         private readonly InventoryService $inventory,
+        private readonly FulfillmentAuditService $audit,
+        private readonly ShiprocketTrackingUpdater $trackingUpdater,
+        private readonly ShipmentEmailDispatcher $shipmentEmails,
     ) {}
 
-    public function fulfill(Order $order): ShiprocketShipment
+    public function fulfill(Order $order): ?ShiprocketShipment
     {
+        if (! $this->isShiprocketOwned($order)) {
+            return $order->shiprocketShipment;
+        }
+
         if (! $this->shiprocket->enabled()) {
             throw new ShiprocketException('Shiprocket integration is disabled.');
         }
@@ -48,6 +55,10 @@ class ShiprocketFulfillmentService
             $fingerprint = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
             if (! $shipment->shiprocket_order_id || ! $shipment->shipment_id) {
+                if (! $this->isShiprocketOwned($order->fresh())) {
+                    return $shipment;
+                }
+
                 $created = $this->shiprocket->createOrder($payload);
                 $shiprocketOrderId = (int) ($created['order_id'] ?? 0);
                 $shipmentId = (int) ($created['shipment_id'] ?? 0);
@@ -63,9 +74,23 @@ class ShiprocketFulfillmentService
                     'stage' => 'order_created',
                     'order_created_at' => now(),
                 ])->save();
+                $this->audit->record(
+                    $order,
+                    'remote_order_created',
+                    'job',
+                    "order:{$order->id}:shiprocket-order-created:{$shiprocketOrderId}",
+                    [
+                        'shipment' => $shipment,
+                        'external_event_id' => (string) $shiprocketOrderId,
+                    ],
+                );
             }
 
             if (! $shipment->awb_code) {
+                if (! $this->isShiprocketOwned($order->fresh())) {
+                    return $shipment;
+                }
+
                 $courierId = $this->recommendedCourierId($order, $pickup, $parcel);
                 $awbResponse = $this->shiprocket->assignAwb((int) $shipment->shipment_id, $courierId);
                 $awb = (string) data_get($awbResponse, 'response.data.awb_code', '');
@@ -84,9 +109,24 @@ class ShiprocketFulfillmentService
                     'awb_assigned_at' => now(),
                 ])->save();
                 $this->syncOrderCourierFields($order, $shipment);
+                $this->shipmentEmails->dispatch($order->fresh(), $shipment);
+                $this->audit->record(
+                    $order,
+                    'awb_assigned',
+                    'job',
+                    "order:{$order->id}:awb-assigned:{$awb}",
+                    [
+                        'shipment' => $shipment,
+                        'external_event_id' => $awb,
+                    ],
+                );
             }
 
             if (! $shipment->pickup_scheduled_at) {
+                if (! $this->isShiprocketOwned($order->fresh())) {
+                    return $shipment;
+                }
+
                 $pickupResponse = $this->shiprocket->schedulePickup((int) $shipment->shipment_id);
                 $pickupStatus = (string) (
                     data_get($pickupResponse, 'response.pickup_status')
@@ -101,6 +141,16 @@ class ShiprocketFulfillmentService
                     'pickup_scheduled_at' => now(),
                     'sync_status' => 'completed',
                 ])->save();
+                $this->audit->record(
+                    $order,
+                    'pickup_scheduled',
+                    'job',
+                    "order:{$order->id}:pickup-scheduled",
+                    [
+                        'shipment' => $shipment,
+                        'provider_status' => $pickupStatus,
+                    ],
+                );
             }
 
             return $shipment->fresh();
@@ -132,26 +182,7 @@ class ShiprocketFulfillmentService
                 'last_error' => null,
             ])->save();
 
-            $order->loadMissing('items.inventoryReservation');
-            foreach ($order->items as $item) {
-                if (in_array($item->inventoryReservation?->state, [
-                    InventoryReservationState::Reserved,
-                    InventoryReservationState::Committed,
-                ], true)) {
-                    $this->inventory->release(
-                        $item,
-                        'Shiprocket cancellation confirmed',
-                        "order:{$order->id}:item:{$item->id}:shiprocket-cancel",
-                        correlationId: 'order:'.$order->id,
-                    );
-                }
-            }
-            $order->forceFill([
-                'status' => 'Cancelled',
-                'cancelled_at' => now(),
-                'cancel_requested_at' => $order->cancel_requested_at ?? now(),
-                'cancellation_reason' => $order->cancellation_reason ?? 'Cancelled in Shiprocket',
-            ])->save();
+            app(OrderCancellationService::class)->finalizeAfterShiprocket($order->fresh(['items', 'shiprocketShipment']));
 
             return $shipment->fresh();
         } catch (Throwable $exception) {
@@ -166,6 +197,10 @@ class ShiprocketFulfillmentService
 
     public function syncTracking(Order $order): ?ShiprocketShipment
     {
+        if (! $this->isShiprocketOwned($order)) {
+            return $order->shiprocketShipment;
+        }
+
         $shipment = $order->shiprocketShipment;
 
         if (! $shipment?->awb_code || $shipment->cancelled_at) {
@@ -174,48 +209,16 @@ class ShiprocketFulfillmentService
 
         try {
             $response = $this->shiprocket->trackByAwb($shipment->awb_code);
-            $tracking = data_get($response, 'tracking_data', $response);
-            $status = (string) (
-                data_get($tracking, 'shipment_track.0.current_status')
-                ?? data_get($tracking, 'shipment_status')
-                ?? data_get($tracking, 'current_status')
-                ?? ''
+            $tracking = $this->trackingUpdater->normalizePollingResponse($response);
+            $eventId = hash('sha256', json_encode($tracking, JSON_THROW_ON_ERROR));
+
+            return $this->trackingUpdater->apply(
+                $order,
+                $shipment,
+                $tracking,
+                'scheduler',
+                $eventId,
             );
-            $statusId = data_get($tracking, 'shipment_track.0.sr_status')
-                ?? data_get($tracking, 'shipment_status_id')
-                ?? data_get($tracking, 'current_status_id');
-            $trackingUrl = data_get($tracking, 'track_url')
-                ?? data_get($tracking, 'tracking_url');
-            $etd = data_get($tracking, 'shipment_track.0.edd')
-                ?? data_get($tracking, 'etd');
-
-            $shipment->forceFill([
-                'shipment_status' => $status !== '' ? $status : $shipment->shipment_status,
-                'shipment_status_id' => is_numeric($statusId) ? (int) $statusId : $shipment->shipment_status_id,
-                'tracking_url' => $trackingUrl ?: $shipment->tracking_url,
-                'last_synced_at' => now(),
-                'last_error' => null,
-            ])->save();
-
-            $updates = [
-                'tracking_number' => $shipment->awb_code,
-            ];
-            $localStatus = $this->localStatusFor($status);
-            if ($localStatus === 'Shipped') {
-                $this->consumeAtCourierHandoff($order);
-            }
-            if ($localStatus && ! in_array($order->status, ['Delivered', 'Cancelled'], true)) {
-                $updates['status'] = $localStatus;
-            }
-            if ($localStatus === 'Shipped' && ! $order->dispatched_at) {
-                $updates['dispatched_at'] = now();
-            }
-            if ($etd) {
-                $updates['expected_delivery_at'] = $etd;
-            }
-            $order->forceFill($updates)->save();
-
-            return $shipment->fresh();
         } catch (Throwable $exception) {
             $shipment->forceFill([
                 'last_synced_at' => now(),
@@ -313,24 +316,6 @@ class ShiprocketFulfillmentService
         ])->save();
     }
 
-    private function consumeAtCourierHandoff(Order $order): void
-    {
-        $order->loadMissing('items.inventoryReservation');
-
-        foreach ($order->items as $item) {
-            if ($item->inventoryReservation?->state !== InventoryReservationState::Committed) {
-                continue;
-            }
-
-            $this->inventory->consume(
-                $item,
-                "order:{$order->id}:item:{$item->id}:courier-handoff",
-                correlationId: 'order:'.$order->id,
-                reason: 'Shiprocket courier handoff confirmed',
-            );
-        }
-    }
-
     private function assertReady(Order $order): void
     {
         if ($order->status === 'Cancelled') {
@@ -346,39 +331,15 @@ class ShiprocketFulfillmentService
         }
     }
 
+    private function isShiprocketOwned(Order $order): bool
+    {
+        return $order->fulfillment_method === FulfillmentMethod::Shiprocket;
+    }
+
     private function phone(string $phone): string
     {
         $digits = preg_replace('/\D+/', '', $phone) ?: '';
 
         return strlen($digits) > 10 ? substr($digits, -10) : $digits;
-    }
-
-    private function localStatusFor(string $status): ?string
-    {
-        $normalized = strtolower($status);
-
-        if (str_contains($normalized, 'delivered')) {
-            return 'Delivered';
-        }
-
-        if (
-            str_contains($normalized, 'shipped')
-            || str_contains($normalized, 'transit')
-            || str_contains($normalized, 'picked up')
-            || str_contains($normalized, 'out for delivery')
-        ) {
-            return 'Shipped';
-        }
-
-        if (
-            str_contains($normalized, 'ready to ship')
-            || str_contains($normalized, 'awb')
-            || str_contains($normalized, 'pickup')
-            || str_contains($normalized, 'manifest')
-        ) {
-            return 'Packed';
-        }
-
-        return null;
     }
 }

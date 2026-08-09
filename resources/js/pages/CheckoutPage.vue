@@ -10,7 +10,7 @@ import PageHero from '@/components/ui/PageHero.vue';
 import SearchableSelect from '@/components/ui/SearchableSelect.vue';
 import api from '@/services/api';
 import { phoneHref } from '@/utils/contactLinks';
-import { unwrapData } from '@/utils/format';
+import { unwrapData, formatCurrency } from '@/utils/format';
 import {
   cityForDistrictChange,
   districtOptionsForState,
@@ -73,6 +73,7 @@ const selectedAddressId = ref(null);
 const showAddForm = ref(false);
 const editingAddressId = ref(null);
 const savingAddress = ref(false);
+const addressesLoading = ref(Boolean(auth.user));
 const addError = ref('');
 const addForm = reactive({
   label: 'Home',
@@ -90,7 +91,7 @@ let bannerTimer = null;
 
 const isLoggedIn = computed(() => Boolean(auth.user));
 const showShippingFields = computed(
-  () => !isLoggedIn.value || savedAddresses.value.length === 0 || !address.district,
+  () => !isLoggedIn.value || (!addressesLoading.value && savedAddresses.value.length === 0),
 );
 const checkoutDistrictOptions = computed(() => districtOptionsForState(address.state));
 const savedAddressDistrictOptions = computed(() => districtOptionsForState(addForm.state));
@@ -100,7 +101,17 @@ const addressFormSubmitLabel = computed(() => {
   return editingAddressId.value ? 'Save changes' : 'Save & use address';
 });
 
-const COD_FEE = 100;
+const COD_FEE = 99;
+
+const onlineTotal = computed(() => {
+  const base = cart.totals || {};
+  const subtotal = Number(base.subtotal || 0);
+  const shipping = Number(base.shipping || 0);
+  const tax = Number(base.tax || 0);
+  return Math.round(Number(base.total ?? subtotal + shipping + tax) * 100) / 100;
+});
+
+const codTotal = computed(() => Math.round((onlineTotal.value + COD_FEE) * 100) / 100);
 
 const displayTotals = computed(() => {
   const base = cart.totals || {};
@@ -110,7 +121,6 @@ const displayTotals = computed(() => {
   const cgst = Number(base.cgst || 0);
   const sgst = Number(base.sgst || 0);
   const igst = Number(base.igst || 0);
-  const baseTotal = Number(base.total ?? subtotal + shipping + tax);
   const codFee = paymentMethod.value === 'cod' ? COD_FEE : 0;
 
   return {
@@ -122,7 +132,7 @@ const displayTotals = computed(() => {
     sgst,
     igst,
     cod_fee: codFee,
-    total: Math.round((baseTotal + codFee) * 100) / 100,
+    total: Math.round((onlineTotal.value + codFee) * 100) / 100,
   };
 });
 
@@ -219,6 +229,17 @@ function applySavedAddress(item) {
   clearFieldErrors();
 }
 
+function isAddressComplete(item) {
+  if (!item) return false;
+  return ['full_name', 'phone', 'address', 'city', 'district', 'state', 'postal_code']
+    .every((key) => String(item[key] || '').trim());
+}
+
+function ensureSelectedAddressEditable(item) {
+  if (!item || isAddressComplete(item) || showAddForm.value) return;
+  openEditForm(item);
+}
+
 function selectAddress(id) {
   const item = savedAddresses.value.find((entry) => entry.id === id);
   if (!item) return;
@@ -226,6 +247,7 @@ function selectAddress(id) {
   showAddForm.value = false;
   editingAddressId.value = null;
   addError.value = '';
+  ensureSelectedAddressEditable(item);
 }
 
 function resetAddForm() {
@@ -238,7 +260,7 @@ function resetAddForm() {
   addForm.state = '';
   addForm.district = '';
   addForm.postal_code = '';
-  addForm.is_default = savedAddresses.value.length === 0;
+  addForm.is_default = true;
   addError.value = '';
 }
 
@@ -276,9 +298,11 @@ async function loadAddresses({ selectId = null } = {}) {
   if (!auth.user) {
     savedAddresses.value = [];
     selectedAddressId.value = null;
+    addressesLoading.value = false;
     return;
   }
 
+  addressesLoading.value = true;
   try {
     const { data } = await api.get('/addresses');
     const list = unwrapData(data) || [];
@@ -292,6 +316,7 @@ async function loadAddresses({ selectId = null } = {}) {
 
     if (preferred) {
       applySavedAddress(preferred);
+      ensureSelectedAddressEditable(preferred);
     } else {
       selectedAddressId.value = null;
       address.full_name = auth.user.name || address.full_name;
@@ -299,6 +324,8 @@ async function loadAddresses({ selectId = null } = {}) {
     }
   } catch {
     savedAddresses.value = [];
+  } finally {
+    addressesLoading.value = false;
   }
 }
 
@@ -325,7 +352,7 @@ async function saveAddressForm() {
     district: addForm.district,
     state: addForm.state,
     postal_code: addForm.postal_code,
-    is_default: Boolean(addForm.is_default) || savedAddresses.value.length === 0,
+    is_default: Boolean(addForm.is_default) || !editingAddressId.value || savedAddresses.value.length === 0,
   };
 
   try {
@@ -563,8 +590,16 @@ async function submit() {
     const isClientError = Boolean(err?.message) && !err.response;
 
     if (err?.response?.status === 422) {
-      const applied = applyApiFieldErrors(err.response.data?.errors || {});
-      setBanner(applied ? '' : 'Please check the highlighted fields and try again.');
+      const errors = err.response.data?.errors || {};
+      const applied = applyApiFieldErrors(errors);
+      const cartMessage = Array.isArray(errors.cart) ? errors.cart[0] : '';
+      setBanner(
+        cartMessage
+          || (applied ? '' : (err.response.data?.message || 'Please check the highlighted fields and try again.')),
+      );
+      if (cartMessage) {
+        ui.showToast(cartMessage, { type: 'error' });
+      }
       return;
     }
 
@@ -605,7 +640,15 @@ async function submit() {
               </button>
             </div>
 
-            <div v-if="savedAddresses.length" class="checkout-addresses__list" role="radiogroup" aria-label="Saved addresses">
+            <p v-if="addressesLoading" class="checkout-addresses__loading" aria-live="polite">
+              Loading addresses…
+            </p>
+            <div
+              v-else-if="savedAddresses.length"
+              class="checkout-addresses__list"
+              role="radiogroup"
+              aria-label="Saved addresses"
+            >
               <label
                 v-for="item in savedAddresses"
                 :key="item.id"
@@ -651,7 +694,7 @@ async function submit() {
               </label>
             </div>
             <p v-else class="checkout-addresses__empty">
-              No saved addresses yet. Add one or fill in the form below.
+              No saved addresses yet. Add one, or enter delivery details below.
             </p>
 
             <div v-if="showAddForm" class="checkout-addresses__add">
@@ -772,6 +815,10 @@ async function submit() {
                 <strong>Pay online</strong>
                 <small>UPI, cards, and net banking</small>
               </span>
+              <span class="checkout-payment__price">
+                <strong>{{ formatCurrency(onlineTotal) }}</strong>
+                <small>No extra charge</small>
+              </span>
             </label>
             <label
               class="checkout-payment__option"
@@ -784,6 +831,10 @@ async function submit() {
               <span class="checkout-payment__copy">
                 <strong>Cash on Delivery</strong>
                 <small>Pay when your order arrives</small>
+              </span>
+              <span class="checkout-payment__price">
+                <strong>{{ formatCurrency(codTotal) }}</strong>
+                <small>+{{ formatCurrency(COD_FEE) }} COD charge</small>
               </span>
             </label>
           </fieldset>

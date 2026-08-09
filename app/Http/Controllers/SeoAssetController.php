@@ -56,7 +56,7 @@ class SeoAssetController extends Controller
             ['loc' => $base.'/about', 'priority' => '0.5', 'lastmod' => now()->toAtomString()],
             ['loc' => $base.'/contact', 'priority' => '0.5', 'lastmod' => now()->toAtomString()],
             ['loc' => $base.'/shipping', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
-            ['loc' => $base.'/returns', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
+            ['loc' => $base.'/replacement', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
             ['loc' => $base.'/payments', 'priority' => '0.4', 'lastmod' => now()->toAtomString()],
             ['loc' => $base.'/privacy-policy', 'priority' => '0.3', 'lastmod' => now()->toAtomString()],
             ['loc' => $base.'/terms', 'priority' => '0.3', 'lastmod' => now()->toAtomString()],

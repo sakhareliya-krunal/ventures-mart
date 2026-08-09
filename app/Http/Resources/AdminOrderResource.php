@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\FulfillmentMethod;
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\OrderCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +23,13 @@ class AdminOrderResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
             'status' => $this->status,
             'inventory_status' => $this->inventory_status?->value,
+            'fulfillment_method' => $this->fulfillment_method?->value,
+            'order_type' => $this->order_type ?: 'standard',
+            'parent_order_id' => $this->parent_order_id,
+            'can_switch_to_manual' => $this->canSwitchToManual(),
+            'can_cancel' => app(OrderCancellationService::class)->canAdminCancel($this->resource),
+            'can_delete' => $this->resource->canBeDeletedByAdmin(),
+            'can_mark_refunded' => $this->payment_status === 'refund_pending',
             'payment_status' => $this->payment_status,
             'payment_method' => $this->payment_method,
             'razorpay_order_id' => $this->razorpay_order_id,
@@ -61,6 +70,18 @@ class AdminOrderResource extends JsonResource
                     'cancelled_at' => $shipment->cancelled_at?->toIso8601String(),
                 ];
             }),
+            'fulfillment_events' => $this->whenLoaded('fulfillmentEvents', fn () => $this->fulfillmentEvents
+                ->map(fn ($event) => [
+                    'id' => $event->id,
+                    'source' => $event->source,
+                    'event_type' => $event->event_type,
+                    'previous_method' => $event->previous_method,
+                    'new_method' => $event->new_method,
+                    'provider_status' => $event->provider_status,
+                    'reason' => $event->reason,
+                    'occurred_at' => $event->occurred_at?->toIso8601String(),
+                    'created_at' => $event->created_at?->toIso8601String(),
+                ])->values()->all()),
             'subtotal' => (float) $this->subtotal,
             'shipping' => (float) $this->shipping,
             'cod_fee' => (float) $this->cod_fee,
@@ -112,5 +133,20 @@ class AdminOrderResource extends JsonResource
                 'line_total' => (float) $item->line_total,
             ])->values()->all()),
         ];
+    }
+
+    private function canSwitchToManual(): bool
+    {
+        if (
+            $this->fulfillment_method !== FulfillmentMethod::Shiprocket
+            || in_array($this->status, ['Shipped', 'Delivered', 'Cancelled'], true)
+        ) {
+            return false;
+        }
+
+        $shipment = $this->shiprocketShipment;
+
+        return ! $shipment?->awb_code
+            && ! $shipment?->pickup_scheduled_at;
     }
 }

@@ -26,7 +26,7 @@ export const footerShopLinks = [
 
 export const footerSupportLinks = [
   { label: 'Shipping', href: '/shipping' },
-  { label: 'Returns', href: '/returns' },
+  { label: 'Replacement', href: '/replacement' },
   { label: 'Track Order', href: '/orders' },
   { label: 'Contact', href: '/contact' },
 ];

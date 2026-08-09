@@ -129,8 +129,12 @@ const router = createRouter({
         },
         {
           path: 'returns',
-          name: 'returns',
-          component: () => import('@/pages/ReturnsPage.vue'),
+          redirect: { name: 'replacement' },
+        },
+        {
+          path: 'replacement',
+          name: 'replacement',
+          component: () => import('@/pages/ReplacementPage.vue'),
         },
         {
           path: 'payments',
@@ -199,6 +203,12 @@ const router = createRouter({
           name: 'admin-order-detail',
           component: () => import('@/pages/admin/AdminOrderDetailPage.vue'),
           meta: { title: 'Order detail' },
+        },
+        {
+          path: 'replacements',
+          name: 'admin-replacements',
+          component: () => import('@/pages/admin/AdminReplacementsPage.vue'),
+          meta: { title: 'Replacements' },
         },
         {
           path: 'products/create',

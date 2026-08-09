@@ -9,7 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { usePostsStore } from '@/stores/posts';
 import { useThemeStore } from '@/stores/theme';
 import { safeHtml, stripHtml } from '@/utils/html';
-import { seoHeadFromRecord } from '@/utils/seoHead';
+import { safePublicImageUrl, seoHeadFromRecord } from '@/utils/seoHead';
 import { splitPostBody } from '@/utils/splitPostBody';
 
 const route = useRoute();
@@ -20,6 +20,7 @@ const posts = usePostsStore();
 const slug = computed(() => String(route.params.slug || ''));
 const post = computed(() => posts.current);
 const relatedPosts = computed(() => posts.related || []);
+const coverSrc = computed(() => safePublicImageUrl(post.value?.cover_image));
 
 const bodyParts = computed(() => splitPostBody(safeHtml(post.value?.body || '')));
 const readingMinutes = computed(() => {
@@ -39,7 +40,7 @@ useHead(() =>
         title: `${post.value.title} | ${theme.brandName}`,
         description: lead.value || `${theme.brandName} journal`,
         canonical: `/blog/${post.value.slug}`,
-        image: post.value.cover_image,
+        image: coverSrc.value || post.value.cover_image,
       })
     : { title: `Blog | ${theme.brandName}` },
 );
@@ -76,12 +77,12 @@ watch(slug, load, { immediate: true });
   <div v-else-if="post" class="article-premium">
     <section
       class="article-premium__hero"
-      :class="{ 'article-premium__hero--fallback': !post.cover_image }"
+      :class="{ 'article-premium__hero--fallback': !coverSrc }"
       aria-labelledby="blog-hero-title"
     >
-      <div v-if="post.cover_image" class="article-premium__hero-media">
+      <div v-if="coverSrc" class="article-premium__hero-media">
         <img
-          :src="post.cover_image"
+          :src="coverSrc"
           :alt="post.seo?.metadata?.image_alt_text || post.title"
           fetchpriority="high"
         />

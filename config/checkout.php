@@ -10,5 +10,5 @@ return [
     | Not applied to online (Razorpay) payments. Not included in GST base.
     |
     */
-    'cod_fee' => 100,
+    'cod_fee' => 99,
 ];

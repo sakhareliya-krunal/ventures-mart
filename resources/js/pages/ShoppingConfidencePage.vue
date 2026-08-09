@@ -1,13 +1,26 @@
 <script setup>
 import { ChevronRight, CreditCard, MapPin, RefreshCw, Truck } from '@lucide/vue';
 import { useHead } from '@unhead/vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
+import api from '@/services/api';
 import { useThemeStore } from '@/stores/theme';
-import { seoHeadFromServer } from '@/utils/seoHead';
+import { safePublicImageUrl, seoHeadFromServer } from '@/utils/seoHead';
 
 const theme = useThemeStore();
+const fallbackHeroImage = '/images/hero/poster.jpg';
+const seoPayload = ref(typeof window !== 'undefined' ? window.__APP__?.seo || {} : {});
+const heroLoadFailed = ref(false);
+const configuredHeroImage = computed(() =>
+  safePublicImageUrl(seoPayload.value?.page_image),
+);
+const heroImage = computed(() =>
+  heroLoadFailed.value || !configuredHeroImage.value
+    ? fallbackHeroImage
+    : configuredHeroImage.value,
+);
 
 useHead(() =>
   seoHeadFromServer({
@@ -15,8 +28,32 @@ useHead(() =>
     description:
       'How delivery across India, free shipping on all orders, 7-day replacement, and secure payments work at Ventures Mart.',
     canonical: '/shopping-confidence-shipping-replacement',
-  }),
+    image: fallbackHeroImage,
+  }, seoPayload.value),
 );
+
+watch(configuredHeroImage, () => {
+  heroLoadFailed.value = false;
+});
+
+async function loadPageSeo() {
+  try {
+    const { data } = await api.get('/seo', {
+      params: { path: '/shopping-confidence-shipping-replacement' },
+    });
+    seoPayload.value = data || {};
+  } catch {
+    seoPayload.value = {};
+  }
+}
+
+function useFallbackHero() {
+  if (heroImage.value !== fallbackHeroImage) {
+    heroLoadFailed.value = true;
+  }
+}
+
+onMounted(loadPageSeo);
 
 const sections = [
   {
@@ -42,7 +79,7 @@ const sections = [
     eyebrow: 'Support',
     title: '7-day replacement support',
     text: 'If something arrives damaged or incorrect, reach out within seven days with your order details. We will guide you on next steps—so you can order kids’ essentials with a calmer mind.',
-    link: { to: '/returns', label: 'Returns & replacement' },
+    link: { to: '/replacement', label: 'Replacement support' },
     icon: RefreshCw,
     tone: 'soft',
   },
@@ -70,7 +107,7 @@ const sections = [
     </div>
     <section class="article-premium__hero" aria-labelledby="confidence-hero-title">
       <div class="article-premium__hero-media" aria-hidden="true">
-        <img src="/images/home5-info1.png" alt="" role="presentation" />
+        <img :src="heroImage" alt="" role="presentation" @error="useFallbackHero" />
       </div>
       <div class="article-premium__hero-scrim" aria-hidden="true" />
       <div class="article-premium__hero-inner page-section">
@@ -101,10 +138,12 @@ const sections = [
       :aria-labelledby="`${section.id}-title`"
     >
       <div class="page-section article-premium__section-inner">
-        <span class="article-premium__section-icon" aria-hidden="true">
-          <component :is="section.icon" :size="22" />
-        </span>
-        <span class="eyebrow">{{ section.eyebrow }}</span>
+        <div class="article-premium__section-kicker">
+          <span class="article-premium__section-icon" aria-hidden="true">
+            <component :is="section.icon" :size="22" />
+          </span>
+          <span class="eyebrow">{{ section.eyebrow }}</span>
+        </div>
         <h2 :id="`${section.id}-title`">{{ section.title }}</h2>
         <p>{{ section.text }}</p>
         <RouterLink class="article-premium__section-link" :to="section.link.to">

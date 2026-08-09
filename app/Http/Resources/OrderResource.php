@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\OrderCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,6 +21,13 @@ class OrderResource extends JsonResource
             'invoice_available' => app(InvoiceService::class)->isInvoiceable($this->resource),
             'created_at' => $this->created_at?->toIso8601String(),
             'status' => $this->status,
+            'fulfillment_method' => $this->fulfillment_method?->value,
+            'order_type' => $this->order_type ?: 'standard',
+            'parent_order_id' => $this->parent_order_id,
+            'can_cancel' => app(OrderCancellationService::class)->canCustomerCancel($this->resource),
+            'cancel_requested_at' => $this->cancel_requested_at?->toIso8601String(),
+            'cancelled_at' => $this->cancelled_at?->toIso8601String(),
+            'cancellation_reason' => $this->cancellation_reason,
             'payment_status' => $this->payment_status,
             'payment_method' => $this->payment_method,
             'paid_at' => $this->paid_at?->toIso8601String(),

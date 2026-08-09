@@ -50,7 +50,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
         /** @var User $user */
-        $user = $request->user();
+        $user = Auth::guard('web')->user();
         $this->cart->mergeGuestIntoUser($request, $user);
         $this->wishlist->mergeGuestIntoUser($request, $user);
 

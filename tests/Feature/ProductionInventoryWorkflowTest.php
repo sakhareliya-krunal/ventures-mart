@@ -105,6 +105,37 @@ class ProductionInventoryWorkflowTest extends TestCase
         $this->assertDatabaseMissing('shiprocket_shipments', ['order_id' => $order->id]);
     }
 
+    public function test_mark_out_of_stock_syncs_storefront_stock_and_blocks_cart(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $product = $this->makeProduct(['stock' => 5, 'slug' => 'oos-storefront-toy']);
+        $balance = app(InventoryService::class)->ensureBalance($product);
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/admin/inventory/{$product->id}/adjustments", [
+            'operation' => 'set_available',
+            'quantity' => 0,
+            'reason' => 'Marked Out of Stock for storefront',
+            'expected_version' => $balance->version,
+            'idempotency_key' => 'admin-oos-storefront-001',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.available', 0);
+
+        $this->assertSame(0, $product->fresh()->stock);
+
+        $this->getJson('/api/products/oos-storefront-toy')
+            ->assertOk()
+            ->assertJsonPath('data.stock', 0);
+
+        $this->postJson('/api/cart', [
+            'product_id' => $product->id,
+            'quantity' => 1,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['product']);
+    }
+
     public function test_admin_adjustment_requires_version_and_is_idempotent(): void
     {
         $admin = User::factory()->admin()->create();
@@ -273,6 +304,7 @@ class ProductionInventoryWorkflowTest extends TestCase
 
         $product = $this->makeProduct(['stock' => 5]);
         $order = $this->makeOrder($product, quantity: 2);
+        $order->forceFill(['fulfillment_method' => 'shiprocket'])->save();
         $item = $order->items->first();
         app(InventoryService::class)->commit(
             $item,

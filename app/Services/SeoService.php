@@ -9,6 +9,7 @@ use App\Models\SeoFaq;
 use App\Models\SeoMetadata;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class SeoService
@@ -17,8 +18,7 @@ class SeoService
         private readonly SeoSettingsService $settings,
         private readonly SchemaBuilder $schema,
         private readonly SeoScoreService $score,
-    ) {
-    }
+    ) {}
 
     public function serializeForResource(Model|string $subject, ?string $pageKey = null): array
     {
@@ -85,7 +85,9 @@ class SeoService
         if ($type === 'private' || $type === 'not-found') {
             $robots = 'noindex,follow';
         }
-        $image = $this->absoluteUrl($this->first($seo?->og_image, $seo?->twitter_image, $fallback['image'], $settings['site']['default_og_image'] ?? null));
+        $configuredPageImage = $this->first($seo?->og_image, $seo?->twitter_image, null);
+        $pageImage = filled($configuredPageImage) ? $this->absoluteUrl($configuredPageImage) : null;
+        $image = $this->absoluteUrl($this->first($pageImage, $fallback['image'], $settings['site']['default_og_image'] ?? null));
         $breadcrumbs = $this->breadcrumbs($subject, $type, $normalized);
         $locale = $seo?->locale ?: $this->locale();
         $schemas = [
@@ -109,6 +111,7 @@ class SeoService
             'keywords' => $this->first($seo?->meta_keywords, null),
             'canonical' => $canonical,
             'robots' => $robots,
+            'page_image' => $pageImage,
             'locale' => $locale,
             'og_locale' => str_replace('-', '_', $locale),
             'hreflang' => [
@@ -271,7 +274,7 @@ class SeoService
         $links = collect([
             ['label' => 'Shop all products', 'url' => '/shop'],
             ['label' => 'Shipping information', 'url' => '/shipping'],
-            ['label' => 'Returns and replacement', 'url' => '/returns'],
+            ['label' => 'Replacement support', 'url' => '/replacement'],
         ]);
 
         if ($subject instanceof Product) {
@@ -364,9 +367,9 @@ class SeoService
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Post>
+     * @return Collection<int, Post>
      */
-    private function relatedBlogPostsForProduct(Product $product): \Illuminate\Support\Collection
+    private function relatedBlogPostsForProduct(Product $product): Collection
     {
         $terms = collect([
             $product->seoMetadata?->focus_keyword,
@@ -520,7 +523,8 @@ class SeoService
             '/privacy-policy' => 'privacy-policy',
             '/terms' => 'terms',
             '/shipping' => 'shipping',
-            '/returns' => 'returns',
+            '/returns' => 'replacement',
+            '/replacement' => 'replacement',
             '/payments' => 'payments',
             '/shopping-confidence-shipping-replacement' => 'shopping-confidence-shipping-replacement',
         ];
@@ -597,7 +601,8 @@ class SeoService
             'about' => "About | {$brand}",
             'contact' => "Contact | {$brand}",
             'shipping' => "Shipping | {$brand}",
-            'returns' => "Returns | {$brand}",
+            'replacement' => "Replacement support | {$brand}",
+            'returns' => "Replacement support | {$brand}",
             'payments' => "Payments | {$brand}",
             'privacy-policy' => "Privacy Policy | {$brand}",
             'terms' => "Terms of Service | {$brand}",
@@ -621,6 +626,7 @@ class SeoService
             'about' => "Learn about {$brand}—premium stainless steel lunch boxes and curated toys for families across India.",
             'contact' => "Contact {$brand} for order help, product questions, and support across India.",
             'shipping' => "Delivery across India for toys and lunch boxes from {$brand}.",
+            'replacement' => "7-day replacement support for toys and lunch boxes at {$brand}.",
             'returns' => "7-day replacement support for toys and lunch boxes at {$brand}.",
             'payments' => "Secure online payments and COD options for shopping at {$brand}.",
             'privacy-policy' => "How {$brand} collects and uses information when you browse or shop.",

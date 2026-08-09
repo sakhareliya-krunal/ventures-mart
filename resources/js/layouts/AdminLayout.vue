@@ -17,6 +17,7 @@ import {
   ChevronUp,
   Menu,
   X,
+  RefreshCw,
 } from '@lucide/vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { brandAssets } from '@/constants/assets';
@@ -46,6 +47,7 @@ function consumeWelcomeQuery() {
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+  { to: '/admin/replacements', label: 'Replacements', icon: RefreshCw },
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { to: '/admin/categories', label: 'Categories', icon: Tags },

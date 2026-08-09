@@ -37,21 +37,21 @@ class InventoryController extends Controller
                 ->orWhere('sku', 'like', "%{$search}%"));
         }
 
-        if ($request->boolean('low_stock')) {
-            $query->whereRaw('(on_hand - reserved - committed) <= COALESCE(low_stock_threshold, ?)', [
-                config('inventory.default_low_stock_threshold'),
-            ]);
-        }
-        if ($request->string('status')->toString() === 'out_of_stock') {
+        $status = $request->string('status')->toString();
+        $threshold = (int) config('inventory.default_low_stock_threshold');
+
+        if ($status === 'out_of_stock') {
             $query->whereRaw('(on_hand - reserved - committed) <= 0');
-        } elseif ($request->string('status')->toString() === 'in_stock') {
-            $query->whereRaw('(on_hand - reserved - committed) > COALESCE(low_stock_threshold, ?)', [
-                config('inventory.default_low_stock_threshold'),
-            ]);
+        } elseif ($status === 'low_stock' || ($status === '' && $request->boolean('low_stock'))) {
+            // Low stock excludes true out-of-stock rows.
+            $query->whereRaw('(on_hand - reserved - committed) > 0')
+                ->whereRaw('(on_hand - reserved - committed) <= COALESCE(low_stock_threshold, ?)', [$threshold]);
+        } elseif ($status === 'in_stock') {
+            $query->whereRaw('(on_hand - reserved - committed) > COALESCE(low_stock_threshold, ?)', [$threshold]);
         }
 
         return InventoryBalanceResource::collection(
-            $query->paginate(min(max($request->integer('per_page', 25), 1), 100)),
+            $query->paginate(min(max($request->integer('per_page', 10), 1), 100)),
         );
     }
 
@@ -75,6 +75,7 @@ class InventoryController extends Controller
                 ->selectRaw('COALESCE(SUM(on_hand - reserved - committed), 0) as aggregate')
                 ->value('aggregate'),
             'low_stock_count' => (clone $base)
+                ->whereRaw('(on_hand - reserved - committed) > 0')
                 ->whereRaw('(on_hand - reserved - committed) <= COALESCE(low_stock_threshold, ?)', [
                     config('inventory.default_low_stock_threshold'),
                 ])
@@ -175,7 +176,7 @@ class InventoryController extends Controller
             $query->whereNull('resolved_at');
         }
 
-        return response()->json($query->paginate(min(max($request->integer('per_page', 50), 1), 100)));
+        return response()->json($query->paginate(min(max($request->integer('per_page', 10), 1), 100)));
     }
 
     public function resolveAuditFlag(InventoryAuditFlag $inventoryAuditFlag)
@@ -188,7 +189,7 @@ class InventoryController extends Controller
     public function returns(Request $request)
     {
         return InventoryReturnResource::collection(
-            InventoryReturn::query()->latest()->paginate(min(max($request->integer('per_page', 50), 1), 100)),
+            InventoryReturn::query()->latest()->paginate(min(max($request->integer('per_page', 10), 1), 100)),
         );
     }
 

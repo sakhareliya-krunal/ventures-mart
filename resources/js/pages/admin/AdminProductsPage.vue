@@ -89,10 +89,10 @@ async function remove() {
     await api.delete(`/admin/products/${id}`);
     pendingDeleteId.value = null;
     confirmOpen.value = false;
-    flashSuccess('Product hidden. Inventory history was preserved.');
+    flashSuccess('Product deleted from the storefront.');
     await load({ silent: true });
   } catch (err) {
-    listError.value = apiErrorMessage(err, 'Unable to hide product.');
+    listError.value = apiErrorMessage(err, 'Unable to delete product.');
     pendingDeleteId.value = null;
   } finally {
     deleting.value = false;
@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
                     Edit
                   </AppButton>
                   <AppButton type="button" variant="danger" size="sm" @click="requestRemove(product.id)">
-                    Hide
+                    Delete
                   </AppButton>
                 </div>
               </td>
@@ -199,10 +199,10 @@ onBeforeUnmount(() => {
 
     <ConfirmDialog
       v-model:open="confirmOpen"
-      title="Hide product?"
+      title="Delete product?"
       message="This product will be removed from the storefront while its inventory and order history remain available."
-      confirm-label="Hide"
-      busy-label="Hiding…"
+      confirm-label="Delete"
+      busy-label="Deleting…"
       :busy="deleting"
       :close-on-confirm="false"
       danger

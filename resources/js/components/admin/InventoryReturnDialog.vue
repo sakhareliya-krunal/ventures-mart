@@ -2,6 +2,7 @@
 import { computed, reactive, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import AppSelect from '@/components/ui/AppSelect.vue';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -17,6 +18,12 @@ const form = reactive({
   disposition: 'restock',
   reason: '',
 });
+
+const dispositionOptions = [
+  { value: 'restock', label: 'Restock for sale' },
+  { value: 'damaged', label: 'Damaged / write off' },
+  { value: 'inspection', label: 'Hold for inspection' },
+];
 
 const maxReturnable = computed(() => {
   if (!props.item) return null;
@@ -102,11 +109,12 @@ function submit() {
         </label>
         <label class="admin-field">
           <span>Disposition <em>*</em></span>
-          <select v-model="form.disposition">
-            <option value="restock">Restock for sale</option>
-            <option value="damaged">Damaged / write off</option>
-            <option value="inspection">Hold for inspection</option>
-          </select>
+          <AppSelect
+            v-model="form.disposition"
+            :options="dispositionOptions"
+            placeholder="Select disposition"
+            aria-label="Return disposition"
+          />
         </label>
         <label class="admin-field">
           <span>Reason <em>*</em></span>

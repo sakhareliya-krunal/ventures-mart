@@ -82,18 +82,34 @@ export const useAuthStore = defineStore('auth', () => {
     return sessionPromise;
   }
 
+  async function establishSessionAfterAuth() {
+    await fetchUser();
+
+    if (!user.value) {
+      error.value =
+        'Your session could not be established. Check that you are using the same host as the API (localhost vs 127.0.0.1), then try again.';
+      const err = new Error(error.value);
+      err.code = 'session_not_established';
+      throw err;
+    }
+
+    await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
+    await processPendingUserAction();
+    return user.value;
+  }
+
   async function login(credentials) {
     loading.value = true;
     error.value = null;
 
     try {
-      const { data } = await api.post('/login', credentials);
-      user.value = unwrapData(data.user ?? data);
-      await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
-      await processPendingUserAction();
-      return user.value;
+      await api.post('/login', credentials);
+      return await establishSessionAfterAuth();
     } catch (err) {
-      error.value = friendlyApiError(err, 'Unable to log in.');
+      if (err?.code !== 'session_not_established') {
+        error.value = friendlyApiError(err, 'Unable to log in.');
+      }
+      user.value = null;
       throw err;
     } finally {
       loading.value = false;
@@ -105,13 +121,13 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null;
 
     try {
-      const { data } = await api.post('/register', payload);
-      user.value = unwrapData(data.user ?? data);
-      await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
-      await processPendingUserAction();
-      return user.value;
+      await api.post('/register', payload);
+      return await establishSessionAfterAuth();
     } catch (err) {
-      error.value = friendlyApiError(err, 'Unable to register.');
+      if (err?.code !== 'session_not_established') {
+        error.value = friendlyApiError(err, 'Unable to register.');
+      }
+      user.value = null;
       throw err;
     } finally {
       loading.value = false;
@@ -127,14 +143,16 @@ export const useAuthStore = defineStore('auth', () => {
         access_token: accessToken,
         intent,
       });
-      user.value = unwrapData(response.data.user ?? response.data);
-      await Promise.all([useCartStore().fetch(), useWishlistStore().fetch()]);
-      await processPendingUserAction();
+      await establishSessionAfterAuth();
       return {
         user: user.value,
         created: response.status === 201,
       };
     } catch (err) {
+      user.value = null;
+      if (err?.code === 'session_not_established') {
+        throw err;
+      }
       const payload = err.response?.data || {};
       const googleError = new Error(
         friendlyApiError(

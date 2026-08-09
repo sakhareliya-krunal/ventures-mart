@@ -24,10 +24,10 @@ const revenueRanges = [
 const loading = ref(true);
 const chartLoading = ref(false);
 const revenueRange = ref('day');
-const barsScroll = ref(null);
+const activeDayPoint = ref(null);
 
 function onChartWheel(e) {
-  const el = barsScroll.value;
+  const el = e.currentTarget;
   if (!el || el.scrollWidth <= el.clientWidth) return;
   const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
   if (!delta) return;
@@ -74,6 +74,21 @@ const revenueSeries = computed(() =>
     ? stats.value.revenue_series
     : stats.value.revenue_last_7_days || [],
 );
+
+const dayRevenueGroups = computed(() => [
+  {
+    key: 'am',
+    label: 'AM',
+    period: '12 AM–11 AM',
+    points: revenueSeries.value.slice(0, 12),
+  },
+  {
+    key: 'pm',
+    label: 'PM',
+    period: '12 PM–11 PM',
+    points: revenueSeries.value.slice(12, 24),
+  },
+]);
 
 const maxRevenuePoint = computed(() =>
   Math.max(1, ...revenueSeries.value.map((point) => Number(point.total) || 0)),
@@ -172,6 +187,20 @@ function compactValue(total) {
   return `₹${compactValueFormatter.format(Number(total) || 0)}`;
 }
 
+function exactOrderTime(value) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('en-IN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(new Date(value));
+}
+
+function showDayPoint(point) {
+  activeDayPoint.value = point;
+}
+
 function isPublished(post) {
   if (!post?.published_at) return false;
   return new Date(post.published_at).getTime() <= Date.now();
@@ -218,6 +247,7 @@ async function loadStats({ silent = false } = {}) {
 
 function setRevenueRange(range) {
   if (range === revenueRange.value || chartLoading.value) return;
+  activeDayPoint.value = null;
   revenueRange.value = range;
 }
 
@@ -294,7 +324,83 @@ onMounted(() => loadStats());
             </button>
           </div>
         </div>
-        <div class="admin-dash-bars-scroll" ref="barsScroll" @wheel="onChartWheel">
+        <div v-if="revenueRange === 'day'" class="admin-dash-day">
+          <section
+            v-for="group in dayRevenueGroups"
+            :key="group.key"
+            class="admin-dash-day__group"
+            :aria-label="`${group.label} sales, ${group.period}`"
+          >
+            <header class="admin-dash-day__heading">
+              <strong>{{ group.label }}</strong>
+              <span>{{ group.period }}</span>
+            </header>
+            <div class="admin-dash-bars-scroll" @wheel="onChartWheel">
+              <div
+                class="admin-dash-bars admin-dash-bars--day"
+                :class="{ 'is-loading': chartLoading }"
+                data-range="day"
+                :data-points="group.points.length"
+                role="list"
+              >
+                <div
+                  v-for="(point, index) in group.points"
+                  :key="pointKey(point, index)"
+                  class="admin-dash-bar"
+                  :class="{
+                    'is-empty': !(Number(point.total) > 0),
+                    'is-active': activeDayPoint?.key === point.key,
+                  }"
+                  role="listitem"
+                  tabindex="0"
+                  :aria-label="`${point.label}: ${formatCurrency(point.total)}, ${point.orders?.length || 0} orders`"
+                  @mouseenter="showDayPoint(point)"
+                  @focus="showDayPoint(point)"
+                  @click="showDayPoint(point)"
+                >
+                  <div class="admin-dash-bar__track">
+                    <div class="admin-dash-bar__fill" :style="{ height: barHeight(point.total) }" />
+                  </div>
+                  <span class="admin-dash-bar__label">{{ point.label }}</span>
+                  <span class="admin-dash-bar__value">{{ compactValue(point.total) }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside
+            v-if="activeDayPoint"
+            class="admin-dash-hour-tooltip"
+            aria-live="polite"
+            aria-label="Selected hour order details"
+          >
+            <div class="admin-dash-hour-tooltip__header">
+              <div>
+                <strong>{{ activeDayPoint.label }}</strong>
+                <span>
+                  {{ formatCurrency(activeDayPoint.total) }}
+                  · {{ activeDayPoint.orders?.length || 0 }}
+                  {{ activeDayPoint.orders?.length === 1 ? 'order' : 'orders' }}
+                </span>
+              </div>
+            </div>
+            <div v-if="activeDayPoint.orders?.length" class="admin-dash-hour-tooltip__orders">
+              <RouterLink
+                v-for="order in activeDayPoint.orders"
+                :key="order.id"
+                :to="`/admin/orders/${order.id}`"
+                class="admin-dash-hour-tooltip__order"
+              >
+                <time :datetime="order.created_at">{{ exactOrderTime(order.created_at) }}</time>
+                <strong>{{ order.number }}</strong>
+                <span>{{ formatCurrency(order.total) }}</span>
+              </RouterLink>
+            </div>
+            <p v-else class="admin-dash-hour-tooltip__empty">No orders were created in this hour.</p>
+          </aside>
+        </div>
+
+        <div v-else class="admin-dash-bars-scroll" @wheel="onChartWheel">
           <div
             class="admin-dash-bars"
             :class="{ 'is-loading': chartLoading }"

@@ -18,8 +18,10 @@
 
 .article-premium__hero-media,
 .article-premium__hero-scrim {
+  height: 100%;
   inset: 0;
   position: absolute;
+  width: 100%;
 }
 
 .article-premium__hero-media {
@@ -36,8 +38,8 @@
 
 .article-premium__hero-scrim {
   background:
-    linear-gradient(105deg, rgba(7, 31, 99, 0.88) 0%, rgba(7, 31, 99, 0.62) 42%, rgba(7, 31, 99, 0.28) 72%, rgba(7, 31, 99, 0.18) 100%),
-    linear-gradient(0deg, rgba(7, 31, 99, 0.45) 0%, transparent 55%);
+    linear-gradient(105deg, rgba(7, 31, 99, 0.72) 0%, rgba(7, 31, 99, 0.38) 38%, rgba(7, 31, 99, 0.14) 68%, rgba(7, 31, 99, 0.06) 100%),
+    linear-gradient(0deg, rgba(7, 31, 99, 0.28) 0%, transparent 52%);
   z-index: 1;
 }
 
@@ -167,6 +169,14 @@
   text-decoration: underline;
 }
 
+.article-premium__prose img {
+  border-radius: 1rem;
+  display: block;
+  height: auto;
+  margin: 1.25rem 0;
+  max-width: 100%;
+}
+
 .article-premium__toc {
   background: rgba(255, 255, 255, 0.94);
   border-bottom: 1px solid rgba(15, 40, 90, 0.08);
@@ -242,6 +252,13 @@
   max-width: var(--container);
 }
 
+.article-premium__section-kicker {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .article-premium__section-icon {
   align-items: center;
   background: color-mix(in srgb, var(--color-primary) 8%, #fff);
@@ -249,10 +266,16 @@
   border-radius: 999px;
   color: var(--color-primary);
   display: inline-flex;
+  flex: 0 0 2.75rem;
   height: 2.75rem;
   justify-content: center;
-  margin-bottom: 1rem;
   width: 2.75rem;
+}
+
+.article-premium__section-kicker .eyebrow {
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  margin: 0;
 }
 
 .article-premium__section-inner h2 {
@@ -357,9 +380,9 @@
   .article-premium__hero-scrim {
     background: linear-gradient(
       180deg,
-      rgba(7, 31, 99, 0.55) 0%,
-      rgba(7, 31, 99, 0.78) 45%,
-      rgba(7, 31, 99, 0.9) 100%
+      rgba(7, 31, 99, 0.28) 0%,
+      rgba(7, 31, 99, 0.48) 42%,
+      rgba(7, 31, 99, 0.7) 100%
     );
   }
 
@@ -394,6 +417,16 @@
   .article-premium__actions .button,
   .article-premium__close-actions .button {
     width: 100%;
+  }
+
+  .article-premium__section-kicker {
+    gap: 0.65rem;
+  }
+
+  .article-premium__section-icon {
+    flex-basis: 2.5rem;
+    height: 2.5rem;
+    width: 2.5rem;
   }
 }
 

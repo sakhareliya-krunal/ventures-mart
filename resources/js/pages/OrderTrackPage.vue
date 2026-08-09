@@ -31,6 +31,16 @@ const loading = ref(true);
 const error = ref('');
 const track = ref(null);
 const downloadingInvoice = ref(false);
+const cancelling = ref(false);
+const cancelReason = ref('');
+const cancelError = ref('');
+const showCancelForm = ref(false);
+const replacementReason = ref('damaged');
+const replacementNotes = ref('');
+const replacementPhotos = ref([]);
+const replacementError = ref('');
+const submittingReplacement = ref(false);
+const showReplacementForm = ref(false);
 
 const orderNumber = computed(() => String(route.params.number || ''));
 
@@ -58,17 +68,18 @@ const paymentMethodLabel = computed(() => {
   return method || '—';
 });
 
-const paymentStatusLabel = computed(() => {
-  const status = track.value?.payment_status;
-  if (!status) return '—';
-  return status.charAt(0).toUpperCase() + status.slice(1);
-});
-
 const paymentBadgeClass = computed(() => {
   const status = String(track.value?.payment_status || '').toLowerCase();
   if (status === 'paid') return 'order-track__badge--paid';
   if (status === 'failed') return 'order-track__badge--failed';
+  if (status === 'refund_pending' || status === 'refunded') return 'order-track__badge--pending';
   return 'order-track__badge--pending';
+});
+
+const paymentStatusLabel = computed(() => {
+  const status = track.value?.payment_status;
+  if (!status) return '—';
+  return String(status).replaceAll('_', ' ').replace(/^\w/, (c) => c.toUpperCase());
 });
 
 function formatDate(value) {
@@ -133,6 +144,65 @@ async function downloadInvoice() {
   }
 }
 
+async function cancelOrder() {
+  if (!track.value?.id || cancelling.value) return;
+  cancelError.value = '';
+  if (!cancelReason.value.trim()) {
+    cancelError.value = 'Please share a cancellation reason.';
+    return;
+  }
+
+  cancelling.value = true;
+  try {
+    const { data } = await api.post(`/orders/${track.value.id}/cancel`, {
+      cancellation_reason: cancelReason.value.trim(),
+    });
+    ui.showToast(data.message || 'Order cancelled.');
+    showCancelForm.value = false;
+    await loadTrack();
+  } catch (err) {
+    cancelError.value =
+      err.response?.data?.message ||
+      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
+      'Unable to cancel this order.';
+  } finally {
+    cancelling.value = false;
+  }
+}
+
+function onReplacementPhotos(event) {
+  replacementPhotos.value = Array.from(event.target.files || []).slice(0, 5);
+}
+
+async function submitReplacement() {
+  if (!track.value?.id || submittingReplacement.value) return;
+  replacementError.value = '';
+  submittingReplacement.value = true;
+
+  const body = new FormData();
+  body.append('reason', replacementReason.value);
+  if (replacementNotes.value.trim()) {
+    body.append('notes', replacementNotes.value.trim());
+  }
+  replacementPhotos.value.forEach((file) => body.append('photos[]', file));
+
+  try {
+    const { data } = await api.post(`/orders/${track.value.id}/replacement-requests`, body);
+    ui.showToast(data.message || 'Replacement request submitted.');
+    showReplacementForm.value = false;
+    replacementNotes.value = '';
+    replacementPhotos.value = [];
+    await loadTrack();
+  } catch (err) {
+    replacementError.value =
+      err.response?.data?.message ||
+      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
+      'Unable to submit replacement request.';
+  } finally {
+    submittingReplacement.value = false;
+  }
+}
+
 onMounted(loadTrack);
 </script>
 
@@ -179,6 +249,10 @@ onMounted(loadTrack);
           </ol>
           <p v-if="track.status === 'Cancelled'" class="order-track__note order-track__note--danger">
             This order was cancelled.
+            <template v-if="track.cancellation_reason"> Reason: {{ track.cancellation_reason }}</template>
+          </p>
+          <p v-else-if="track.cancel_requested_at" class="order-track__note">
+            Cancellation requested. We are confirming it with the courier.
           </p>
           <p v-else-if="track.status === 'AwaitingPayment'" class="order-track__note">
             Waiting for payment confirmation.
@@ -186,6 +260,81 @@ onMounted(loadTrack);
           <p v-else-if="track.status === 'InventoryHold'" class="order-track__note order-track__note--danger">
             Payment was received, but inventory needs review before shipment. Support will contact you if needed.
           </p>
+
+          <div v-if="track.can_cancel" class="order-track__inline-actions">
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              @click="showCancelForm = !showCancelForm"
+            >
+              {{ showCancelForm ? 'Hide cancel form' : 'Cancel order' }}
+            </AppButton>
+          </div>
+          <form
+            v-if="showCancelForm && track.can_cancel"
+            class="order-track__form"
+            @submit.prevent="cancelOrder"
+          >
+            <label>
+              Cancellation reason
+              <textarea v-model="cancelReason" rows="3" required maxlength="500" />
+            </label>
+            <p v-if="cancelError" class="form-error">{{ cancelError }}</p>
+            <AppButton type="submit" :disabled="cancelling">
+              {{ cancelling ? 'Cancelling…' : 'Confirm cancellation' }}
+            </AppButton>
+          </form>
+
+          <div v-if="track.replacement_requests?.length" class="order-track__replacements">
+            <h3>Replacement requests</h3>
+            <ul>
+              <li v-for="request in track.replacement_requests" :key="request.id">
+                <strong>{{ request.reason }}</strong>
+                — {{ request.status }}
+                <span v-if="request.replacement_order">
+                  · Replacement order {{ request.replacement_order.number }}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="track.can_request_replacement" class="order-track__inline-actions">
+            <AppButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              @click="showReplacementForm = !showReplacementForm"
+            >
+              {{ showReplacementForm ? 'Hide replacement form' : 'Request replacement' }}
+            </AppButton>
+          </div>
+          <form
+            v-if="showReplacementForm && track.can_request_replacement"
+            class="order-track__form"
+            @submit.prevent="submitReplacement"
+          >
+            <label>
+              Reason
+              <select v-model="replacementReason" required>
+                <option value="damaged">Damaged</option>
+                <option value="defective">Defective</option>
+                <option value="incorrect">Incorrect item</option>
+              </select>
+            </label>
+            <label>
+              Notes
+              <textarea v-model="replacementNotes" rows="3" maxlength="2000" />
+            </label>
+            <label>
+              Photos (optional)
+              <input type="file" accept="image/*" multiple @change="onReplacementPhotos" />
+            </label>
+            <p v-if="replacementError" class="form-error">{{ replacementError }}</p>
+            <AppButton type="submit" :disabled="submittingReplacement">
+              {{ submittingReplacement ? 'Submitting…' : 'Submit replacement request' }}
+            </AppButton>
+          </form>
         </div>
 
         <div class="order-track-card">
@@ -427,17 +576,15 @@ onMounted(loadTrack);
             Contact support
           </AppButton>
           <AppButton
-            v-if="track.return_eligible"
-            :to="`${track.support?.returns_path || '/returns'}?order=${encodeURIComponent(track.number)}`"
+            v-if="track.can_request_replacement"
+            type="button"
             variant="secondary"
+            @click="showReplacementForm = true"
           >
             <RefreshCw :size="16" aria-hidden="true" />
-            Return / replace
+            Request replacement
           </AppButton>
         </div>
-        <p v-if="!track.return_eligible" class="order-track__note">
-          Return / replace is available within 7 days after delivery.
-        </p>
         <p class="order-track__support">
           Email
           <a :href="emailHref(track.support?.email || footerContact.email)">

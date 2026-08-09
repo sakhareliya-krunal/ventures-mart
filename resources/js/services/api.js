@@ -66,9 +66,62 @@ function shouldSkipGlobalToast(config = {}) {
   return Boolean(config.skipErrorToast);
 }
 
+function requestPath(config = {}) {
+  const raw = String(config.url || '').split('?')[0];
+  return raw.replace(/\/+$/, '') || '/';
+}
+
 function isQuietUnauthRequest(config = {}) {
-  const url = String(config.url || '');
-  return url.includes('/user') && (config.method || 'get').toLowerCase() === 'get';
+  const path = requestPath(config);
+  const method = (config.method || 'get').toLowerCase();
+  return method === 'get' && (path === '/user' || path === 'user' || path.endsWith('/user'));
+}
+
+let handlingUnauthorized = false;
+
+async function handleUnauthorized(error) {
+  if (handlingUnauthorized) {
+    return;
+  }
+
+  handlingUnauthorized = true;
+
+  try {
+    const [{ useAuthStore }, { default: router }] = await Promise.all([
+      import('@/stores/auth'),
+      import('@/router'),
+    ]);
+    const auth = useAuthStore();
+
+    auth.user = null;
+
+    if (!auth.redirecting) {
+      toastError(friendlyApiError(error));
+    }
+
+    const route = router.currentRoute.value;
+    if (route.name === 'login' || route.path === '/login') {
+      return;
+    }
+
+    const redirect = route.fullPath || '/';
+    auth.beginRedirect();
+
+    await router
+      .push({
+        name: 'login',
+        query: { redirect },
+      })
+      .catch(() => {
+        auth.endRedirect();
+      });
+  } catch {
+    // Pinia/router may not be ready during early boot.
+  } finally {
+    window.setTimeout(() => {
+      handlingUnauthorized = false;
+    }, 1500);
+  }
 }
 
 function sleep(ms) {
@@ -134,14 +187,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (status === 401 && !isQuietUnauthRequest(config) && !shouldSkipGlobalToast(config)) {
+      await handleUnauthorized(error);
+      return Promise.reject(error);
+    }
+
     if (!shouldSkipGlobalToast(config)) {
       if (status === 419) {
         toastError(friendlyApiError(error));
       } else if (status === 429) {
         toastError(friendlyApiError(error));
       } else if (status === 403) {
-        toastError(friendlyApiError(error));
-      } else if (status === 401 && !isQuietUnauthRequest(config)) {
         toastError(friendlyApiError(error));
       } else if (status >= 500) {
         toastError(friendlyApiError(error));

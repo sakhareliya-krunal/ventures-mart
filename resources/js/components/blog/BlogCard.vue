@@ -1,8 +1,10 @@
 <script setup>
+import { computed } from 'vue';
 import { ArrowUpRight, CalendarDays } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
+import { safePublicImageUrl } from '@/utils/seoHead';
 
-defineProps({
+const props = defineProps({
   post: {
     type: Object,
     required: true,
@@ -12,6 +14,8 @@ defineProps({
     default: false,
   },
 });
+
+const coverSrc = computed(() => safePublicImageUrl(props.post?.cover_image));
 
 function formatDate(value) {
   if (!value) return '';
@@ -28,8 +32,8 @@ function formatDate(value) {
   <article class="blog-card" :class="{ 'blog-card--featured': featured }">
     <RouterLink :to="`/blog/${post.slug}`" class="blog-card__media" :aria-label="`Read ${post.title}`">
       <img
-        v-if="post.cover_image"
-        :src="post.cover_image"
+        v-if="coverSrc"
+        :src="coverSrc"
         :alt="post.seo?.metadata?.image_alt_text || post.title"
         :loading="featured ? 'eager' : 'lazy'"
       />

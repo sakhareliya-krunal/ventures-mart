@@ -87,4 +87,43 @@ class AdminUserCreateTest extends TestCase
             ->assertJsonFragment(['email' => 'boss@example.com'])
             ->assertJsonMissing(['email' => 'buyer@example.com']);
     }
+
+    public function test_created_admin_can_session_login_and_access_admin_api(): void
+    {
+        $creator = User::factory()->admin()->create();
+        Sanctum::actingAs($creator);
+
+        $this->postJson('/api/admin/users', [
+            'name' => 'Session Admin',
+            'email' => 'session-admin@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.is_admin', true);
+
+        // Drop token auth so the next requests use the SPA session cookie only.
+        $this->app['auth']->forgetGuards();
+        $this->flushSession();
+
+        $this->get('/sanctum/csrf-cookie')->assertNoContent();
+
+        $this->postJson('/api/login', [
+            'email' => 'session-admin@example.com',
+            'password' => 'password123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'session-admin@example.com')
+            ->assertJsonPath('user.is_admin', true);
+
+        $this->assertAuthenticated();
+
+        $this->getJson('/api/user')
+            ->assertOk()
+            ->assertJsonPath('data.email', 'session-admin@example.com')
+            ->assertJsonPath('data.is_admin', true);
+
+        $this->getJson('/api/admin/stats')
+            ->assertOk();
+    }
 }

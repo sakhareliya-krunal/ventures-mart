@@ -156,7 +156,13 @@ watch([search, status], load);
                 <AppButton type="button" variant="secondary" size="sm" @click="openOrder(order)">
                   View
                 </AppButton>
-                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(order.id)">
+                <AppButton
+                  v-if="order.can_delete"
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  @click="requestRemove(order.id)"
+                >
                   Delete
                 </AppButton>
               </div>

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { Minus, Plus, ShoppingBag, Trash2, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import { formatCurrency } from '@/utils/format';
+import { isOutOfStockProduct, maxCartQuantityFor } from '@/utils/cartStock';
 import { requireLogin } from '@/utils/authRedirect';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
@@ -44,16 +45,21 @@ function decrease(item) {
 }
 
 function increase(item) {
+  if (isOutOfStockProduct(item)) return;
   cart.bumpQuantity(item.product_id, 1);
 }
 
 function atMaxQuantity(item) {
-  const stock = Number(item.product?.stock);
-  const stockCap = Number.isFinite(stock) && stock > 0 ? stock : 99;
-  return item.quantity >= Math.min(99, stockCap);
+  return item.quantity >= maxCartQuantityFor(item);
+}
+
+function remove(item) {
+  cart.removeItem(item.product_id);
 }
 
 function goToCheckout() {
+  if (!cart.canCheckout) return;
+
   cart.closeTray();
 
   if (!auth.user) {
@@ -125,6 +131,7 @@ onBeforeUnmount(() => {
               v-for="item in cart.items"
               :key="item.product_id"
               class="cart-tray__line"
+              :class="{ 'cart-tray__line--oos': isOutOfStockProduct(item) }"
             >
               <img
                 v-if="item.product"
@@ -136,26 +143,30 @@ onBeforeUnmount(() => {
                 <div class="cart-tray__meta">
                   <strong>{{ item.product?.name }}</strong>
                   <span>{{ formatCurrency(item.product?.price || 0) }}</span>
+                  <span v-if="isOutOfStockProduct(item)" class="cart-tray__oos">Out of Stock</span>
                 </div>
                 <div
                   class="cart-tray__qty"
-                  :class="{ 'is-syncing': cart.isSyncing(item.product_id) }"
+                  :class="{
+                    'is-syncing': cart.isSyncing(item.product_id),
+                    'is-disabled': isOutOfStockProduct(item),
+                  }"
                   role="group"
                   :aria-label="`Quantity for ${item.product?.name}`"
                 >
                   <button
                     type="button"
-                    :aria-label="item.quantity <= 1 ? 'Remove item' : 'Decrease quantity'"
-                    @click="decrease(item)"
+                    :aria-label="item.quantity <= 1 || isOutOfStockProduct(item) ? 'Remove item' : 'Decrease quantity'"
+                    @click="isOutOfStockProduct(item) ? remove(item) : decrease(item)"
                   >
-                    <Trash2 v-if="item.quantity <= 1" :size="16" />
+                    <Trash2 v-if="item.quantity <= 1 || isOutOfStockProduct(item)" :size="16" />
                     <Minus v-else :size="16" />
                   </button>
                   <span>{{ item.quantity }}</span>
                   <button
                     type="button"
                     aria-label="Increase quantity"
-                    :disabled="atMaxQuantity(item)"
+                    :disabled="atMaxQuantity(item) || isOutOfStockProduct(item)"
                     @click="increase(item)"
                   >
                     <Plus :size="16" />
@@ -202,9 +213,17 @@ onBeforeUnmount(() => {
                 Estimated until shipping state is set
               </p>
             </div>
-            <AppButton size="lg" class="cart-tray__cta" @click="goToCheckout">
+            <AppButton
+              size="lg"
+              class="cart-tray__cta"
+              :disabled="!cart.canCheckout"
+              @click="goToCheckout"
+            >
               Checkout
             </AppButton>
+            <p v-if="cart.hasOutOfStockItems" class="cart-tray__oos-note" role="status">
+              Remove Out of Stock items to continue.
+            </p>
             <button class="cart-tray__view-cart" type="button" @click="goToCart">
               View cart
             </button>

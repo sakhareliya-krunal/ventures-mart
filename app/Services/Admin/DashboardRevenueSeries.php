@@ -17,7 +17,7 @@ class DashboardRevenueSeries
      *   revenue_period_label: string,
      *   revenue_period_total: float,
      *   revenue_period_orders: int,
-     *   revenue_series: list<array{key: string, label: string, total: float}>,
+     *   revenue_series: list<array{key: string, label: string, total: float, orders?: list<array{id: int, number: string, created_at: string, total: float}>}>,
      *   revenue_last_7_days: list<array{date: string, label: string, total: float}>
      * }
      */
@@ -66,20 +66,32 @@ class DashboardRevenueSeries
     }
 
     /**
-     * @return list<array{key: string, label: string, total: float}>
+     * @return list<array{key: string, label: string, total: float, orders: list<array{id: int, number: string, created_at: string, total: float}>}>
      */
     private function daySeries(): array
     {
         $start = Carbon::today()->startOfDay();
-        $totals = $this->groupedTotals('hour', $start);
+        $ordersByHour = Order::query()
+            ->where('status', '!=', 'Cancelled')
+            ->whereBetween('created_at', [$start, $start->copy()->endOfDay()])
+            ->orderBy('created_at')
+            ->get(['id', 'number', 'created_at', 'total'])
+            ->groupBy(fn (Order $order) => $order->created_at->format('H'));
         $series = [];
 
         for ($hour = 0; $hour < 24; $hour++) {
             $key = str_pad((string) $hour, 2, '0', STR_PAD_LEFT);
+            $orders = $ordersByHour->get($key, collect());
             $series[] = [
                 'key' => $key,
                 'label' => $start->copy()->addHours($hour)->format('g A'),
-                'total' => (float) ($totals[$key] ?? $totals[(string) $hour] ?? 0),
+                'total' => round((float) $orders->sum('total'), 2),
+                'orders' => $orders->map(fn (Order $order) => [
+                    'id' => (int) $order->id,
+                    'number' => (string) $order->number,
+                    'created_at' => $order->created_at->toIso8601String(),
+                    'total' => (float) $order->total,
+                ])->values()->all(),
             ];
         }
 

@@ -1,6 +1,6 @@
 export const homeHero = {
   lead: 'Curated toys and steel lunch boxes for school, play, and everyday family life across India.',
-  assurances: 'Free shipping · Careful curation · Easy returns',
+  assurances: 'Free shipping · Careful curation · 7-day replacement',
 };
 
 export const homeCategories = {
@@ -62,7 +62,7 @@ export const homeServices = [
     title: '7-day replacement',
     text: 'Clear support if something arrives wrong',
     imageKey: 'serviceReturns',
-    href: '/returns',
+    href: '/replacement',
   },
 ];
 

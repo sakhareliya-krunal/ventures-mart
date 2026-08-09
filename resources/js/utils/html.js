@@ -15,9 +15,10 @@ const ALLOWED_TAGS = [
   'li',
   'a',
   'blockquote',
+  'img',
 ];
 
-const ALLOWED_ATTR = ['href', 'target', 'rel'];
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'src', 'alt', 'width', 'height', 'loading'];
 
 export function stripHtml(value, maxLength = 0) {
   const text = String(value || '')

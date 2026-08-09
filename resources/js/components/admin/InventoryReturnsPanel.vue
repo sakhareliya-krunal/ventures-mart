@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
 import InventoryReturnDialog from '@/components/admin/InventoryReturnDialog.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
@@ -16,6 +17,9 @@ const dialogOpen = ref(false);
 
 const currentPage = computed(() => Number(meta.value.current_page || 1));
 const lastPage = computed(() => Number(meta.value.last_page || 1));
+const total = computed(() => Number(meta.value.total || rows.value.length));
+const firstItem = computed(() => Number(meta.value.from || (total.value ? (currentPage.value - 1) * 10 + 1 : 0)));
+const lastItem = computed(() => Number(meta.value.to || Math.min(currentPage.value * 10, total.value)));
 
 function date(value) {
   if (!value) return '—';
@@ -32,7 +36,7 @@ async function load(page = 1) {
   error.value = '';
   try {
     const { data } = await api.get('/admin/inventory/returns', {
-      params: { page, per_page: 25 },
+      params: { page, per_page: 10 },
       skipErrorToast: true,
     });
     rows.value = data?.data || [];
@@ -67,12 +71,12 @@ onMounted(() => load());
 
 <template>
   <section class="admin-panel inventory-operations-panel">
-    <div class="admin-toolbar inventory-operations-toolbar">
+    <div class="inventory-operations-toolbar">
       <div class="inventory-operations-toolbar__copy">
         <h2>Returns</h2>
         <p class="admin-muted">Receive returned order items and record their disposition.</p>
       </div>
-      <AppButton class="inventory-operations-toolbar__action" type="button" @click="dialogOpen = true">
+      <AppButton class="inventory-operations-toolbar__action" type="button" size="sm" @click="dialogOpen = true">
         Process return
       </AppButton>
     </div>
@@ -115,17 +119,15 @@ onMounted(() => load());
         </table>
         <p v-if="!rows.length" class="admin-empty">No returns have been processed.</p>
       </div>
-      <footer v-if="lastPage > 1" class="inventory-pagination">
-        <span>Page {{ currentPage }} of {{ lastPage }}</span>
-        <div>
-          <AppButton type="button" variant="secondary" size="sm" :disabled="currentPage <= 1" @click="load(currentPage - 1)">
-            Previous
-          </AppButton>
-          <AppButton type="button" variant="secondary" size="sm" :disabled="currentPage >= lastPage" @click="load(currentPage + 1)">
-            Next
-          </AppButton>
-        </div>
-      </footer>
+      <AdminPagination
+        v-if="total"
+        :page="currentPage"
+        :last-page="lastPage"
+        :total="total"
+        :from="firstItem"
+        :to="lastItem"
+        @page="load"
+      />
     </template>
 
     <InventoryReturnDialog

@@ -11,6 +11,40 @@ function absoluteSeoUrl(path) {
   return `${origin}/${String(path).replace(/^\//, '')}`;
 }
 
+export function safePublicImageUrl(value) {
+  let image = String(value || '').trim();
+  if (!image) return '';
+
+  // Normalize bare public paths so they never resolve under /blog/...
+  if (/^(storage|images|products|uploads)\//i.test(image)) {
+    image = `/${image}`;
+  }
+
+  if (/^\/(?!\/)/.test(image)) {
+    return image;
+  }
+
+  try {
+    const url = new URL(image);
+    if (url.protocol === 'https:') {
+      return url.href;
+    }
+
+    if (
+      url.protocol === 'http:' &&
+      typeof window !== 'undefined' &&
+      window.location.protocol === 'http:' &&
+      url.origin === window.location.origin
+    ) {
+      return url.href;
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
 export function seoHeadFromRecord(record, fallback = {}) {
   const metadata = record?.seo?.metadata || {};
   const title = metadata.title || fallback.title || 'Ventures Mart';

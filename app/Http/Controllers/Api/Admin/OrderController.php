@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\FulfillmentMethod;
 use App\Enums\InventoryReservationState;
 use App\Enums\OrderInventoryStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminOrderResource;
-use App\Jobs\CancelShiprocketOrder;
 use App\Jobs\FulfillShiprocketOrder;
 use App\Jobs\SyncShiprocketTracking;
 use App\Models\Order;
 use App\Services\Inventory\InventoryService;
 use App\Services\InvoiceService;
+use App\Services\OrderCancellationService;
+use App\Services\SwitchOrderToManualFulfillment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -20,6 +22,8 @@ class OrderController extends Controller
     public function __construct(
         private readonly InvoiceService $invoices,
         private readonly InventoryService $inventory,
+        private readonly SwitchOrderToManualFulfillment $switchToManual,
+        private readonly OrderCancellationService $cancellations,
     ) {}
 
     private const STATUSES = ['AwaitingPayment', 'InventoryHold', 'Processing', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
@@ -67,7 +71,12 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load(['items.inventoryReservation', 'user', 'shiprocketShipment']);
+        $order->load([
+            'items.inventoryReservation',
+            'user',
+            'shiprocketShipment',
+            'fulfillmentEvents' => fn ($query) => $query->latest()->limit(50),
+        ]);
 
         return new AdminOrderResource($order);
     }
@@ -81,7 +90,7 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'status' => ['sometimes', 'required', 'string', Rule::in(self::STATUSES)],
-            'payment_status' => ['sometimes', 'required', 'string', Rule::in(['paid'])],
+            'payment_status' => ['sometimes', 'required', 'string', Rule::in(['paid', 'refunded'])],
             'courier_partner' => ['sometimes', 'nullable', 'string', 'max:120'],
             'awb_number' => ['sometimes', 'nullable', 'string', 'max:120'],
             'tracking_number' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -98,12 +107,22 @@ class OrderController extends Controller
 
         $order->loadMissing('shiprocketShipment');
         if (
-            $order->shiprocketShipment
+            $order->fulfillment_method === FulfillmentMethod::Shiprocket
             && collect(self::COURIER_FIELDS)->contains(fn ($field) => array_key_exists($field, $validated))
         ) {
             return response()->json([
                 'message' => 'Courier fields are managed by Shiprocket for this order.',
             ], 422);
+        }
+
+        if (array_key_exists('payment_status', $validated) && $validated['payment_status'] === 'refunded') {
+            $order = $this->cancellations->markRefunded($order);
+
+            return new AdminOrderResource($order->load([
+                'items.inventoryReservation',
+                'user',
+                'shiprocketShipment',
+            ]));
         }
 
         if (array_key_exists('payment_status', $validated) && $validated['payment_status'] === 'paid') {
@@ -131,19 +150,18 @@ class OrderController extends Controller
                 ], 422);
             }
 
-            if (
-                $validated['status'] === 'Cancelled'
-                && $order->shiprocketShipment
-                && ! $order->shiprocketShipment->cancelled_at
-            ) {
-                $order->forceFill([
-                    'cancel_requested_at' => now(),
-                    'cancellation_reason' => $validated['cancellation_reason'] ?? 'Admin cancellation',
-                ])->save();
-                CancelShiprocketOrder::dispatch($order->id);
-                $order->load(['items.inventoryReservation', 'user', 'shiprocketShipment']);
+            if ($validated['status'] === 'Cancelled') {
+                $result = $this->cancellations->cancelByAdmin(
+                    $order,
+                    $validated['cancellation_reason'] ?? 'Admin cancellation',
+                    $request->user(),
+                );
 
-                return new AdminOrderResource($order);
+                return new AdminOrderResource($result['order']->load([
+                    'items.inventoryReservation',
+                    'user',
+                    'shiprocketShipment',
+                ]));
             }
 
             $order->status = $validated['status'];
@@ -152,16 +170,13 @@ class OrderController extends Controller
                 $this->reacquireExceptionInventory($order);
             }
 
-            if ($validated['status'] === 'Cancelled') {
-                $this->releaseOrderInventory($order, $validated['cancellation_reason'] ?? 'Admin cancellation');
-                $order->cancel_requested_at ??= now();
-                $order->cancelled_at ??= now();
-                $order->cancellation_reason = $validated['cancellation_reason'] ?? 'Admin cancellation';
-            }
-
             if (in_array($validated['status'], ['Shipped', 'Delivered'], true)) {
                 $this->consumeOrderInventory($order);
                 $order->dispatched_at ??= now();
+            }
+
+            if ($validated['status'] === 'Delivered') {
+                $order->delivered_at ??= now();
             }
 
             if (
@@ -196,6 +211,10 @@ class OrderController extends Controller
             return response()->json(['message' => 'Cancelled orders cannot be fulfilled.'], 422);
         }
 
+        if ($order->fulfillment_method !== FulfillmentMethod::Shiprocket) {
+            return response()->json(['message' => 'This order uses manual fulfillment.'], 422);
+        }
+
         FulfillShiprocketOrder::dispatch($order->id);
 
         return response()->json(['message' => 'Shiprocket fulfillment was queued.'], 202);
@@ -203,6 +222,10 @@ class OrderController extends Controller
 
     public function syncShiprocket(Order $order)
     {
+        if ($order->fulfillment_method !== FulfillmentMethod::Shiprocket) {
+            return response()->json(['message' => 'This order uses manual fulfillment.'], 422);
+        }
+
         if (! $order->shiprocketShipment?->awb_code) {
             return response()->json(['message' => 'This order does not have a Shiprocket AWB.'], 422);
         }
@@ -212,32 +235,32 @@ class OrderController extends Controller
         return response()->json(['message' => 'Shiprocket tracking sync was queued.'], 202);
     }
 
-    public function destroy(Order $order)
+    public function switchToManual(Request $request, Order $order)
     {
-        return response()->json([
-            'message' => 'Orders are retained for inventory and financial audit. Cancel the order instead.',
-        ], 422);
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $order = $this->switchToManual->handle(
+            $order,
+            (int) $request->user()->id,
+            $validated['reason'] ?? null,
+        );
+
+        return new AdminOrderResource($order);
     }
 
-    private function releaseOrderInventory(Order $order, string $reason): void
+    public function destroy(Order $order)
     {
-        $order->loadMissing('items.inventoryReservation');
-
-        foreach ($order->items as $item) {
-            if (! in_array($item->inventoryReservation?->state, [
-                InventoryReservationState::Reserved,
-                InventoryReservationState::Committed,
-            ], true)) {
-                continue;
-            }
-
-            $this->inventory->release(
-                $item,
-                $reason,
-                "order:{$order->id}:item:{$item->id}:cancel",
-                correlationId: 'order:'.$order->id,
-            );
+        if (! $order->canBeDeletedByAdmin()) {
+            return response()->json([
+                'message' => 'This order cannot be deleted because it has already been confirmed or is in fulfillment. Cancel the order instead if it must be stopped.',
+            ], 422);
         }
+
+        $order->delete();
+
+        return response()->json(['message' => 'Order deleted.']);
     }
 
     private function consumeOrderInventory(Order $order): void

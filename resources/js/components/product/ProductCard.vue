@@ -85,7 +85,7 @@ async function toggleWish() {
 <template>
   <article class="product-card">
     <div class="product-card__media">
-      <span v-if="!inStock" class="product-card__badge product-card__badge--oos">Out of stock</span>
+      <span v-if="!inStock" class="product-card__badge product-card__badge--oos">Out of Stock</span>
       <span v-else-if="display.badge" class="product-card__badge">{{ display.badge }}</span>
       <RouterLink :to="`/product/${display.slug}`" :aria-label="display.name">
         <img
@@ -119,7 +119,7 @@ async function toggleWish() {
         :class="{ 'is-loading': adding }"
         :disabled="adding || !inStock"
         :aria-busy="adding"
-        :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+        :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
         @click.stop="addToCart"
       >
         <span class="product-card__cart-icon-label" :class="{ 'is-loading': adding }">
@@ -171,10 +171,10 @@ async function toggleWish() {
           class="button--busy-sm product-card__add"
           :disabled="adding || !inStock"
           :aria-busy="adding"
-          :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+          :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
           @click.stop="addToCart"
         >
-          <template v-if="!inStock">Out of stock</template>
+          <template v-if="!inStock">Out of Stock</template>
           <template v-else>
             <span class="button__busy-label" :class="{ 'is-loading': adding }">
               <ShoppingBag :size="16" />

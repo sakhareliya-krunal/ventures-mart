@@ -31,6 +31,8 @@ useHead(() =>
 onMounted(() => cart.fetch());
 
 function goToCheckout() {
+  if (!cart.canCheckout) return;
+
   if (!auth.user) {
     requireLogin(router, '/checkout');
     return;
@@ -62,7 +64,17 @@ function goToCheckout() {
         </div>
         <div>
           <OrderSummary :totals="cart.totals" />
-          <AppButton size="lg" class="full-width" @click="goToCheckout">Checkout</AppButton>
+          <p v-if="cart.hasOutOfStockItems" class="cart-page__oos-note" role="status">
+            Remove Out of Stock items to continue.
+          </p>
+          <AppButton
+            size="lg"
+            class="full-width"
+            :disabled="!cart.canCheckout"
+            @click="goToCheckout"
+          >
+            Checkout
+          </AppButton>
         </div>
       </div>
     </div>

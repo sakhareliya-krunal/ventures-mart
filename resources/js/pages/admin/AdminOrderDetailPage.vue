@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import InventoryReturnDialog from '@/components/admin/InventoryReturnDialog.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
@@ -25,9 +26,13 @@ const markingPaid = ref(false);
 const downloadingInvoice = ref(false);
 const retryingShiprocket = ref(false);
 const syncingShiprocket = ref(false);
+const switchDialogOpen = ref(false);
+const switchingToManual = ref(false);
 const error = ref('');
 const order = ref(null);
 const status = ref('Processing');
+const cancellationReason = ref('');
+const markingRefunded = ref(false);
 const returnDialogOpen = ref(false);
 const returnItem = ref(null);
 const processingReturn = ref(false);
@@ -88,7 +93,10 @@ const canMarkPaid = computed(
   () => order.value?.payment_method === 'cod' && order.value?.payment_status === 'pending',
 );
 
-const shiprocketManaged = computed(() => Boolean(order.value?.shiprocket));
+const shiprocketManaged = computed(() => order.value?.fulfillment_method === 'shiprocket');
+const fulfillmentLabel = computed(() =>
+  shiprocketManaged.value ? 'Shiprocket' : 'Manual',
+);
 
 function returnableQuantity(item) {
   return Math.max(0, Number(item.shipped_quantity || 0) - Number(item.returned_quantity || 0));
@@ -192,7 +200,23 @@ function toDateInput(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function fillCourierForm(source) {
@@ -208,6 +232,7 @@ async function loadOrder() {
     const { data } = await api.get(`/admin/orders/${route.params.id}`);
     order.value = unwrapData(data);
     status.value = order.value?.status || 'Processing';
+    cancellationReason.value = order.value?.cancellation_reason || '';
     fillCourierForm(order.value);
   } catch {
     error.value = 'Order not found.';
@@ -224,8 +249,13 @@ async function saveStatus() {
   saving.value = true;
   error.value = '';
   try {
-    const { data } = await api.patch(`/admin/orders/${order.value.id}`, { status: status.value });
+    const payload = { status: status.value };
+    if (status.value === 'Cancelled') {
+      payload.cancellation_reason = cancellationReason.value.trim() || 'Admin cancellation';
+    }
+    const { data } = await api.patch(`/admin/orders/${order.value.id}`, payload);
     order.value = unwrapData(data);
+    cancellationReason.value = order.value?.cancellation_reason || '';
     fillCourierForm(order.value);
   } catch (err) {
     error.value = err.response?.data?.message || 'Unable to update status.';
@@ -257,6 +287,28 @@ async function saveCourier() {
   }
 }
 
+async function switchToManual() {
+  if (!order.value || switchingToManual.value) return;
+  switchingToManual.value = true;
+  error.value = '';
+  courierSuccess.value = '';
+  try {
+    const { data } = await api.post(`/admin/orders/${order.value.id}/fulfillment/manual`, {
+      reason: 'Admin switched fulfillment to manual',
+    });
+    order.value = unwrapData(data);
+    fillCourierForm(order.value);
+    switchDialogOpen.value = false;
+    courierSuccess.value = 'Order switched to manual fulfillment.';
+  } catch (err) {
+    error.value = err.response?.data?.message
+      || err.response?.data?.errors?.fulfillment_method?.[0]
+      || 'Unable to switch fulfillment method.';
+  } finally {
+    switchingToManual.value = false;
+  }
+}
+
 async function markPaymentReceived() {
   if (!order.value || !canMarkPaid.value) return;
   markingPaid.value = true;
@@ -270,6 +322,22 @@ async function markPaymentReceived() {
     error.value = err.response?.data?.message || 'Unable to mark payment received.';
   } finally {
     markingPaid.value = false;
+  }
+}
+
+async function markRefunded() {
+  if (!order.value?.can_mark_refunded || markingRefunded.value) return;
+  markingRefunded.value = true;
+  error.value = '';
+  try {
+    const { data } = await api.patch(`/admin/orders/${order.value.id}`, {
+      payment_status: 'refunded',
+    });
+    order.value = unwrapData(data);
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Unable to mark refunded.';
+  } finally {
+    markingRefunded.value = false;
   }
 }
 
@@ -326,7 +394,7 @@ async function markPaymentReceived() {
       <p v-if="inventorySuccess" class="form-success">{{ inventorySuccess }}</p>
 
       <section
-        v-if="order.payment_expires_at || order.cancel_requested_at || order.cancelled_at"
+        v-if="order.payment_expires_at || order.cancel_requested_at || order.cancelled_at || order.cancellation_reason"
         class="admin-order-detail__section admin-order-inventory-timeline"
       >
         <h3>Payment &amp; cancellation timing</h3>
@@ -358,6 +426,10 @@ async function markPaymentReceived() {
               aria-label="Order status"
             />
           </label>
+          <label v-if="status === 'Cancelled'" class="admin-order-detail__status-field">
+            Cancellation reason
+            <input v-model="cancellationReason" maxlength="500" />
+          </label>
           <AppButton type="button" :disabled="saving" @click="saveStatus">
             {{ saving ? 'Saving…' : 'Update status' }}
           </AppButton>
@@ -369,6 +441,15 @@ async function markPaymentReceived() {
             @click="markPaymentReceived"
           >
             {{ markingPaid ? 'Saving…' : 'Mark payment received' }}
+          </AppButton>
+          <AppButton
+            v-if="order.can_mark_refunded"
+            type="button"
+            variant="secondary"
+            :disabled="markingRefunded"
+            @click="markRefunded"
+          >
+            {{ markingRefunded ? 'Saving…' : 'Mark refunded' }}
           </AppButton>
         </div>
       </section>
@@ -488,9 +569,12 @@ async function markPaymentReceived() {
         </dl>
       </section>
 
-      <section class="admin-order-detail__section">
+      <section v-if="shiprocketManaged" class="admin-order-detail__section">
         <div class="admin-toolbar">
-          <h3>Shiprocket fulfillment</h3>
+          <div>
+            <h3>Fulfillment</h3>
+            <span class="admin-badge admin-badge--info">{{ fulfillmentLabel }}</span>
+          </div>
           <div class="admin-order-detail__actions">
             <AppButton
               type="button"
@@ -508,6 +592,15 @@ async function markPaymentReceived() {
               @click="syncShiprocket"
             >
               {{ syncingShiprocket ? 'Queuing…' : 'Sync tracking' }}
+            </AppButton>
+            <AppButton
+              v-if="order.can_switch_to_manual"
+              type="button"
+              variant="danger"
+              :disabled="switchingToManual"
+              @click="switchDialogOpen = true"
+            >
+              Switch to manual
             </AppButton>
           </div>
         </div>
@@ -539,7 +632,15 @@ async function markPaymentReceived() {
           </div>
           <div v-if="order.shiprocket.last_synced_at" class="admin-order-address-card__row">
             <dt>Last synced</dt>
-            <dd>{{ new Date(order.shiprocket.last_synced_at).toLocaleString() }}</dd>
+            <dd>{{ formatDateTime(order.shiprocket.last_synced_at) }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Dispatched</dt>
+            <dd>{{ formatDateTime(order.dispatched_at) }}</dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Expected delivery</dt>
+            <dd>{{ formatDateTime(order.expected_delivery_at) }}</dd>
           </div>
           <div v-if="order.shiprocket.last_error" class="admin-order-address-card__row">
             <dt>Last error</dt>
@@ -550,49 +651,85 @@ async function markPaymentReceived() {
           No Shiprocket shipment has been created yet. Automatic fulfillment runs after order
           confirmation when the integration is enabled.
         </p>
+        <p v-if="!order.can_switch_to_manual && order.shiprocket" class="admin-muted">
+          Manual switching is unavailable after AWB assignment, pickup scheduling, or courier handoff.
+        </p>
       </section>
 
-      <section class="admin-order-detail__section">
-        <h3>Courier / tracking</h3>
+      <section v-else class="admin-order-detail__section">
+        <div class="admin-toolbar">
+          <div>
+            <h3>Manual courier / tracking</h3>
+            <span class="admin-badge">{{ fulfillmentLabel }}</span>
+          </div>
+        </div>
         <form class="admin-form" @submit.prevent="saveCourier">
-          <p v-if="shiprocketManaged" class="admin-muted">
-            These fields are managed automatically by Shiprocket.
-          </p>
           <FormField
             v-model="courierForm.courier_partner"
             label="Courier partner"
-            :disabled="shiprocketManaged"
           />
           <FormField
             v-model="courierForm.awb_number"
             label="AWB number"
-            :disabled="shiprocketManaged"
           />
           <FormField
             v-model="courierForm.tracking_number"
             label="Tracking number"
-            :disabled="shiprocketManaged"
           />
           <div class="admin-form__grid">
             <FormField
               v-model="courierForm.dispatched_at"
               label="Dispatched on"
               type="date"
-              :disabled="shiprocketManaged"
             />
             <FormField
               v-model="courierForm.expected_delivery_at"
               label="Expected delivery"
               type="date"
-              :disabled="shiprocketManaged"
             />
           </div>
           <div class="admin-form__actions">
-            <AppButton type="submit" :disabled="savingCourier || shiprocketManaged">
+            <AppButton type="submit" :disabled="savingCourier">
               {{ savingCourier ? 'Saving…' : 'Save courier' }}
             </AppButton>
           </div>
         </form>
+
+        <details v-if="order.shiprocket" class="admin-order-fulfillment-history">
+          <summary>Previous Shiprocket shipment</summary>
+          <dl class="admin-order-address-card">
+            <div class="admin-order-address-card__row">
+              <dt>Remote IDs</dt>
+              <dd>
+                Order {{ order.shiprocket.shiprocket_order_id || '—' }} · Shipment
+                {{ order.shiprocket.shipment_id || '—' }}
+              </dd>
+            </div>
+            <div class="admin-order-address-card__row">
+              <dt>Final stage</dt>
+              <dd>{{ order.shiprocket.stage || '—' }} · {{ order.shiprocket.sync_status || '—' }}</dd>
+            </div>
+            <div class="admin-order-address-card__row">
+              <dt>Cancelled</dt>
+              <dd>{{ formatDateTime(order.shiprocket.cancelled_at) }}</dd>
+            </div>
+          </dl>
+        </details>
+      </section>
+
+      <section v-if="order.fulfillment_events?.length" class="admin-order-detail__section">
+        <h3>Fulfillment history</h3>
+        <ol class="admin-order-fulfillment-events">
+          <li v-for="event in order.fulfillment_events" :key="event.id">
+            <div>
+              <strong>{{ String(event.event_type || '').replaceAll('_', ' ') }}</strong>
+              <span>{{ event.reason || event.provider_status || event.source }}</span>
+            </div>
+            <time :datetime="event.occurred_at || event.created_at">
+              {{ formatDateTime(event.occurred_at || event.created_at) }}
+            </time>
+          </li>
+        </ol>
       </section>
 
       <section class="admin-order-detail__section">
@@ -645,6 +782,17 @@ async function markPaymentReceived() {
       :error="returnError"
       @close="returnDialogOpen = false"
       @submit="processReturn"
+    />
+    <ConfirmDialog
+      v-model:open="switchDialogOpen"
+      title="Switch to manual fulfillment?"
+      message="Shiprocket syncing will stop. Existing shipment history will remain for audit, and you will manage courier details manually."
+      confirm-label="Switch to manual"
+      busy-label="Switching…"
+      danger
+      :busy="switchingToManual"
+      :close-on-confirm="false"
+      @confirm="switchToManual"
     />
   </div>
 </template>

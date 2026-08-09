@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AlertTriangle, Boxes, CheckSquare, Download, PackageCheck, PackageMinus, RefreshCw } from '@lucide/vue';
 import { useRoute } from 'vue-router';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
 import InventoryAuditFlagsPanel from '@/components/admin/InventoryAuditFlagsPanel.vue';
 import InventoryAdjustmentDialog from '@/components/admin/InventoryAdjustmentDialog.vue';
 import InventoryMovementHistory from '@/components/admin/InventoryMovementHistory.vue';
@@ -37,19 +38,14 @@ const historyError = ref('');
 const filters = reactive({
   search: String(route.query.search || ''),
   status: String(route.query.status || ''),
-  per_page: 25,
+  per_page: 10,
   page: 1,
 });
 const stockStatusOptions = [
   { value: '', label: 'All stock' },
   { value: 'in_stock', label: 'In stock' },
   { value: 'low_stock', label: 'Low stock' },
-  { value: 'out_of_stock', label: 'Out of stock' },
-];
-const pageSizeOptions = [
-  { value: 10, label: '10 per page' },
-  { value: 25, label: '25 per page' },
-  { value: 50, label: '50 per page' },
+  { value: 'out_of_stock', label: 'Out of Stock' },
 ];
 
 let searchTimer = null;
@@ -156,8 +152,7 @@ function apiParams() {
   return {
     search: filters.search || undefined,
     status: filters.status || undefined,
-    low_stock: filters.status === 'low_stock' ? 1 : undefined,
-    per_page: filters.per_page,
+    per_page: 10,
     page: filters.page,
   };
 }
@@ -321,7 +316,7 @@ async function exportCsv() {
 }
 
 function stockBadge(row) {
-  if (row.status === 'out_of_stock' || row.available <= 0) return ['Out of stock', 'admin-badge--danger'];
+  if (row.status === 'out_of_stock' || row.available <= 0) return ['Out of Stock', 'admin-badge--danger'];
   if (row.status === 'low_stock' || row.available <= row.low_stock_threshold) return ['Low stock', 'admin-badge--warn'];
   return ['In stock', 'admin-badge--ok'];
 }
@@ -338,7 +333,7 @@ watch(
 );
 
 watch(
-  () => [filters.status, filters.per_page],
+  () => filters.status,
   () => {
     filters.page = 1;
     load();
@@ -360,11 +355,11 @@ onBeforeUnmount(() => {
         <p class="admin-muted">Monitor stock availability, allocations, and audit history.</p>
       </div>
       <div class="inventory-heading__actions">
-        <AppButton type="button" variant="secondary" :disabled="refreshing" @click="load({ silent: true })">
+        <AppButton type="button" variant="secondary" size="sm" :disabled="refreshing" @click="load({ silent: true })">
           <RefreshCw :size="16" :class="{ 'inventory-spin': refreshing }" />
           Refresh
         </AppButton>
-        <AppButton type="button" variant="secondary" :disabled="exporting" @click="exportCsv">
+        <AppButton type="button" variant="secondary" size="sm" :disabled="exporting" @click="exportCsv">
           <Download :size="16" />
           {{ exporting ? 'Exporting…' : 'Export CSV' }}
         </AppButton>
@@ -383,7 +378,7 @@ onBeforeUnmount(() => {
       </button>
     </nav>
 
-    <section v-show="activeTab === 'stock'" class="inventory-kpis" aria-label="Inventory summary">
+    <section v-if="activeTab === 'stock'" class="inventory-kpis" aria-label="Inventory summary">
       <article v-for="kpi in kpis" :key="kpi.label" class="admin-kpi" :class="{ 'inventory-kpi--warn': kpi.tone === 'warn' }">
         <span class="admin-kpi__icon"><component :is="kpi.icon" :size="19" /></span>
         <span class="admin-kpi__body inventory-kpi__body">
@@ -394,7 +389,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section v-show="activeTab === 'stock'" class="admin-panel inventory-stock-panel">
+    <section v-if="activeTab === 'stock'" class="admin-panel inventory-stock-panel">
       <div class="admin-toolbar inventory-toolbar">
         <div class="admin-toolbar__filters inventory-toolbar__filters">
           <AdminSearchField
@@ -407,12 +402,6 @@ onBeforeUnmount(() => {
             :options="stockStatusOptions"
             placeholder="All stock"
             aria-label="Filter by stock status"
-          />
-          <AppSelect
-            v-model="filters.per_page"
-            :options="pageSizeOptions"
-            placeholder="25 per page"
-            aria-label="Rows per page"
           />
         </div>
         <AppButton
@@ -502,30 +491,15 @@ onBeforeUnmount(() => {
           <p v-if="!rows.length" class="admin-empty">No inventory records match these filters.</p>
         </div>
 
-        <footer v-if="total" class="inventory-pagination">
-          <span>Showing {{ firstItem }}–{{ lastItem }} of {{ total }}</span>
-          <div>
-            <AppButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              :disabled="currentPage <= 1"
-              @click="changePage(currentPage - 1)"
-            >
-              Previous
-            </AppButton>
-            <span>Page {{ currentPage }} of {{ lastPage }}</span>
-            <AppButton
-              type="button"
-              variant="secondary"
-              size="sm"
-              :disabled="currentPage >= lastPage"
-              @click="changePage(currentPage + 1)"
-            >
-              Next
-            </AppButton>
-          </div>
-        </footer>
+        <AdminPagination
+          v-if="total"
+          :page="currentPage"
+          :last-page="lastPage"
+          :total="total"
+          :from="firstItem"
+          :to="lastItem"
+          @page="changePage"
+        />
       </template>
     </section>
 

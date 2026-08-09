@@ -14,7 +14,7 @@ const STATIC_SEO_PAGES = [
   { key: 'contact', label: 'Contact', url: '/contact' },
   { key: 'blog', label: 'Blog', url: '/blog' },
   { key: 'shipping', label: 'Shipping', url: '/shipping' },
-  { key: 'returns', label: 'Returns', url: '/returns' },
+  { key: 'replacement', label: 'Replacement', url: '/replacement' },
   { key: 'payments', label: 'Payments', url: '/payments' },
   { key: 'privacy-policy', label: 'Privacy policy', url: '/privacy-policy' },
   { key: 'terms', label: 'Terms', url: '/terms' },

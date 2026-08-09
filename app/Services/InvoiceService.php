@@ -18,9 +18,7 @@ use Throwable;
 
 class InvoiceService
 {
-    public function __construct(private readonly OrderShipmentDetails $shipments)
-    {
-    }
+    public function __construct(private readonly OrderShipmentDetails $shipments) {}
 
     public function isInvoiceable(Order $order): bool
     {
@@ -85,15 +83,41 @@ class InvoiceService
 
     public function streamPdf(Order $order): Response
     {
+        $document = $this->pdfDocument($order);
+
+        return response($document['contents'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$document['filename'].'"',
+        ]);
+    }
+
+    /**
+     * @return array{order: Order, filename: string, contents: string}
+     */
+    public function pdfDocument(Order $order): array
+    {
         $order = $this->ensureIssued($order->loadMissing(['items', 'shiprocketShipment']));
         $payload = $this->buildViewData($order);
+        $contents = Pdf::loadView('invoices.tax-invoice', $payload)
+            ->setPaper('a4')
+            ->output();
 
-        $pdf = Pdf::loadView('invoices.tax-invoice', $payload)
-            ->setPaper('a4');
+        return [
+            'order' => $order,
+            'filename' => $this->filename($order),
+            'contents' => $contents,
+        ];
+    }
 
-        $filename = 'Invoice-'.str_replace('/', '-', $order->invoice_number).'.pdf';
+    public function filename(Order $order): string
+    {
+        if (! $order->invoice_number) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Invoice has not been issued for this order.',
+            ]);
+        }
 
-        return $pdf->download($filename);
+        return 'Invoice-'.str_replace('/', '-', $order->invoice_number).'.pdf';
     }
 
     /**
@@ -251,7 +275,7 @@ class InvoiceService
     {
         try {
             $result = (new Builder(
-                writer: new PngWriter(),
+                writer: new PngWriter,
                 writerOptions: [],
                 validateResult: false,
                 data: $url,

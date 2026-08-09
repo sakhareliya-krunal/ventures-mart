@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\FulfillmentMethod;
 use App\Exceptions\ShiprocketException;
 use App\Jobs\SyncShiprocketTracking;
 use App\Models\ShiprocketShipment;
@@ -41,9 +42,17 @@ Artisan::command('shiprocket:sync', function () {
 
     $count = 0;
     ShiprocketShipment::query()
+        ->whereHas('order', fn ($query) => $query->where(
+            'fulfillment_method',
+            FulfillmentMethod::Shiprocket->value,
+        ))
         ->whereNotNull('awb_code')
         ->whereNull('cancelled_at')
-        ->whereNotIn('shipment_status', ['Delivered', 'DELIVERED', 'Cancelled', 'CANCELED'])
+        ->where(function ($query) {
+            $query->whereNull('last_synced_at')
+                ->orWhere('last_synced_at', '<=', now()->subMinutes(20));
+        })
+        ->whereRaw("LOWER(COALESCE(shipment_status, '')) NOT IN ('delivered', 'cancelled', 'canceled')")
         ->chunkById(100, function ($shipments) use (&$count) {
             foreach ($shipments as $shipment) {
                 SyncShiprocketTracking::dispatch($shipment->order_id);
@@ -56,7 +65,7 @@ Artisan::command('shiprocket:sync', function () {
     return self::SUCCESS;
 })->purpose('Queue tracking synchronization for active Shiprocket shipments');
 
-Schedule::command('shiprocket:sync')->everyThirtyMinutes()->withoutOverlapping();
+Schedule::command('shiprocket:sync')->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 
 Schedule::command('inventory:reconcile --check')->hourly()->withoutOverlapping();
 Schedule::command('inventory:expire-reservations')->everyMinute()->withoutOverlapping();

@@ -1,6 +1,5 @@
 <script setup>
 import {
-  ArrowUpRight,
   Mail,
   Package,
   Phone,
@@ -16,7 +15,6 @@ import {
   footerCompanyLinks,
   footerContact,
   footerFeatures,
-  footerPaymentPills,
   footerShopLinks,
   footerSupportLinks,
 } from '@/constants/footer';
@@ -57,12 +55,6 @@ const featureIcons = {
             <img :src="brandAssets.logoLight" :alt="theme.brandName" />
           </RouterLink>
           <p>{{ footerBlurb }}</p>
-          <div class="footer-brand__actions">
-            <RouterLink class="footer-btn footer-btn--shop" to="/shop">
-              Browse shop
-              <ArrowUpRight :size="16" aria-hidden="true" />
-            </RouterLink>
-          </div>
         </div>
 
         <div class="footer-col">
@@ -125,19 +117,6 @@ const featureIcons = {
             </a>
           </div>
         </aside>
-      </div>
-
-      <div class="footer-payments">
-        <div class="footer-payments__copy">
-          <span>Secure payments</span>
-          <RouterLink to="/payments">
-            Learn more
-            <ArrowUpRight :size="14" aria-hidden="true" />
-          </RouterLink>
-        </div>
-        <div class="footer-payments__pills">
-          <span v-for="pill in footerPaymentPills" :key="pill">{{ pill }}</span>
-        </div>
       </div>
     </div>
 

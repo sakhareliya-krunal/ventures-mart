@@ -5,6 +5,7 @@ import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import api from '@/services/api';
+import { safePublicImageUrl } from '@/utils/seoHead';
 
 const props = defineProps({
   form: {
@@ -37,7 +38,7 @@ const uploadError = ref('');
 const pathDraft = ref('');
 const dragOver = ref(false);
 
-const coverImage = computed(() => String(props.form.cover_image || '').trim());
+const coverImage = computed(() => safePublicImageUrl(props.form.cover_image) || String(props.form.cover_image || '').trim());
 const busy = computed(() => props.saving || uploading.value);
 
 function fieldError(name) {
@@ -46,7 +47,7 @@ function fieldError(name) {
 }
 
 function setCover(url) {
-  props.form.cover_image = url || '';
+  props.form.cover_image = safePublicImageUrl(url) || String(url || '').trim() || '';
 }
 
 async function uploadFiles(fileList) {

@@ -22,6 +22,7 @@ const PAYMENT_STATUS_LABELS = {
   pending: 'Pending',
   paid: 'Paid',
   failed: 'Failed',
+  refund_pending: 'Refund pending',
   refunded: 'Refunded',
 };
 
@@ -29,6 +30,7 @@ const PAYMENT_STATUS_CLASSES = {
   pending: 'admin-badge--warn',
   paid: 'admin-badge--ok',
   failed: 'admin-badge--danger',
+  refund_pending: 'admin-badge--warn',
   refunded: 'admin-badge--info',
 };
 

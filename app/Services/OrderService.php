@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\FulfillmentMethod;
 use App\Enums\InventoryReservationState;
 use App\Enums\OrderInventoryStatus;
 use App\Exceptions\InsufficientInventoryException;
 use App\Exceptions\PaymentInitializationException;
 use App\Jobs\FulfillShiprocketOrder;
+use App\Jobs\SendOrderConfirmationEmail;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Inventory\InventoryService;
@@ -25,6 +27,7 @@ class OrderService
         private readonly ProductQueryService $products,
         private readonly RazorpayService $razorpay,
         private readonly InventoryService $inventory,
+        private readonly FulfillmentAuditService $fulfillmentAudit,
     ) {}
 
     /**
@@ -55,7 +58,10 @@ class OrderService
                 ->first();
 
             if ($existing) {
-                return $existing->load('items');
+                $existing->load('items');
+                $this->dispatchOrderConfirmationEmail($existing);
+
+                return $existing;
             }
         }
 
@@ -95,7 +101,7 @@ class OrderService
             ]), $normalizedState);
 
             $isCod = $paymentMethod === 'cod';
-            $codFee = $isCod ? (float) config('checkout.cod_fee', 100) : 0.0;
+            $codFee = $isCod ? (float) config('checkout.cod_fee', 99) : 0.0;
 
             $order = Order::query()->create([
                 'number' => 'VM-'.Str::upper(Str::random(8)),
@@ -119,6 +125,7 @@ class OrderService
                 'tax' => $totals['tax'],
                 'total' => round($totals['total'] + $codFee, 2),
                 'status' => $isCod ? 'Processing' : 'AwaitingPayment',
+                'fulfillment_method' => $this->configuredFulfillmentMethod(),
                 'payment_status' => 'pending',
                 'payment_method' => $paymentMethod,
                 'payment_expires_at' => $isCod
@@ -145,6 +152,17 @@ class OrderService
                 ]);
             }
 
+            $this->fulfillmentAudit->record(
+                $order,
+                'method_assigned',
+                'checkout',
+                "order:{$order->id}:fulfillment-method-assigned",
+                [
+                    'new_method' => $order->fulfillment_method,
+                    'reason' => 'Assigned by server fulfillment configuration',
+                ],
+            );
+
             if ($isCod) {
                 $order->load('items');
                 $this->commitInventoryForOrder($order);
@@ -159,6 +177,7 @@ class OrderService
         if ($paymentMethod === 'cod') {
             $this->cart->clear($request);
             $this->dispatchShiprocketFulfillment($order);
+            $this->dispatchOrderConfirmationEmail($order);
 
             return $order->fresh('items');
         }
@@ -192,6 +211,7 @@ class OrderService
     {
         if ($order->payment_status === 'paid') {
             $this->dispatchShiprocketFulfillment($order);
+            $this->dispatchOrderConfirmationEmail($order);
 
             return $order->load('items');
         }
@@ -248,6 +268,7 @@ class OrderService
         });
 
         $this->dispatchShiprocketFulfillment($paidOrder);
+        $this->dispatchOrderConfirmationEmail($paidOrder);
 
         return $paidOrder;
     }
@@ -259,6 +280,7 @@ class OrderService
     {
         if ($order->payment_status === 'paid') {
             $this->dispatchShiprocketFulfillment($order);
+            $this->dispatchOrderConfirmationEmail($order);
 
             return $order->load('items');
         }
@@ -278,6 +300,7 @@ class OrderService
         });
 
         $this->dispatchShiprocketFulfillment($paidOrder);
+        $this->dispatchOrderConfirmationEmail($paidOrder);
 
         return $paidOrder;
     }
@@ -387,6 +410,7 @@ class OrderService
     {
         if (
             ! (bool) config('services.shiprocket.enabled')
+            || $order->fulfillment_method !== FulfillmentMethod::Shiprocket
             || $order->inventory_status === OrderInventoryStatus::Exception
         ) {
             return;
@@ -400,6 +424,40 @@ class OrderService
                 'order_number' => $order->number,
                 'phase' => 'shiprocket_enqueue',
             ], 'fulfillment');
+        }
+    }
+
+    private function configuredFulfillmentMethod(): FulfillmentMethod
+    {
+        $configured = FulfillmentMethod::tryFrom(
+            strtolower(trim((string) config('services.shiprocket.default_fulfillment_method')))
+        ) ?? FulfillmentMethod::Manual;
+
+        if ($configured === FulfillmentMethod::Shiprocket && ! config('services.shiprocket.enabled')) {
+            return FulfillmentMethod::Manual;
+        }
+
+        return $configured;
+    }
+
+    private function dispatchOrderConfirmationEmail(Order $order): void
+    {
+        if (
+            $order->order_confirmation_emailed_at
+            || in_array($order->status, ['Cancelled', 'InventoryHold'], true)
+            || ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid')
+        ) {
+            return;
+        }
+
+        try {
+            SendOrderConfirmationEmail::dispatch($order->id);
+        } catch (Throwable $e) {
+            app(ApplicationErrorRecorder::class)->recordThrowable($e, [
+                'order_id' => $order->id,
+                'order_number' => $order->number,
+                'phase' => 'order_confirmation_email_enqueue',
+            ], 'email');
         }
     }
 

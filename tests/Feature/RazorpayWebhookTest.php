@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\OrderConfirmation;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class RazorpayWebhookTest extends TestCase
@@ -15,6 +17,7 @@ class RazorpayWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Mail::fake();
 
         config([
             'services.razorpay.webhook_secret' => 'test_webhook_secret',
@@ -41,6 +44,7 @@ class RazorpayWebhookTest extends TestCase
         $this->assertSame('pay_wh_1', $order->fresh()->razorpay_payment_id);
         $this->assertNotNull($order->fresh()->paid_at);
         $this->assertSame(4, $product->fresh()->stock);
+        Mail::assertSent(OrderConfirmation::class, 1);
     }
 
     public function test_bad_webhook_signature_is_rejected(): void
@@ -84,9 +88,13 @@ class RazorpayWebhookTest extends TestCase
         $this->postWebhook($payload)
             ->assertOk()
             ->assertJsonPath('status', 'ok');
+        $this->postWebhook($payload)
+            ->assertOk()
+            ->assertJsonPath('status', 'ok');
 
         $this->assertSame(3, $product->fresh()->stock);
         $this->assertSame('pay_existing', $order->fresh()->razorpay_payment_id);
+        Mail::assertSent(OrderConfirmation::class, 1);
     }
 
     public function test_unknown_order_still_returns_ok(): void

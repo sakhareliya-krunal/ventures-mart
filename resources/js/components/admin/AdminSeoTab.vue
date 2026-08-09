@@ -1,8 +1,10 @@
 <script setup>
-import { computed } from 'vue';
-import { Plus, Trash2 } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import { ImagePlus, Plus, Trash2 } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import api from '@/services/api';
 import { blankFaq, seoCharCount, seoLengthTone } from '@/utils/adminSeo';
+import { safePublicImageUrl } from '@/utils/seoHead';
 
 const props = defineProps({
   form: {
@@ -44,6 +46,10 @@ const titleLength = computed(() => seoCharCount(props.form.seo.title));
 const descriptionLength = computed(() => seoCharCount(props.form.seo.meta_description));
 const titleTone = computed(() => seoLengthTone(titleLength.value, { min: 50, max: 60, hardMax: 70 }));
 const descriptionTone = computed(() => seoLengthTone(descriptionLength.value, { min: 150, max: 160, hardMax: 180 }));
+const seoImageInput = ref(null);
+const uploadingSeoImage = ref(false);
+const seoImageError = ref('');
+const seoImagePreview = computed(() => safePublicImageUrl(props.form.seo.og_image));
 
 const robotsIndex = computed({
   get() {
@@ -74,6 +80,31 @@ function counterHint(tone, recommended) {
   if (tone === 'warn') return `Aim for ${recommended}.`;
   if (tone === 'ok') return 'Good length.';
   return `Recommended ${recommended}.`;
+}
+
+async function uploadSeoImage(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  seoImageError.value = '';
+  uploadingSeoImage.value = true;
+  const body = new FormData();
+  body.append('images[]', file);
+
+  try {
+    const { data } = await api.post('/admin/uploads/images', body);
+    const url = data.urls?.[0];
+    if (!url) throw new Error('Upload did not return an image URL.');
+    props.form.seo.og_image = url;
+  } catch (err) {
+    seoImageError.value =
+      err.response?.data?.message ||
+      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
+      'Unable to upload SEO image.';
+  } finally {
+    uploadingSeoImage.value = false;
+    if (seoImageInput.value) seoImageInput.value.value = '';
+  }
 }
 </script>
 
@@ -179,10 +210,37 @@ function counterHint(tone, recommended) {
         <span>Open Graph title</span>
         <input v-model="form.seo.og_title" autocomplete="off" />
       </label>
-      <label class="admin-field">
+      <div class="admin-field">
         <span>Open Graph image</span>
         <input v-model="form.seo.og_image" autocomplete="off" />
-      </label>
+        <input
+          ref="seoImageInput"
+          hidden
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          @change="uploadSeoImage"
+        />
+        <div class="admin-toolbar">
+          <AppButton
+            type="button"
+            variant="secondary"
+            size="sm"
+            :disabled="uploadingSeoImage"
+            @click="seoImageInput?.click()"
+          >
+            <ImagePlus :size="16" />
+            {{ uploadingSeoImage ? 'Uploading…' : 'Upload image' }}
+          </AppButton>
+          <small class="admin-muted">JPEG, PNG, or WebP up to 4MB.</small>
+        </div>
+        <small v-if="seoImageError" class="admin-field__error">{{ seoImageError }}</small>
+        <img
+          v-if="seoImagePreview"
+          class="admin-seo-image-preview"
+          :src="seoImagePreview"
+          alt="Open Graph image preview"
+        />
+      </div>
       <label class="admin-field admin-field--full">
         <span>Open Graph description</span>
         <textarea v-model="form.seo.og_description" rows="2" />

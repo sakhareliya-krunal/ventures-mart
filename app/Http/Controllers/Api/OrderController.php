@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\InsufficientInventoryException;
 use App\Exceptions\PaymentInitializationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
@@ -9,6 +10,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\ApplicationErrorRecorder;
 use App\Services\InvoiceService;
+use App\Services\OrderCancellationService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -19,8 +21,8 @@ class OrderController extends Controller
     public function __construct(
         private readonly OrderService $orders,
         private readonly InvoiceService $invoices,
-    ) {
-    }
+        private readonly OrderCancellationService $cancellations,
+    ) {}
 
     public function index(Request $request)
     {
@@ -48,6 +50,10 @@ class OrderController extends Controller
             $order = $this->orders->create($request, $validated);
         } catch (ValidationException $e) {
             throw $e;
+        } catch (InsufficientInventoryException $e) {
+            throw ValidationException::withMessages([
+                'cart' => 'One or more items are out of stock. Update your cart and try again.',
+            ]);
         } catch (PaymentInitializationException $e) {
             app(ApplicationErrorRecorder::class)->recordPaymentFailure(
                 $e->getMessage(),
@@ -118,6 +124,28 @@ class OrderController extends Controller
         $this->authorizeOrder($request, $order);
 
         return $this->invoices->streamPdf($order);
+    }
+
+    public function cancel(Request $request, Order $order)
+    {
+        $this->authorizeOrder($request, $order);
+
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $result = $this->cancellations->cancelByCustomer(
+            $order,
+            $validated['cancellation_reason'],
+            $request->user(),
+        );
+
+        return response()->json([
+            'message' => $result['deferred']
+                ? 'Cancellation requested. We are confirming it with the courier.'
+                : 'Order cancelled.',
+            'data' => (new OrderResource($result['order']->load('items')))->resolve(),
+        ]);
     }
 
     private function authorizeOrder(Request $request, Order $order): void

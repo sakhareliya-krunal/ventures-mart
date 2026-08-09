@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShiprocketShipment extends Model
 {
@@ -29,6 +30,7 @@ class ShiprocketShipment extends Model
         'awb_assigned_at',
         'pickup_scheduled_at',
         'last_synced_at',
+        'last_provider_event_at',
         'cancelled_at',
     ];
 
@@ -39,6 +41,7 @@ class ShiprocketShipment extends Model
             'awb_assigned_at' => 'datetime',
             'pickup_scheduled_at' => 'datetime',
             'last_synced_at' => 'datetime',
+            'last_provider_event_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -46,5 +49,15 @@ class ShiprocketShipment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function fulfillmentEvents(): HasMany
+    {
+        return $this->hasMany(OrderFulfillmentEvent::class);
+    }
+
+    public function webhookEvents(): HasMany
+    {
+        return $this->hasMany(ShipmentWebhookEvent::class);
     }
 }

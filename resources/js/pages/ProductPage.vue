@@ -501,10 +501,10 @@ onBeforeUnmount(() => {
               class="button--busy-lg"
               :disabled="adding || !inStock"
               :aria-busy="adding"
-              :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+              :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
               @click="addToCart"
             >
-              <template v-if="!inStock">Out of stock</template>
+              <template v-if="!inStock">Out of Stock</template>
               <template v-else>
                 <span class="button__busy-label" :class="{ 'is-loading': adding }">
                   <ShoppingBag :size="18" />
@@ -546,7 +546,7 @@ onBeforeUnmount(() => {
               <RefreshCw :size="16" aria-hidden="true" />
               <span>
                 7-day replacement ·
-                <RouterLink to="/returns">Returns</RouterLink>
+                <RouterLink to="/replacement">Replacement</RouterLink>
               </span>
             </li>
           </ul>
@@ -690,11 +690,11 @@ onBeforeUnmount(() => {
           class="button--busy-sm product-detail__sticky-add"
           :disabled="adding || !inStock"
           :aria-busy="adding"
-          :aria-label="inStock ? 'Add to cart' : 'Out of stock'"
+          :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
           :tabindex="stickyVisible ? 0 : -1"
           @click="addToCart"
         >
-          <template v-if="!inStock">Out of stock</template>
+          <template v-if="!inStock">Out of Stock</template>
           <template v-else>
             <span class="button__busy-label" :class="{ 'is-loading': adding }">
               <ShoppingBag :size="16" />

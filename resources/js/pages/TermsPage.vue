@@ -15,7 +15,7 @@ const sections = [
   { id: 'availability', label: 'Availability' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'use', label: 'Acceptable use' },
-  { id: 'returns', label: 'Returns' },
+  { id: 'replacement', label: 'Replacement' },
   { id: 'limitation', label: 'Limitation' },
   { id: 'contact', label: 'Contact' },
 ];
@@ -89,12 +89,12 @@ useHead(() =>
         </p>
       </section>
 
-      <section id="returns">
-        <h2>Returns overview</h2>
+      <section id="replacement">
+        <h2>Replacement support</h2>
         <p>
-          We offer 7-day replacement support for eligible issues. See our
-          <RouterLink to="/returns">Returns</RouterLink>
-          page for how to reach us. Full step-by-step policy details are still being published.
+          We offer 7-day replacement support for eligible issues after delivery. See our
+          <RouterLink to="/replacement">Replacement support</RouterLink>
+          page, or request a replacement from your order tracking page.
         </p>
       </section>
 

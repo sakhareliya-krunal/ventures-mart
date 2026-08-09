@@ -40,7 +40,8 @@ If SEO is still below 100, expand the failed audit name in PSI and fix that spec
 - Redirects: create / edit / enable-disable / delete.
 
 ### Static page SEO selector
-Edit SEO for: `home`, `shop`, `about`, `contact`, `blog`, `shipping`, `returns`, `payments`, `privacy-policy`, `terms`, `shopping-confidence-shipping-replacement`.
+Edit SEO for: `home`, `shop`, `about`, `contact`, `blog`, `shipping`, `replacement`, `payments`, `privacy-policy`, `terms`, `shopping-confidence-shipping-replacement`.
+(`/returns` redirects to `/replacement`.)
 
 ### Focus-keyword direction
 

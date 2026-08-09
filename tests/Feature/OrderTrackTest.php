@@ -110,6 +110,7 @@ class OrderTrackTest extends TestCase
     {
         $order = $this->makeOrder([
             'number' => 'VM-SHIPROCKET-TRACK',
+            'fulfillment_method' => 'shiprocket',
             'courier_partner' => 'Old courier',
             'awb_number' => 'OLD-AWB',
         ]);

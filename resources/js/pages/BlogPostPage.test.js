@@ -24,7 +24,7 @@ describe('BlogPostPage', () => {
           title: 'Premium family guide',
           excerpt: 'A thoughtful guide for families.',
           body: '<p>Introduction copy.</p><h2>Choosing well</h2><p>Choose with care.</p><h2>Using daily</h2><p>Make it useful.</p>',
-          cover_image: null,
+          cover_image: '/images/blog/gift-ideas-toys-lunch-boxes.jpg',
           published_at: '2026-08-09T08:00:00.000Z',
           seo: {},
         },
@@ -57,10 +57,50 @@ describe('BlogPostPage', () => {
 
     expect(wrapper.find('.breadcrumb').exists()).toBe(false);
     expect(wrapper.find('h1').text()).toBe('Premium family guide');
+    expect(wrapper.find('.article-premium__hero-media img').attributes('src')).toBe(
+      '/images/blog/gift-ideas-toys-lunch-boxes.jpg',
+    );
     expect(wrapper.find('.article-premium__toc').text()).toContain('Choosing well');
     expect(wrapper.find('.article-premium__toc').text()).toContain('Using daily');
     expect(wrapper.find('.article-premium__reading-time').text()).toContain('min read');
     expect(wrapper.find('.article-premium .button--primary').exists()).toBe(true);
     expect(wrapper.find('.blog-grid').text()).toContain('Related story');
+  });
+
+  it('normalizes bare cover paths for the hero image', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          id: 3,
+          slug: 'path-fix',
+          title: 'Path fix',
+          excerpt: 'Cover path without slash.',
+          body: '<p>Hello.</p>',
+          cover_image: 'images/blog/gift-ideas-toys-lunch-boxes.jpg',
+          published_at: '2026-08-09T08:00:00.000Z',
+          seo: {},
+        },
+        related: [],
+      },
+    });
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/blog/:slug', component: { template: '<div />' } },
+        { path: '/blog', component: { template: '<div />' } },
+      ],
+    });
+    await router.push('/blog/path-fix');
+    await router.isReady();
+
+    const wrapper = mount(BlogPostPage, {
+      global: { plugins: [createPinia(), router] },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('.article-premium__hero-media img').attributes('src')).toBe(
+      '/images/blog/gift-ideas-toys-lunch-boxes.jpg',
+    );
   });
 });

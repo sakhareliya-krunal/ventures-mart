@@ -110,6 +110,58 @@ class AdminPanelTest extends TestCase
             ->assertJsonValidationErrors(['range']);
     }
 
+    public function test_day_revenue_points_include_exact_orders_in_morning_and_afternoon(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Sanctum::actingAs($admin);
+
+        $morningFirst = $this->makeDashboardOrder(
+            'VM-DAY-AM-1',
+            100,
+            now()->startOfDay()->setTime(9, 15, 5),
+        );
+        $morningSecond = $this->makeDashboardOrder(
+            'VM-DAY-AM-2',
+            150,
+            now()->startOfDay()->setTime(9, 45, 30),
+        );
+        $afternoon = $this->makeDashboardOrder(
+            'VM-DAY-PM-1',
+            200,
+            now()->startOfDay()->setTime(15, 7, 12),
+        );
+        $this->makeDashboardOrder(
+            'VM-DAY-CANCELLED',
+            999,
+            now()->startOfDay()->setTime(9, 30),
+            'Cancelled',
+        );
+
+        $response = $this->getJson('/api/admin/stats?range=day')
+            ->assertOk()
+            ->assertJsonPath('revenue_period_total', 450)
+            ->assertJsonPath('revenue_period_orders', 3)
+            ->assertJsonPath('revenue_series.9.key', '09')
+            ->assertJsonPath('revenue_series.9.label', '9 AM')
+            ->assertJsonPath('revenue_series.9.total', 250)
+            ->assertJsonCount(2, 'revenue_series.9.orders')
+            ->assertJsonPath('revenue_series.9.orders.0.id', $morningFirst->id)
+            ->assertJsonPath('revenue_series.9.orders.0.number', 'VM-DAY-AM-1')
+            ->assertJsonPath(
+                'revenue_series.9.orders.0.created_at',
+                $morningFirst->created_at->toIso8601String(),
+            )
+            ->assertJsonPath('revenue_series.9.orders.1.id', $morningSecond->id)
+            ->assertJsonPath('revenue_series.15.key', '15')
+            ->assertJsonPath('revenue_series.15.label', '3 PM')
+            ->assertJsonPath('revenue_series.15.total', 200)
+            ->assertJsonPath('revenue_series.15.orders.0.id', $afternoon->id);
+
+        $seriesOrders = collect($response->json('revenue_series'))
+            ->flatMap(fn (array $point) => $point['orders'] ?? []);
+        $this->assertFalse($seriesOrders->contains('number', 'VM-DAY-CANCELLED'));
+    }
+
     public function test_admin_cannot_mutate_address_or_delete_audited_order(): void
     {
         $admin = User::factory()->admin()->create();
@@ -168,6 +220,10 @@ class AdminPanelTest extends TestCase
 
         Sanctum::actingAs($admin);
 
+        $this->getJson("/api/admin/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.can_delete', false);
+
         $this->patchJson("/api/admin/orders/{$order->id}", [
             'full_name' => 'Updated Buyer',
             'email' => 'updated@example.com',
@@ -189,11 +245,46 @@ class AdminPanelTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath(
                 'message',
-                'Orders are retained for inventory and financial audit. Cancel the order instead.',
+                'This order cannot be deleted because it has already been confirmed or is in fulfillment. Cancel the order instead if it must be stopped.',
             );
 
         $this->assertDatabaseHas('orders', ['id' => $order->id]);
         $this->assertSame(2, $product->fresh()->stock);
+    }
+
+    public function test_admin_can_delete_cancelled_test_order(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $order = Order::query()->create([
+            'number' => 'VM-TEST-CANCEL-DEL',
+            'user_id' => $admin->id,
+            'full_name' => 'Test Buyer',
+            'email' => $admin->email,
+            'phone' => '9999999999',
+            'address' => '1 Test Street',
+            'city' => 'Ahmedabad',
+            'state' => 'Gujarat',
+            'postal_code' => '380001',
+            'subtotal' => 100,
+            'shipping' => 0,
+            'tax' => 0,
+            'total' => 100,
+            'status' => 'Cancelled',
+            'payment_method' => 'razorpay',
+            'payment_status' => 'failed',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/admin/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.can_delete', true);
+
+        $this->deleteJson("/api/admin/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Order deleted.');
+
+        $this->assertDatabaseMissing('orders', ['id' => $order->id]);
     }
 
     public function test_non_admin_cannot_delete_orders(): void
@@ -248,5 +339,36 @@ class AdminPanelTest extends TestCase
         $errors->assertUnauthorized()
             ->assertJsonPath('code', 'unauthenticated');
         $this->assertStringNotContainsString('Route [login]', $errors->getContent());
+    }
+
+    private function makeDashboardOrder(
+        string $number,
+        float $total,
+        \DateTimeInterface $createdAt,
+        string $status = 'Processing',
+    ): Order {
+        $order = Order::query()->create([
+            'number' => $number,
+            'user_id' => null,
+            'full_name' => 'Dashboard Buyer',
+            'email' => 'dashboard@example.com',
+            'phone' => '9999999999',
+            'address' => '1 Dashboard Street',
+            'city' => 'Ahmedabad',
+            'state' => 'Gujarat',
+            'postal_code' => '380001',
+            'subtotal' => $total,
+            'shipping' => 0,
+            'tax' => 0,
+            'total' => $total,
+            'status' => $status,
+        ]);
+
+        $order->forceFill([
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
+        ])->save();
+
+        return $order->fresh();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\FulfillmentMethod;
 use App\Models\Order;
 
 class OrderShipmentDetails
@@ -12,7 +13,9 @@ class OrderShipmentDetails
     public function forCustomer(Order $order): array
     {
         $order->loadMissing('shiprocketShipment');
-        $shipment = $order->shiprocketShipment;
+        $shipment = $order->fulfillment_method === FulfillmentMethod::Shiprocket
+            ? $order->shiprocketShipment
+            : null;
         $trackingUrl = $this->safeTrackingUrl($shipment?->tracking_url);
         $awb = $shipment?->awb_code ?: $order->awb_number ?: $order->tracking_number;
 

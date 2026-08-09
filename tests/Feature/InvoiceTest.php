@@ -128,6 +128,23 @@ class InvoiceTest extends TestCase
         $this->assertSame($first, $order->fresh()->invoice_number);
     }
 
+    public function test_invoice_document_can_be_reused_as_an_email_attachment(): void
+    {
+        $order = $this->makeOrder([
+            'payment_method' => 'cod',
+            'status' => 'Processing',
+        ]);
+
+        $document = app(InvoiceService::class)->pdfDocument($order);
+
+        $this->assertStringStartsWith('%PDF-', $document['contents']);
+        $this->assertMatchesRegularExpression(
+            '/^Invoice-VM-\d{2}-\d{2}-\d{4}\.pdf$/',
+            $document['filename'],
+        );
+        $this->assertSame($order->id, $document['order']->id);
+    }
+
     public function test_without_gstin_document_is_invoice_not_tax_invoice(): void
     {
         config(['invoice.gstin' => '']);
@@ -206,6 +223,7 @@ class InvoiceTest extends TestCase
     {
         $order = $this->makeOrder([
             'payment_method' => 'cod',
+            'fulfillment_method' => 'shiprocket',
             'status' => 'Shipped',
             'courier_partner' => 'Old courier',
             'awb_number' => 'OLD-AWB',

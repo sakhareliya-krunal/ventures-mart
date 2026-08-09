@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\NotificationController as AdminNotificationCo
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\ReplacementRequestController as AdminReplacementRequestController;
 use App\Http\Controllers\Api\Admin\SeoController as AdminSeoController;
 use App\Http\Controllers\Api\Admin\UploadController as AdminUploadController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GoogleAuthController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\OrderReplacementController;
 use App\Http\Controllers\Api\OrderTrackController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PostController;
@@ -28,6 +30,7 @@ use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RazorpayWebhookController;
 use App\Http\Controllers\Api\SeoResolveController;
+use App\Http\Controllers\Api\ShiprocketWebhookController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
@@ -60,6 +63,7 @@ Route::post('/wishlist/add', [WishlistController::class, 'add']);
 Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
 
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle']);
+Route::post('/fulfillment/provider-update', [ShiprocketWebhookController::class, 'handle']);
 
 Route::get('/orders', [OrderController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -67,6 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/track/{number}/invoice', [OrderTrackController::class, 'invoice']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment/verify', [OrderController::class, 'verifyPayment']);
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/orders/{order}/replacement-requests', [OrderReplacementController::class, 'store']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice']);
 });
@@ -119,8 +125,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/orders/{order}/invoice', [AdminOrderController::class, 'invoice']);
     Route::post('/orders/{order}/shiprocket/retry', [AdminOrderController::class, 'retryShiprocket']);
     Route::post('/orders/{order}/shiprocket/sync', [AdminOrderController::class, 'syncShiprocket']);
+    Route::post('/orders/{order}/fulfillment/manual', [AdminOrderController::class, 'switchToManual']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
+
+    Route::get('/replacement-requests', [AdminReplacementRequestController::class, 'index']);
+    Route::get('/replacement-requests/{replacementRequest}', [AdminReplacementRequestController::class, 'show']);
+    Route::post('/replacement-requests/{replacementRequest}/approve', [AdminReplacementRequestController::class, 'approve']);
+    Route::post('/replacement-requests/{replacementRequest}/reject', [AdminReplacementRequestController::class, 'reject']);
 
     Route::apiResource('products', AdminProductController::class);
     Route::post('/uploads/images', [AdminUploadController::class, 'images']);

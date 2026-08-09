@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\InvoiceService;
+use App\Services\OrderCancellationService;
+use App\Services\OrderReplacementService;
 use App\Services\OrderShipmentDetails;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,13 +56,14 @@ class OrderTrackController extends Controller
     {
         $status = (string) $order->status;
         $timeline = $this->timeline($status);
+        $cancellations = app(OrderCancellationService::class);
+        $replacementService = app(OrderReplacementService::class);
 
-        $returnEligible = $status === 'Delivered'
-            && $order->updated_at
-            && $order->updated_at->gte(now()->subDays(7));
         $shipment = $this->shipments->forCustomer($order);
+        $replacementRequests = $replacementService->forOrder($order);
 
         return [
+            'id' => $order->id,
             'number' => $order->number,
             'invoice_number' => $order->invoice_number,
             'status' => $status,
@@ -73,6 +76,13 @@ class OrderTrackController extends Controller
             'invoice_issued_at' => $order->invoice_issued_at?->toIso8601String(),
             'expected_delivery_at' => $order->expected_delivery_at?->toIso8601String(),
             'dispatched_at' => $order->dispatched_at?->toIso8601String(),
+            'delivered_at' => $order->delivered_at?->toIso8601String(),
+            'cancel_requested_at' => $order->cancel_requested_at?->toIso8601String(),
+            'cancelled_at' => $order->cancelled_at?->toIso8601String(),
+            'cancellation_reason' => $order->cancellation_reason,
+            'can_cancel' => $cancellations->canCustomerCancel($order),
+            'can_request_replacement' => $replacementService->canRequest($order),
+            'replacement_requests' => $replacementRequests,
             'customer' => [
                 'full_name' => $order->full_name,
                 'email' => $order->email,
@@ -93,6 +103,7 @@ class OrderTrackController extends Controller
             'shipment' => $shipment,
             'courier' => $shipment,
             'items' => $order->items->map(fn ($item) => [
+                'id' => $item->id,
                 'name' => $item->product_name,
                 'sku' => $item->product_sku,
                 'hsn' => $item->hsn,
@@ -112,13 +123,12 @@ class OrderTrackController extends Controller
                 'total' => (float) $order->total,
             ],
             'invoice_available' => $this->invoices->isInvoiceable($order),
-            'return_eligible' => $returnEligible,
             'support' => [
                 'email' => config('invoice.email'),
                 'phone' => config('invoice.phone'),
                 'whatsapp' => 'https://wa.me/919173279323',
                 'contact_path' => '/contact',
-                'returns_path' => '/returns',
+                'replacement_path' => '/replacement',
             ],
         ];
     }

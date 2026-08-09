@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { friendlyApiError } from '@/utils/apiError';
+import { isOutOfStockProduct, maxCartQuantityFor } from '@/utils/cartStock';
 
 const emptyTotals = {
   subtotal: 0,
@@ -53,12 +54,6 @@ function calculateLocalTotals(lines) {
   };
 }
 
-function maxQuantityFor(item) {
-  const stock = Number(item?.product?.stock);
-  const stockCap = Number.isFinite(stock) && stock > 0 ? stock : 99;
-  return Math.min(99, stockCap);
-}
-
 export const useCartStore = defineStore('cart', () => {
   const items = ref([]);
   const itemCount = ref(0);
@@ -79,6 +74,8 @@ export const useCartStore = defineStore('cart', () => {
 
   const isEmpty = computed(() => items.value.length === 0);
   const lineCount = computed(() => items.value.length);
+  const hasOutOfStockItems = computed(() => items.value.some((item) => isOutOfStockProduct(item)));
+  const canCheckout = computed(() => !isEmpty.value && !hasOutOfStockItems.value);
 
   function isAdding(productId) {
     return addingIds.value.has(Number(productId));
@@ -258,14 +255,15 @@ export const useCartStore = defineStore('cart', () => {
     }
 
     const current = items.value[index];
+    const maxQty = maxCartQuantityFor(current);
     const nextQty = current.quantity + delta;
 
-    if (nextQty <= 0) {
+    if (nextQty <= 0 || maxQty <= 0) {
       removeItem(id);
       return;
     }
 
-    const capped = Math.min(nextQty, maxQuantityFor(current));
+    const capped = Math.min(nextQty, maxQty);
     if (capped === current.quantity) {
       return;
     }
@@ -285,13 +283,15 @@ export const useCartStore = defineStore('cart', () => {
       return;
     }
 
-    if (quantity <= 0) {
+    const current = items.value[index];
+    const maxQty = maxCartQuantityFor(current);
+
+    if (quantity <= 0 || maxQty <= 0) {
       removeItem(id);
       return;
     }
 
-    const current = items.value[index];
-    const capped = Math.min(Math.max(1, quantity), maxQuantityFor(current));
+    const capped = Math.min(Math.max(1, quantity), maxQty);
 
     if (capped === current.quantity) {
       return;
@@ -345,6 +345,8 @@ export const useCartStore = defineStore('cart', () => {
     syncingIds,
     isEmpty,
     lineCount,
+    hasOutOfStockItems,
+    canCheckout,
     isAdding,
     isSyncing,
     openTray,

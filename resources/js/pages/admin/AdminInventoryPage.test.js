@@ -24,6 +24,8 @@ vi.mock('@lucide/vue', () => {
     Check: Icon,
     CheckSquare: Icon,
     ChevronDown: Icon,
+    ChevronLeft: Icon,
+    ChevronRight: Icon,
     Download: Icon,
     PackageCheck: Icon,
     PackageMinus: Icon,
@@ -31,7 +33,9 @@ vi.mock('@lucide/vue', () => {
   };
 });
 
-function inventoryResponse() {
+function inventoryResponse({ page = 1, lastPage = 3, total = 25 } = {}) {
+  const from = (page - 1) * 10 + 1;
+  const to = Math.min(page * 10, total);
   return {
     data: {
       data: [{
@@ -52,11 +56,12 @@ function inventoryResponse() {
         is_low_stock: true,
       }],
       meta: {
-        current_page: 1,
-        last_page: 1,
-        from: 1,
-        to: 1,
-        total: 1,
+        current_page: page,
+        last_page: lastPage,
+        from,
+        to,
+        total,
+        per_page: 10,
       },
     },
   };
@@ -99,7 +104,7 @@ describe('AdminInventoryPage', () => {
     });
   });
 
-  it('renders audited quantities and sends custom dropdown filters to the API', async () => {
+  it('renders audited quantities and sends status filters with 10 per page', async () => {
     const wrapper = mountPage();
 
     await flushPromises();
@@ -112,8 +117,16 @@ describe('AdminInventoryPage', () => {
     expect(wrapper.find('[data-label="Committed"]').text()).toBe('1');
     expect(wrapper.find('[data-label="Available"]').text()).toBe('5');
 
+    const initialRequest = get.mock.calls
+      .filter(([url]) => url === '/admin/inventory')
+      .at(0);
+    expect(initialRequest[1].params).toMatchObject({
+      per_page: 10,
+      page: 1,
+    });
+
     await wrapper.find('button[aria-label="Filter by stock status"]').trigger('click');
-    await wrapper.findAll('[role="option"]').find((option) => option.text() === 'Low stock').trigger('click');
+    await wrapper.findAll('[role="option"]').find((option) => option.text() === 'Out of Stock').trigger('click');
     await nextTick();
     await flushPromises();
 
@@ -121,22 +134,38 @@ describe('AdminInventoryPage', () => {
       .filter(([url]) => url === '/admin/inventory')
       .at(-1);
     expect(filteredRequest[1].params).toMatchObject({
-      status: 'low_stock',
-      low_stock: 1,
+      status: 'out_of_stock',
+      per_page: 10,
       page: 1,
     });
+    expect(filteredRequest[1].params.low_stock).toBeUndefined();
+  });
 
-    await wrapper.find('button[aria-label="Rows per page"]').trigger('click');
-    await wrapper.findAll('[role="option"]').find((option) => option.text() === '50 per page').trigger('click');
-    await nextTick();
+  it('renders modern pagination controls and changes page', async () => {
+    const wrapper = mountPage();
     await flushPromises();
 
-    const paginatedRequest = get.mock.calls
+    expect(wrapper.find('.admin-pagination').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Showing');
+    expect(wrapper.find('[aria-label="Page 2"]').exists()).toBe(true);
+
+    get.mockClear();
+    get.mockImplementation((url) => {
+      if (url === '/admin/inventory/summary') {
+        return Promise.resolve({ data: {} });
+      }
+      return Promise.resolve(inventoryResponse({ page: 2 }));
+    });
+
+    await wrapper.find('[aria-label="Page 2"]').trigger('click');
+    await flushPromises();
+
+    const pageRequest = get.mock.calls
       .filter(([url]) => url === '/admin/inventory')
       .at(-1);
-    expect(paginatedRequest[1].params).toMatchObject({
-      per_page: 50,
-      page: 1,
+    expect(pageRequest[1].params).toMatchObject({
+      page: 2,
+      per_page: 10,
     });
   });
 
@@ -148,6 +177,12 @@ describe('AdminInventoryPage', () => {
     expect(wrapper.find('.inventory-table__row').exists()).toBe(true);
     expect(wrapper.findAll('.inventory-table__metric')).toHaveLength(4);
     expect(wrapper.findAll('.inventory-tabs button')[0].attributes('aria-current')).toBe('page');
+    const responsiveFilters = wrapper.find('.inventory-toolbar__filters').element;
+    expect(responsiveFilters.children).toHaveLength(2);
+    expect(responsiveFilters.firstElementChild.getAttribute('aria-label')).toBe('Search inventory');
+    const rowActions = wrapper.findAll('.inventory-table__actions .admin-actions button');
+    expect(rowActions).toHaveLength(2);
+    expect(rowActions.map((button) => button.text())).toEqual(['History', 'Adjust']);
 
     await wrapper.find('tbody input[type="checkbox"]').setValue(true);
     expect(wrapper.find('.inventory-mobile-bulk').text()).toContain('1 selected');

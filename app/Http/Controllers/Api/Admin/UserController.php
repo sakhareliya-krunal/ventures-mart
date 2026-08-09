@@ -48,12 +48,9 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-        ]);
-
-        $user->forceFill([
             'is_admin' => true,
             'email_verified_at' => now(),
-        ])->save();
+        ]);
 
         return (new UserResource($user->fresh()))->response()->setStatusCode(201);
     }

@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\OrderConfirmation;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\RazorpayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
@@ -20,6 +22,7 @@ class OrderPaymentTest extends TestCase
     {
         parent::setUp();
         $this->withCredentials();
+        Mail::fake();
 
         config([
             'services.razorpay.key_id' => 'rzp_test_dummy',
@@ -75,6 +78,7 @@ class OrderPaymentTest extends TestCase
 
         $this->assertSame(4, $product->fresh()->stock);
         $this->getJson('/api/cart')->assertJsonPath('item_count', 1);
+        Mail::assertNothingSent();
     }
 
     public function test_verify_payment_marks_paid_decrements_stock_and_clears_cart(): void
@@ -115,6 +119,8 @@ class OrderPaymentTest extends TestCase
         $this->assertSame(3, $product->fresh()->stock);
         $this->getJson('/api/cart')->assertJsonPath('item_count', 0);
         $this->assertNotNull(Order::query()->find($orderId)?->paid_at);
+        $this->assertNotNull(Order::query()->find($orderId)?->order_confirmation_emailed_at);
+        Mail::assertSent(OrderConfirmation::class, 1);
     }
 
     public function test_bad_signature_is_rejected(): void
@@ -150,6 +156,7 @@ class OrderPaymentTest extends TestCase
         $this->assertSame('failed', Order::query()->find($orderId)?->payment_status);
         $this->assertSame(4, $product->fresh()->stock);
         $this->getJson('/api/cart')->assertJsonPath('item_count', 1);
+        Mail::assertNothingSent();
     }
 
     /**

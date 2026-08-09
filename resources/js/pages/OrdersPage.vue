@@ -116,7 +116,12 @@ onMounted(async () => {
               <p class="order-card__when">
                 {{ formatOrderDate(order.created_at) }}
                 <span aria-hidden="true"> — </span>
-                {{ formatStatus(order.status) }}
+                <span
+                  class="order-card__status"
+                  :class="{ 'order-card__status--cancelled': order.status === 'Cancelled' }"
+                >
+                  {{ formatStatus(order.status) }}
+                </span>
               </p>
               <p class="order-card__payment">
                 {{ formatPaymentMethod(order.payment_method) }}
@@ -194,8 +199,24 @@ onMounted(async () => {
             </dl>
           </div>
 
-          <div v-if="order.invoice_available" class="order-card__footer">
+          <div class="order-card__footer">
             <AppButton
+              :to="`/orders/${encodeURIComponent(order.number || order.id)}`"
+              size="sm"
+              variant="secondary"
+            >
+              Track order
+            </AppButton>
+            <AppButton
+              v-if="order.can_cancel"
+              :to="`/orders/${encodeURIComponent(order.number || order.id)}`"
+              size="sm"
+              variant="secondary"
+            >
+              Cancel
+            </AppButton>
+            <AppButton
+              v-if="order.invoice_available"
               type="button"
               size="sm"
               variant="primary"

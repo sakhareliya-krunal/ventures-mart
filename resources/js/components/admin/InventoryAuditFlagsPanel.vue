@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { AlertTriangle, CheckCircle2 } from '@lucide/vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
@@ -15,6 +16,9 @@ const includeResolved = ref(false);
 
 const currentPage = computed(() => Number(meta.value.current_page || 1));
 const lastPage = computed(() => Number(meta.value.last_page || 1));
+const total = computed(() => Number(meta.value.total || rows.value.length));
+const firstItem = computed(() => Number(meta.value.from || (total.value ? (currentPage.value - 1) * 10 + 1 : 0)));
+const lastItem = computed(() => Number(meta.value.to || Math.min(currentPage.value * 10, total.value)));
 
 function date(value) {
   if (!value) return '—';
@@ -32,7 +36,7 @@ async function load(page = 1) {
   error.value = '';
   try {
     const { data } = await api.get('/admin/inventory/audit-flags', {
-      params: { page, per_page: 25, include_resolved: includeResolved.value ? 1 : 0 },
+      params: { page, per_page: 10, include_resolved: includeResolved.value ? 1 : 0 },
       skipErrorToast: true,
     });
     rows.value = data?.data || [];
@@ -67,14 +71,14 @@ onMounted(() => load());
 
 <template>
   <section class="admin-panel inventory-operations-panel">
-    <div class="admin-toolbar inventory-operations-toolbar">
+    <div class="inventory-operations-toolbar">
       <div class="inventory-operations-toolbar__copy">
         <h2>Inventory audit flags</h2>
         <p class="admin-muted">Review inconsistencies that require a human decision.</p>
       </div>
       <label class="checkbox-row inventory-audit-toggle">
         <input type="checkbox" :checked="includeResolved" @change="toggleResolved" />
-        Include resolved
+        <span>Include resolved</span>
       </label>
     </div>
 
@@ -121,18 +125,16 @@ onMounted(() => load());
           </AppButton>
         </article>
       </div>
-      <p v-else class="admin-empty">No {{ includeResolved ? '' : 'unresolved ' }}audit flags.</p>
-      <footer v-if="lastPage > 1" class="inventory-pagination">
-        <span>Page {{ currentPage }} of {{ lastPage }}</span>
-        <div>
-          <AppButton type="button" variant="secondary" size="sm" :disabled="currentPage <= 1" @click="load(currentPage - 1)">
-            Previous
-          </AppButton>
-          <AppButton type="button" variant="secondary" size="sm" :disabled="currentPage >= lastPage" @click="load(currentPage + 1)">
-            Next
-          </AppButton>
-        </div>
-      </footer>
+      <p v-else class="admin-empty inventory-operations-empty">No {{ includeResolved ? '' : 'unresolved ' }}audit flags.</p>
+      <AdminPagination
+        v-if="total"
+        :page="currentPage"
+        :last-page="lastPage"
+        :total="total"
+        :from="firstItem"
+        :to="lastItem"
+        @page="load"
+      />
     </template>
   </section>
 </template>

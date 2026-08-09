@@ -15,7 +15,7 @@ import { useCategoriesStore } from '@/stores/categories';
 import { usePostsStore } from '@/stores/posts';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
-import { seoHeadFromServer } from '@/utils/seoHead';
+import { seoHeadFromServer, safePublicImageUrl } from '@/utils/seoHead';
 
 const theme = useThemeStore();
 const categories = useCategoriesStore();
@@ -101,8 +101,8 @@ onMounted(async () => {
       <article v-for="post in blogPicks" :key="post.id" class="blog-card">
         <RouterLink :to="`/blog/${post.slug}`" class="blog-card__media">
           <img
-            v-if="post.cover_image"
-            :src="post.cover_image"
+            v-if="safePublicImageUrl(post.cover_image)"
+            :src="safePublicImageUrl(post.cover_image)"
             :alt="post.title"
             loading="lazy"
           />

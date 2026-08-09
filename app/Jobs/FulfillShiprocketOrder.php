@@ -3,10 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\Order;
+use App\Services\ApplicationErrorRecorder;
+use App\Services\OrderFulfillmentLock;
 use App\Services\ShiprocketFulfillmentService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Throwable;
 
 class FulfillShiprocketOrder implements ShouldQueue
 {
@@ -36,9 +39,24 @@ class FulfillShiprocketOrder implements ShouldQueue
         ];
     }
 
-    public function handle(ShiprocketFulfillmentService $fulfillment): void
+    public function handle(
+        ShiprocketFulfillmentService $fulfillment,
+        OrderFulfillmentLock $lock,
+    ): void {
+        $lock->run($this->orderId, function () use ($fulfillment): void {
+            $order = Order::query()->with(['items', 'shiprocketShipment'])->findOrFail($this->orderId);
+            $fulfillment->fulfill($order);
+        });
+    }
+
+    public function failed(?Throwable $exception): void
     {
-        $order = Order::query()->with(['items', 'shiprocketShipment'])->findOrFail($this->orderId);
-        $fulfillment->fulfill($order);
+        if ($exception) {
+            app(ApplicationErrorRecorder::class)->recordJobFailure(
+                self::class,
+                $exception,
+                ['order_id' => $this->orderId],
+            );
+        }
     }
 }

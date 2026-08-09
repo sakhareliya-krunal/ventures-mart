@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exceptions\ShiprocketException;
 use App\Jobs\CancelShiprocketOrder;
 use App\Jobs\FulfillShiprocketOrder;
+use App\Mail\ShipmentTracking;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -64,6 +66,7 @@ class ShiprocketFulfillmentTest extends TestCase
 
     public function test_fulfillment_creates_order_assigns_awb_and_schedules_pickup_once(): void
     {
+        Mail::fake();
         $order = $this->makeOrder();
         $this->fakeSuccessfulWorkflow();
 
@@ -77,8 +80,11 @@ class ShiprocketFulfillmentTest extends TestCase
         $this->assertSame('AWB123', $shipment->awb_code);
         $this->assertSame('Delhivery Surface', $order->fresh()->courier_partner);
         $this->assertSame('AWB123', $order->fresh()->tracking_number);
+        $this->assertNotNull($order->fresh()->shipping_notification_emailed_at);
+        Mail::assertSent(ShipmentTracking::class, 1);
 
         $service->fulfill($order->fresh(['items', 'shiprocketShipment']));
+        Mail::assertSent(ShipmentTracking::class, 1);
 
         $this->assertCount(1, Http::recorded(
             fn (Request $request) => str_ends_with($request->url(), '/orders/create/adhoc')
@@ -197,6 +203,7 @@ class ShiprocketFulfillmentTest extends TestCase
         ])->assertCreated();
 
         $orderId = $response->json('data.id');
+        $response->assertJsonPath('data.fulfillment_method', 'shiprocket');
         Queue::assertPushed(
             FulfillShiprocketOrder::class,
             fn (FulfillShiprocketOrder $job) => $job->orderId === $orderId
@@ -228,6 +235,7 @@ class ShiprocketFulfillmentTest extends TestCase
             'tax' => 5,
             'total' => 105,
             'status' => 'AwaitingPayment',
+            'fulfillment_method' => 'shiprocket',
             'payment_status' => 'pending',
             'payment_method' => 'razorpay',
         ]);
@@ -373,6 +381,7 @@ class ShiprocketFulfillmentTest extends TestCase
             'tax' => 10,
             'total' => 210,
             'status' => 'Processing',
+            'fulfillment_method' => 'shiprocket',
             'payment_status' => 'pending',
             'payment_method' => 'cod',
         ]);
