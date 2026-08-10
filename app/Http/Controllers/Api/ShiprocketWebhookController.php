@@ -30,6 +30,12 @@ class ShiprocketWebhookController extends Controller
 
         $awb = trim((string) ($payload['awb'] ?? ''));
         $remoteOrderId = trim((string) ($payload['sr_order_id'] ?? ''));
+        $channelOrderId = trim((string) (
+            $payload['channel_order_id']
+            ?? $payload['order_id']
+            ?? $payload['sr_channel_order_id']
+            ?? ''
+        ));
         $statusId = (string) ($payload['shipment_status_id'] ?? $payload['current_status_id'] ?? '');
         $status = trim((string) ($payload['current_status'] ?? $payload['shipment_status'] ?? ''));
         $timestamp = trim((string) ($payload['current_timestamp'] ?? ''));
@@ -37,18 +43,26 @@ class ShiprocketWebhookController extends Controller
             'shiprocket',
             $awb,
             $remoteOrderId,
+            $channelOrderId,
             $statusId,
             $status,
             $timestamp,
         ]));
 
-        $shipment = ShiprocketShipment::query()
-            ->when(
-                $awb !== '',
-                fn ($query) => $query->where('awb_code', $awb),
-                fn ($query) => $query->where('shiprocket_order_id', $remoteOrderId),
-            )
-            ->first();
+        $shipment = null;
+        if ($awb !== '') {
+            $shipment = ShiprocketShipment::query()->where('awb_code', $awb)->first();
+        }
+        if (! $shipment && $remoteOrderId !== '') {
+            $shipment = ShiprocketShipment::query()
+                ->where('shiprocket_order_id', $remoteOrderId)
+                ->first();
+        }
+        if (! $shipment && $channelOrderId !== '') {
+            $shipment = ShiprocketShipment::query()
+                ->whereHas('order', fn ($query) => $query->where('number', $channelOrderId))
+                ->first();
+        }
 
         $event = ShipmentWebhookEvent::query()->firstOrCreate(
             ['external_event_key' => $eventKey],

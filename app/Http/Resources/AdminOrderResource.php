@@ -68,6 +68,21 @@ class AdminOrderResource extends JsonResource
                     'pickup_scheduled_at' => $shipment->pickup_scheduled_at?->toIso8601String(),
                     'last_synced_at' => $shipment->last_synced_at?->toIso8601String(),
                     'cancelled_at' => $shipment->cancelled_at?->toIso8601String(),
+                    'tracking_history' => $shipment->relationLoaded('trackingEvents')
+                        ? $shipment->trackingEvents
+                            ->sortByDesc(fn ($event) => $event->occurred_at?->timestamp ?? $event->id)
+                            ->take(20)
+                            ->values()
+                            ->map(fn ($event) => [
+                                'id' => $event->id,
+                                'status' => $event->status,
+                                'status_id' => $event->status_id,
+                                'location' => $event->location,
+                                'source' => $event->source,
+                                'occurred_at' => $event->occurred_at?->toIso8601String(),
+                            ])
+                            ->all()
+                        : [],
                 ];
             }),
             'fulfillment_events' => $this->whenLoaded('fulfillmentEvents', fn () => $this->fulfillmentEvents

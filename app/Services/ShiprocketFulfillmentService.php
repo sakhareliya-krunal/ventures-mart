@@ -59,31 +59,55 @@ class ShiprocketFulfillmentService
                     return $shipment;
                 }
 
-                $created = $this->shiprocket->createOrder($payload);
-                $shiprocketOrderId = (int) ($created['order_id'] ?? 0);
-                $shipmentId = (int) ($created['shipment_id'] ?? 0);
+                $recovered = $this->recoverRemoteOrder($order, $shipment, $fingerprint);
+                if (! $recovered) {
+                    // #region agent log
+                    file_put_contents(base_path('debug-8efceb.log'), json_encode([
+                        'sessionId' => '8efceb',
+                        'runId' => 'pre-fix',
+                        'hypothesisId' => 'D',
+                        'location' => 'ShiprocketFulfillmentService.php:fulfill',
+                        'message' => 'shiprocket_create_order_with_billing_email',
+                        'data' => [
+                            'order_id' => $order->id,
+                            'channel_order_id' => $payload['order_id'] ?? null,
+                            'billing_email_set' => filled($payload['billing_email'] ?? null),
+                            'note' => 'Shiprocket SaaS may email this address independently of Laravel mailables',
+                        ],
+                        'timestamp' => (int) (microtime(true) * 1000),
+                    ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+                    // #endregion
 
-                if ($shiprocketOrderId < 1 || $shipmentId < 1) {
-                    throw new ShiprocketException('Shiprocket order creation returned incomplete identifiers.');
+                    $created = $this->shiprocket->createOrder($payload);
+                    $shiprocketOrderId = (int) ($created['order_id'] ?? 0);
+                    $shipmentId = (int) ($created['shipment_id'] ?? 0);
+
+                    if ($shiprocketOrderId < 1 || $shipmentId < 1) {
+                        throw new ShiprocketException('Shiprocket order creation returned incomplete identifiers.');
+                    }
+
+                    $shipment->forceFill([
+                        'shiprocket_order_id' => $shiprocketOrderId,
+                        'shipment_id' => $shipmentId,
+                        'request_fingerprint' => $fingerprint,
+                        'stage' => 'order_created',
+                        'order_created_at' => now(),
+                    ])->save();
+                    $this->audit->record(
+                        $order,
+                        'remote_order_created',
+                        'job',
+                        "order:{$order->id}:shiprocket-order-created:{$shiprocketOrderId}",
+                        [
+                            'shipment' => $shipment,
+                            'external_event_id' => (string) $shiprocketOrderId,
+                        ],
+                    );
                 }
-
+            } else {
                 $shipment->forceFill([
-                    'shiprocket_order_id' => $shiprocketOrderId,
-                    'shipment_id' => $shipmentId,
-                    'request_fingerprint' => $fingerprint,
-                    'stage' => 'order_created',
-                    'order_created_at' => now(),
+                    'request_fingerprint' => $shipment->request_fingerprint ?: $fingerprint,
                 ])->save();
-                $this->audit->record(
-                    $order,
-                    'remote_order_created',
-                    'job',
-                    "order:{$order->id}:shiprocket-order-created:{$shiprocketOrderId}",
-                    [
-                        'shipment' => $shipment,
-                        'external_event_id' => (string) $shiprocketOrderId,
-                    ],
-                );
             }
 
             if (! $shipment->awb_code) {
@@ -127,19 +151,28 @@ class ShiprocketFulfillmentService
                     return $shipment;
                 }
 
-                $pickupResponse = $this->shiprocket->schedulePickup((int) $shipment->shipment_id);
-                $pickupStatus = (string) (
-                    data_get($pickupResponse, 'response.pickup_status')
-                    ?? data_get($pickupResponse, 'pickup_status')
-                    ?? $pickupResponse['message']
-                    ?? 'Scheduled'
-                );
+                try {
+                    $pickupResponse = $this->shiprocket->schedulePickup((int) $shipment->shipment_id);
+                    $pickupStatus = (string) (
+                        data_get($pickupResponse, 'response.pickup_status')
+                        ?? data_get($pickupResponse, 'pickup_status')
+                        ?? $pickupResponse['message']
+                        ?? 'Scheduled'
+                    );
+                } catch (Throwable $pickupException) {
+                    if (! $this->shiprocket->isAlreadyGeneratedPickupError($pickupException)) {
+                        throw $pickupException;
+                    }
+
+                    $pickupStatus = $this->pickupStatusFromAlreadyGenerated($pickupException->getMessage());
+                }
 
                 $shipment->forceFill([
                     'pickup_status' => $pickupStatus,
                     'stage' => 'pickup_scheduled',
                     'pickup_scheduled_at' => now(),
                     'sync_status' => 'completed',
+                    'last_error' => null,
                 ])->save();
                 $this->audit->record(
                     $order,
@@ -151,6 +184,11 @@ class ShiprocketFulfillmentService
                         'provider_status' => $pickupStatus,
                     ],
                 );
+            } else {
+                $shipment->forceFill([
+                    'sync_status' => 'completed',
+                    'last_error' => null,
+                ])->save();
             }
 
             return $shipment->fresh();
@@ -314,6 +352,80 @@ class ShiprocketFulfillmentService
             'awb_number' => $shipment->awb_code,
             'tracking_number' => $shipment->awb_code,
         ])->save();
+    }
+
+    /**
+     * Reuse a prior remote create when local IDs are missing (fingerprint or channel order lookup).
+     */
+    private function recoverRemoteOrder(Order $order, ShiprocketShipment $shipment, string $fingerprint): bool
+    {
+        if (
+            $shipment->request_fingerprint
+            && hash_equals((string) $shipment->request_fingerprint, $fingerprint)
+            && $shipment->shiprocket_order_id
+            && $shipment->shipment_id
+        ) {
+            return true;
+        }
+
+        try {
+            $remote = $this->shiprocket->findOrderByChannelOrderId((string) $order->number);
+        } catch (Throwable) {
+            $remote = null;
+        }
+
+        if (! $remote) {
+            return false;
+        }
+
+        $updates = [
+            'shiprocket_order_id' => $remote['order_id'],
+            'shipment_id' => $remote['shipment_id'],
+            'request_fingerprint' => $fingerprint,
+            'stage' => $shipment->stage === 'queued' ? 'order_created' : $shipment->stage,
+            'order_created_at' => $shipment->order_created_at ?: now(),
+        ];
+
+        if (filled($remote['awb_code']) && ! $shipment->awb_code) {
+            $updates['awb_code'] = $remote['awb_code'];
+            $updates['courier_name'] = $remote['courier_name'] ?: $shipment->courier_name;
+            $updates['courier_company_id'] = $remote['courier_company_id'] ?: $shipment->courier_company_id;
+            $updates['stage'] = 'awb_assigned';
+            $updates['awb_assigned_at'] = $shipment->awb_assigned_at ?: now();
+        }
+
+        $shipment->forceFill($updates)->save();
+
+        if (filled($shipment->awb_code)) {
+            $this->syncOrderCourierFields($order, $shipment);
+            $this->shipmentEmails->dispatch($order->fresh(), $shipment);
+        }
+
+        $this->audit->record(
+            $order,
+            'remote_order_recovered',
+            'job',
+            "order:{$order->id}:shiprocket-order-recovered:{$remote['order_id']}",
+            [
+                'shipment' => $shipment,
+                'external_event_id' => (string) $remote['order_id'],
+                'reason' => 'Recovered existing Shiprocket order by channel order id',
+            ],
+        );
+
+        return true;
+    }
+
+    private function pickupStatusFromAlreadyGenerated(string $message): string
+    {
+        $trimmed = trim($message);
+        if ($trimmed === '') {
+            return 'Already generated';
+        }
+
+        $withoutBody = preg_split('/\s*\|\s*/', $trimmed, 2)[0] ?? $trimmed;
+
+        return mb_substr(trim($withoutBody) !== '' ? trim($withoutBody) : 'Already generated', 0, 255);
     }
 
     private function assertReady(Order $order): void

@@ -33,4 +33,18 @@ describe('BlogCard', () => {
 
     expect(wrapper.find('.blog-card__media-fallback').exists()).toBe(true);
   });
+
+  it('renders admin storage cover paths the same as public images', () => {
+    const wrapper = mount(BlogCard, {
+      props: {
+        post: {
+          ...post,
+          cover_image: '/storage/products/uuid/cover.webp',
+        },
+      },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    });
+
+    expect(wrapper.find('img').attributes('src')).toBe('/storage/products/uuid/cover.webp');
+  });
 });

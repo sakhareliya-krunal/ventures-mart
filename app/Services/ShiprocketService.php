@@ -8,6 +8,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class ShiprocketService
 {
@@ -86,6 +87,84 @@ class ShiprocketService
     }
 
     /**
+     * Recover an existing Shiprocket order by channel order id (local Order.number).
+     *
+     * @return array{order_id: int, shipment_id: int, awb_code: ?string, courier_name: ?string, courier_company_id: ?int}|null
+     */
+    public function findOrderByChannelOrderId(string $channelOrderId): ?array
+    {
+        $channelOrderId = trim($channelOrderId);
+        if ($channelOrderId === '') {
+            return null;
+        }
+
+        $response = $this->request('get', '/orders', [
+            'filter_by' => 'channel_order_id',
+            'filter' => $channelOrderId,
+            'per_page' => 10,
+        ]);
+
+        $orders = data_get($response, 'data', []);
+        if (! is_array($orders) || $orders === []) {
+            $response = $this->request('get', '/orders', [
+                'search' => $channelOrderId,
+                'per_page' => 10,
+            ]);
+            $orders = data_get($response, 'data', []);
+        }
+
+        if (! is_array($orders)) {
+            return null;
+        }
+
+        $match = collect($orders)->first(function (mixed $order) use ($channelOrderId): bool {
+            if (! is_array($order)) {
+                return false;
+            }
+
+            $remoteChannelId = (string) (
+                $order['channel_order_id']
+                ?? $order['order_id']
+                ?? ''
+            );
+
+            return strcasecmp($remoteChannelId, $channelOrderId) === 0;
+        });
+
+        if (! is_array($match)) {
+            return null;
+        }
+
+        $shiprocketOrderId = (int) ($match['id'] ?? $match['order_id'] ?? 0);
+        $shipments = data_get($match, 'shipments', []);
+        $firstShipment = is_array($shipments) ? ($shipments[0] ?? null) : null;
+        $shipmentId = (int) (
+            data_get($firstShipment, 'id')
+            ?? data_get($match, 'shipment_id')
+            ?? 0
+        );
+
+        if ($shiprocketOrderId < 1 || $shipmentId < 1) {
+            return null;
+        }
+
+        return [
+            'order_id' => $shiprocketOrderId,
+            'shipment_id' => $shipmentId,
+            'awb_code' => filled(data_get($firstShipment, 'awb'))
+                ? (string) data_get($firstShipment, 'awb')
+                : (filled(data_get($firstShipment, 'awb_code'))
+                    ? (string) data_get($firstShipment, 'awb_code')
+                    : null),
+            'courier_name' => data_get($firstShipment, 'courier')
+                ?? data_get($firstShipment, 'courier_name'),
+            'courier_company_id' => is_numeric(data_get($firstShipment, 'courier_company_id'))
+                ? (int) data_get($firstShipment, 'courier_company_id')
+                : null,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function assignAwb(int $shipmentId, ?int $courierId = null): array
@@ -104,6 +183,32 @@ class ShiprocketService
         return $this->request('post', '/courier/generate/pickup', [
             'shipment_id' => [$shipmentId],
         ]);
+    }
+
+    public function isAlreadyGeneratedPickupError(Throwable|string $error): bool
+    {
+        $message = strtolower(trim($error instanceof Throwable ? $error->getMessage() : $error));
+        if ($message === '') {
+            return false;
+        }
+
+        $needles = [
+            'already generated',
+            'already scheduled',
+            'pickup already',
+            'already been generated',
+            'pickup has already',
+            'pickup is already',
+            'manifest already',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function cancelOrder(int $shiprocketOrderId): void
@@ -187,7 +292,14 @@ class ShiprocketService
                 ? (string) ($data['message'] ?? data_get($data, 'errors.0', 'Shiprocket rejected the request.'))
                 : 'Shiprocket rejected the request.';
 
-            throw new ShiprocketException($message, $response->status());
+            if (is_array($data)) {
+                $body = mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE) ?: '', 0, 3500);
+                if ($body !== '' && ! str_contains(strtolower($message), strtolower(mb_substr($body, 0, 80)))) {
+                    $message = trim($message.' | '.$body);
+                }
+            }
+
+            throw new ShiprocketException(mb_substr($message, 0, 4000), $response->status());
         }
 
         return is_array($data) ? $data : [];

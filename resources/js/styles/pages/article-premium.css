@@ -18,10 +18,8 @@
 
 .article-premium__hero-media,
 .article-premium__hero-scrim {
-  height: 100%;
   inset: 0;
   position: absolute;
-  width: 100%;
 }
 
 .article-premium__hero-media {
@@ -38,8 +36,8 @@
 
 .article-premium__hero-scrim {
   background:
-    linear-gradient(105deg, rgba(7, 31, 99, 0.72) 0%, rgba(7, 31, 99, 0.38) 38%, rgba(7, 31, 99, 0.14) 68%, rgba(7, 31, 99, 0.06) 100%),
-    linear-gradient(0deg, rgba(7, 31, 99, 0.28) 0%, transparent 52%);
+    linear-gradient(105deg, rgba(7, 31, 99, 0.48) 0%, rgba(7, 31, 99, 0.22) 42%, rgba(7, 31, 99, 0.08) 72%, rgba(7, 31, 99, 0.02) 100%),
+    linear-gradient(0deg, rgba(7, 31, 99, 0.2) 0%, transparent 55%);
   z-index: 1;
 }
 
@@ -380,9 +378,9 @@
   .article-premium__hero-scrim {
     background: linear-gradient(
       180deg,
-      rgba(7, 31, 99, 0.28) 0%,
-      rgba(7, 31, 99, 0.48) 42%,
-      rgba(7, 31, 99, 0.7) 100%
+      rgba(7, 31, 99, 0.16) 0%,
+      rgba(7, 31, 99, 0.32) 42%,
+      rgba(7, 31, 99, 0.52) 100%
     );
   }
 

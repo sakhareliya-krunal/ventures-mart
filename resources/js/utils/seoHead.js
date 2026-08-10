@@ -11,9 +11,53 @@ function absoluteSeoUrl(path) {
   return `${origin}/${String(path).replace(/^\//, '')}`;
 }
 
+const PUBLIC_ASSET_PATH = /^\/?(storage|images|products|uploads)(\/|$)/i;
+
+function isPublicAssetPath(path) {
+  return PUBLIC_ASSET_PATH.test(String(path || ''));
+}
+
+/**
+ * Normalize storefront/admin image URLs to root-relative public paths when possible,
+ * so covers resolve the same on /blog and /blog/:slug.
+ */
 export function safePublicImageUrl(value) {
   let image = String(value || '').trim();
   if (!image) return '';
+
+  if (image.startsWith('//')) {
+    const protocol =
+      typeof window !== 'undefined' && window.location?.protocol
+        ? window.location.protocol
+        : 'https:';
+    image = `${protocol}${image}`;
+  }
+
+  if (/^https?:\/\//i.test(image)) {
+    try {
+      const url = new URL(image);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return '';
+      }
+
+      const path = url.pathname || '';
+      const sameOrigin =
+        typeof window !== 'undefined' && url.origin === window.location.origin;
+
+      // Prefer root-relative paths for local uploads and same-origin assets.
+      if (sameOrigin || isPublicAssetPath(path)) {
+        return path.startsWith('/') ? path : `/${path}`;
+      }
+
+      if (url.protocol === 'https:') {
+        return url.href;
+      }
+
+      return '';
+    } catch {
+      return '';
+    }
+  }
 
   // Normalize bare public paths so they never resolve under /blog/...
   if (/^(storage|images|products|uploads)\//i.test(image)) {
@@ -22,24 +66,6 @@ export function safePublicImageUrl(value) {
 
   if (/^\/(?!\/)/.test(image)) {
     return image;
-  }
-
-  try {
-    const url = new URL(image);
-    if (url.protocol === 'https:') {
-      return url.href;
-    }
-
-    if (
-      url.protocol === 'http:' &&
-      typeof window !== 'undefined' &&
-      window.location.protocol === 'http:' &&
-      url.origin === window.location.origin
-    ) {
-      return url.href;
-    }
-  } catch {
-    return '';
   }
 
   return '';

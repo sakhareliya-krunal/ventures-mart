@@ -109,6 +109,36 @@ and height is summed by quantity.
   Shiprocket cancel jobs, cancellation emails, confirmation mail, and tracking
   emails wait until a worker processes the queue.
 
+### Customer emails (website vs Shiprocket)
+
+- **Website order confirmation** (`OrderConfirmation`) is queued after checkout
+  (COD immediately; Razorpay after payment) and runs **after the HTTP response**
+  so it does not depend on `queue:work` for delivery. It still requires a real
+  mail transport (`MAIL_MAILER=smtp` or similar). `MAIL_MAILER=log` only writes
+  to `storage/logs` and never reaches the customer inbox.
+- **Website tracking mail** (`ShipmentTracking`) still uses the queue after AWB
+  assignment — keep a queue worker running for that path.
+- **Shiprocket’s own buyer emails** are separate. Creating a remote order always
+  sends `billing_email` (required by their API). To stop Shiprocket-branded mail
+  and rely on Ventures Mart templates only, disable notifications in the
+  Shiprocket dashboard: **Settings → Notifications → Buyer Communication**,
+  then save. There is no API flag in this app to turn those off per order.
+
 The integration is resumable: a retry after an AWB or pickup failure reuses the
 stored Shiprocket order and shipment identifiers rather than creating a
 duplicate order.
+
+### Pickup and tracking reconciliation
+
+- Pickup scheduling is idempotent. If Shiprocket responds that pickup was
+  already generated/scheduled, local `pickup_status`, `pickup_scheduled_at`,
+  `stage`, and `sync_status` are marked completed instead of leaving the
+  shipment stuck as `failed` with `awb_assigned`.
+- Webhook and Sync Tracking updates reconcile the same pickup/sync fields when
+  provider status text indicates pickup (for example `Pickup Generated`). This
+  heals older stuck rows without manual database edits.
+- Before creating a remote order, fulfillment looks up an existing Shiprocket
+  order by channel `order_id` (`orders.number`) so retries do not create
+  duplicates when local IDs were never saved.
+- Tracking activities from polling/webhooks are stored in
+  `shiprocket_tracking_events` and shown on the admin order detail page.

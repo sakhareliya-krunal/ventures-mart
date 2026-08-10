@@ -74,7 +74,10 @@ class OrderController extends Controller
         $order->load([
             'items.inventoryReservation',
             'user',
-            'shiprocketShipment',
+            'shiprocketShipment.trackingEvents' => fn ($query) => $query
+                ->orderByDesc('occurred_at')
+                ->orderByDesc('id')
+                ->limit(20),
             'fulfillmentEvents' => fn ($query) => $query->latest()->limit(50),
         ]);
 

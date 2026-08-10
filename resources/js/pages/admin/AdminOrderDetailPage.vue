@@ -606,8 +606,23 @@ async function markRefunded() {
         </div>
         <dl v-if="order.shiprocket" class="admin-order-address-card">
           <div class="admin-order-address-card__row">
-            <dt>Sync status</dt>
-            <dd>{{ order.shiprocket.sync_status || '—' }} · {{ order.shiprocket.stage || '—' }}</dd>
+            <dt>Integration Sync Status</dt>
+            <dd>
+              <span
+                class="admin-badge"
+                :class="{
+                  'admin-badge--danger': order.shiprocket.sync_status === 'failed' || order.shiprocket.sync_status === 'cancel_failed',
+                  'admin-badge--success': order.shiprocket.sync_status === 'completed',
+                  'admin-badge--info': order.shiprocket.sync_status === 'processing' || order.shiprocket.sync_status === 'pending',
+                }"
+              >
+                {{ order.shiprocket.sync_status || '—' }}
+              </span>
+            </dd>
+          </div>
+          <div class="admin-order-address-card__row">
+            <dt>Fulfillment stage</dt>
+            <dd>{{ order.shiprocket.stage || '—' }}</dd>
           </div>
           <div class="admin-order-address-card__row">
             <dt>Shiprocket IDs</dt>
@@ -623,12 +638,48 @@ async function markRefunded() {
             </dd>
           </div>
           <div class="admin-order-address-card__row">
-            <dt>Pickup</dt>
-            <dd>{{ order.shiprocket.pickup_status || 'Not scheduled' }}</dd>
+            <dt>Pickup Status</dt>
+            <dd>
+              {{ order.shiprocket.pickup_status || 'Not scheduled' }}
+              <template v-if="order.shiprocket.pickup_scheduled_at">
+                · {{ formatDateTime(order.shiprocket.pickup_scheduled_at) }}
+              </template>
+            </dd>
           </div>
           <div class="admin-order-address-card__row">
-            <dt>Shipment status</dt>
-            <dd>{{ order.shiprocket.shipment_status || 'Awaiting first sync' }}</dd>
+            <dt>Shipment Status</dt>
+            <dd>
+              <template v-if="order.shiprocket.tracking_url">
+                <a :href="order.shiprocket.tracking_url" target="_blank" rel="noopener noreferrer">
+                  {{ order.shiprocket.shipment_status || 'Track shipment' }}
+                </a>
+              </template>
+              <template v-else>
+                {{ order.shiprocket.shipment_status || 'Awaiting first sync' }}
+              </template>
+            </dd>
+          </div>
+          <div
+            v-if="order.shiprocket.tracking_history?.length"
+            class="admin-order-address-card__row"
+          >
+            <dt>Tracking history</dt>
+            <dd>
+              <ol class="admin-order-fulfillment-events">
+                <li
+                  v-for="event in order.shiprocket.tracking_history"
+                  :key="event.id"
+                >
+                  <div>
+                    <strong>{{ event.status || 'Update' }}</strong>
+                    <span>{{ event.location || event.source }}</span>
+                  </div>
+                  <time v-if="event.occurred_at" :datetime="event.occurred_at">
+                    {{ formatDateTime(event.occurred_at) }}
+                  </time>
+                </li>
+              </ol>
+            </dd>
           </div>
           <div v-if="order.shiprocket.last_synced_at" class="admin-order-address-card__row">
             <dt>Last synced</dt>
@@ -642,7 +693,10 @@ async function markRefunded() {
             <dt>Expected delivery</dt>
             <dd>{{ formatDateTime(order.expected_delivery_at) }}</dd>
           </div>
-          <div v-if="order.shiprocket.last_error" class="admin-order-address-card__row">
+          <div
+            v-if="order.shiprocket.last_error && (order.shiprocket.sync_status === 'failed' || order.shiprocket.sync_status === 'cancel_failed')"
+            class="admin-order-address-card__row"
+          >
             <dt>Last error</dt>
             <dd class="form-error">{{ order.shiprocket.last_error }}</dd>
           </div>
@@ -707,7 +761,11 @@ async function markRefunded() {
             </div>
             <div class="admin-order-address-card__row">
               <dt>Final stage</dt>
-              <dd>{{ order.shiprocket.stage || '—' }} · {{ order.shiprocket.sync_status || '—' }}</dd>
+              <dd>{{ order.shiprocket.stage || '—' }}</dd>
+            </div>
+            <div class="admin-order-address-card__row">
+              <dt>Integration Sync Status</dt>
+              <dd>{{ order.shiprocket.sync_status || '—' }}</dd>
             </div>
             <div class="admin-order-address-card__row">
               <dt>Cancelled</dt>

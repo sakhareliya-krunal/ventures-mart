@@ -56,6 +56,11 @@ class ShiprocketShipment extends Model
         return $this->hasMany(OrderFulfillmentEvent::class);
     }
 
+    public function trackingEvents(): HasMany
+    {
+        return $this->hasMany(ShiprocketTrackingEvent::class);
+    }
+
     public function webhookEvents(): HasMany
     {
         return $this->hasMany(ShipmentWebhookEvent::class);

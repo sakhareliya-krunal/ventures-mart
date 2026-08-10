@@ -130,6 +130,7 @@ class ShiprocketFulfillmentTest extends TestCase
             '*/courier/generate/pickup' => Http::sequence()
                 ->push(['message' => 'Pickup unavailable'], 503)
                 ->push(['pickup_status' => 'Scheduled'], 200),
+            '*/orders*' => Http::response(['data' => []]),
         ]);
 
         $service = app(ShiprocketFulfillmentService::class);
@@ -288,6 +289,172 @@ class ShiprocketFulfillmentTest extends TestCase
         );
     }
 
+    public function test_pickup_already_generated_is_treated_as_success(): void
+    {
+        $order = $this->makeOrder();
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response($this->pickupResponse()),
+            '*/courier/serviceability/*' => Http::response([
+                'data' => ['recommended_courier_company_id' => 42],
+            ]),
+            '*/orders/create/adhoc' => Http::response(['order_id' => 5001, 'shipment_id' => 6001]),
+            '*/courier/assign/awb' => Http::response([
+                'response' => ['data' => [
+                    'awb_code' => 'AWB123',
+                    'courier_company_id' => 42,
+                    'courier_name' => 'Delhivery Surface',
+                ]],
+            ]),
+            '*/courier/generate/pickup' => Http::response([
+                'message' => 'Pickup already generated against this shipment.',
+            ], 400),
+            '*/orders*' => Http::response(['data' => []]),
+        ]);
+
+        $shipment = app(ShiprocketFulfillmentService::class)->fulfill($order);
+
+        $this->assertSame('completed', $shipment->sync_status);
+        $this->assertSame('pickup_scheduled', $shipment->stage);
+        $this->assertNotNull($shipment->pickup_scheduled_at);
+        $this->assertStringContainsStringIgnoringCase('already generated', (string) $shipment->pickup_status);
+        $this->assertNull($shipment->last_error);
+        $this->assertCount(1, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/orders/create/adhoc')
+        ));
+        $this->assertCount(1, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/courier/assign/awb')
+        ));
+    }
+
+    public function test_tracking_reconciles_failed_awb_assigned_when_pickup_generated(): void
+    {
+        $order = $this->makeOrder();
+        $shipment = $order->shiprocketShipment()->create([
+            'sync_status' => 'failed',
+            'stage' => 'awb_assigned',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'awb_code' => 'AWB123',
+            'awb_assigned_at' => now()->subHour(),
+            'last_error' => 'Pickup timeout',
+        ]);
+
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/courier/track/awb/AWB123' => Http::response([
+                'tracking_data' => [
+                    'shipment_track' => [[
+                        'awb_code' => 'AWB123',
+                        'current_status' => 'Pickup Generated',
+                        'sr_status' => 7,
+                        'courier_name' => 'Delhivery Surface',
+                    ]],
+                    'shipment_track_activities' => [
+                        [
+                            'date' => now()->subMinutes(10)->format('Y-m-d H:i:s'),
+                            'status' => 'AWB Assigned',
+                            'location' => 'Origin',
+                        ],
+                        [
+                            'date' => now()->format('Y-m-d H:i:s'),
+                            'status' => 'Pickup Generated',
+                            'location' => 'Hub',
+                        ],
+                    ],
+                    'track_url' => 'https://example.test/track/AWB123',
+                    'current_timestamp' => now()->format('Y-m-d H:i:s'),
+                ],
+            ]),
+        ]);
+
+        $updated = app(ShiprocketFulfillmentService::class)
+            ->syncTracking($order->fresh('shiprocketShipment'));
+
+        $this->assertSame('completed', $updated->sync_status);
+        $this->assertSame('pickup_scheduled', $updated->stage);
+        $this->assertSame('Pickup Generated', $updated->shipment_status);
+        $this->assertNotNull($updated->pickup_status);
+        $this->assertNotNull($updated->pickup_scheduled_at);
+        $this->assertNull($updated->last_error);
+        $this->assertDatabaseCount('shiprocket_tracking_events', 2);
+        $this->assertDatabaseHas('shiprocket_tracking_events', [
+            'shiprocket_shipment_id' => $shipment->id,
+            'status' => 'Pickup Generated',
+        ]);
+    }
+
+    public function test_remote_channel_order_lookup_prevents_duplicate_create(): void
+    {
+        $order = $this->makeOrder();
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response($this->pickupResponse()),
+            '*/courier/serviceability/*' => Http::response([
+                'data' => ['recommended_courier_company_id' => 42],
+            ]),
+            '*/orders*' => Http::response([
+                'data' => [[
+                    'id' => 7777,
+                    'channel_order_id' => 'VM-SR-1',
+                    'shipments' => [[
+                        'id' => 8888,
+                        'awb' => 'AWB-EXISTING',
+                        'courier_name' => 'Existing Courier',
+                        'courier_company_id' => 42,
+                    ]],
+                ]],
+            ]),
+            '*/courier/generate/pickup' => Http::response(['pickup_status' => 'Scheduled']),
+        ]);
+
+        $shipment = app(ShiprocketFulfillmentService::class)->fulfill($order);
+
+        $this->assertSame(7777, $shipment->shiprocket_order_id);
+        $this->assertSame(8888, $shipment->shipment_id);
+        $this->assertSame('AWB-EXISTING', $shipment->awb_code);
+        $this->assertSame('completed', $shipment->sync_status);
+        $this->assertCount(0, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/orders/create/adhoc')
+        ));
+        $this->assertCount(0, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/courier/assign/awb')
+        ));
+    }
+
+    public function test_webhook_matches_channel_order_number_and_heals_pickup(): void
+    {
+        config(['services.shiprocket.webhook_token' => 'webhook-secret']);
+        $order = $this->makeOrder();
+        $shipment = $order->shiprocketShipment()->create([
+            'sync_status' => 'failed',
+            'stage' => 'awb_assigned',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'awb_code' => null,
+            'last_error' => 'Pickup failed',
+        ]);
+
+        $this->postJson('/api/fulfillment/provider-update', [
+            'channel_order_id' => 'VM-SR-1',
+            'awb' => 'AWB-WH-1',
+            'current_status' => 'Pickup Generated',
+            'shipment_status_id' => 7,
+            'current_timestamp' => now()->format('Y-m-d H:i:s'),
+            'courier_name' => 'Delhivery Surface',
+            'track_url' => 'https://example.test/track/AWB-WH-1',
+        ], [
+            'x-api-key' => 'webhook-secret',
+        ])->assertOk();
+
+        $shipment->refresh();
+        $this->assertSame('AWB-WH-1', $shipment->awb_code);
+        $this->assertSame('Pickup Generated', $shipment->shipment_status);
+        $this->assertSame('completed', $shipment->sync_status);
+        $this->assertSame('pickup_scheduled', $shipment->stage);
+        $this->assertNotNull($shipment->pickup_scheduled_at);
+    }
+
     public function test_cancellation_and_tracking_sync_update_local_state(): void
     {
         $order = $this->makeOrder();
@@ -297,6 +464,8 @@ class ShiprocketFulfillmentTest extends TestCase
             'shiprocket_order_id' => 5001,
             'shipment_id' => 6001,
             'awb_code' => 'AWB123',
+            'pickup_scheduled_at' => now()->subHour(),
+            'pickup_status' => 'Scheduled',
         ]);
         Http::fake([
             '*/auth/login' => Http::response(['token' => 'test-token']),
@@ -342,6 +511,7 @@ class ShiprocketFulfillmentTest extends TestCase
                 ]],
             ]),
             '*/courier/generate/pickup' => Http::response(['pickup_status' => 'Scheduled']),
+            '*/orders*' => Http::response(['data' => []]),
         ]);
     }
 

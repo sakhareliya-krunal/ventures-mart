@@ -103,4 +103,79 @@ describe('BlogPostPage', () => {
       '/images/blog/gift-ideas-toys-lunch-boxes.jpg',
     );
   });
+
+  it('renders admin storage cover images on the detail hero', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          id: 4,
+          slug: 'storage-cover',
+          title: 'Storage cover',
+          excerpt: 'Uploaded cover from admin.',
+          body: '<p>Hello.</p>',
+          cover_image: '/storage/products/uuid/cover.webp',
+          published_at: '2026-08-09T08:00:00.000Z',
+          seo: {},
+        },
+        related: [],
+      },
+    });
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/blog/:slug', component: { template: '<div />' } },
+        { path: '/blog', component: { template: '<div />' } },
+      ],
+    });
+    await router.push('/blog/storage-cover');
+    await router.isReady();
+
+    const wrapper = mount(BlogPostPage, {
+      global: { plugins: [createPinia(), router] },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('.article-premium__hero-media img').attributes('src')).toBe(
+      '/storage/products/uuid/cover.webp',
+    );
+    expect(wrapper.find('.article-premium__hero--fallback').exists()).toBe(false);
+  });
+
+  it('normalizes absolute same-origin storage URLs for the hero', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          id: 5,
+          slug: 'absolute-cover',
+          title: 'Absolute cover',
+          excerpt: 'Absolute uploaded cover.',
+          body: '<p>Hello.</p>',
+          cover_image: `${window.location.origin}/storage/products/uuid/cover.webp`,
+          published_at: '2026-08-09T08:00:00.000Z',
+          seo: {},
+        },
+        related: [],
+      },
+    });
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/blog/:slug', component: { template: '<div />' } },
+        { path: '/blog', component: { template: '<div />' } },
+      ],
+    });
+    await router.push('/blog/absolute-cover');
+    await router.isReady();
+
+    const wrapper = mount(BlogPostPage, {
+      global: { plugins: [createPinia(), router] },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('.article-premium__hero-media img').attributes('src')).toBe(
+      '/storage/products/uuid/cover.webp',
+    );
+  });
 });

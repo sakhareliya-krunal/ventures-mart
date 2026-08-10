@@ -99,12 +99,36 @@ class ProcessShiprocketWebhook implements ShouldQueue
 
     private function findShipment(ShipmentWebhookEvent $event): ?ShiprocketShipment
     {
+        if (filled($event->awb)) {
+            $byAwb = ShiprocketShipment::query()->where('awb_code', $event->awb)->first();
+            if ($byAwb) {
+                return $byAwb;
+            }
+        }
+
+        if (filled($event->remote_order_id)) {
+            $byRemote = ShiprocketShipment::query()
+                ->where('shiprocket_order_id', $event->remote_order_id)
+                ->first();
+            if ($byRemote) {
+                return $byRemote;
+            }
+        }
+
+        $payload = is_array($event->payload) ? $event->payload : [];
+        $channelOrderId = trim((string) (
+            $payload['channel_order_id']
+            ?? $payload['order_id']
+            ?? $payload['sr_channel_order_id']
+            ?? ''
+        ));
+
+        if ($channelOrderId === '') {
+            return null;
+        }
+
         return ShiprocketShipment::query()
-            ->when(
-                filled($event->awb),
-                fn ($query) => $query->where('awb_code', $event->awb),
-                fn ($query) => $query->where('shiprocket_order_id', $event->remote_order_id),
-            )
+            ->whereHas('order', fn ($query) => $query->where('number', $channelOrderId))
             ->first();
     }
 }

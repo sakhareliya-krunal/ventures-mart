@@ -54,6 +54,22 @@ class SendShipmentTrackingEmail implements ShouldQueue
             || blank($shipment?->awb_code)
             || ! filter_var($order->email, FILTER_VALIDATE_EMAIL)
         ) {
+            // #region agent log
+            file_put_contents(base_path('debug-8efceb.log'), json_encode([
+                'sessionId' => '8efceb',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'C',
+                'location' => 'SendShipmentTrackingEmail.php:handle',
+                'message' => 'tracking_should_send_false',
+                'data' => [
+                    'order_id' => $order->id,
+                    'awb' => $shipment?->awb_code,
+                    'shipping_notification_emailed_at' => $order->shipping_notification_emailed_at,
+                ],
+                'timestamp' => (int) (microtime(true) * 1000),
+            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+            // #endregion
+
             return;
         }
 
@@ -64,6 +80,24 @@ class SendShipmentTrackingEmail implements ShouldQueue
             ->whereKey($order->id)
             ->whereNull('shipping_notification_emailed_at')
             ->update(['shipping_notification_emailed_at' => now()]);
+
+        // #region agent log
+        file_put_contents(base_path('debug-8efceb.log'), json_encode([
+            'sessionId' => '8efceb',
+            'runId' => 'pre-fix',
+            'hypothesisId' => 'C',
+            'location' => 'SendShipmentTrackingEmail.php:handle',
+            'message' => 'tracking_mail_sent',
+            'data' => [
+                'order_id' => $order->id,
+                'to' => $order->email,
+                'awb' => $shipment?->awb_code,
+                'mailer' => (string) config('mail.default'),
+                'subject_hint' => 'Your order is ready to track',
+            ],
+            'timestamp' => (int) (microtime(true) * 1000),
+        ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+        // #endregion
     }
 
     public function failed(?Throwable $exception): void

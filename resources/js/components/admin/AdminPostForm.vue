@@ -38,7 +38,7 @@ const uploadError = ref('');
 const pathDraft = ref('');
 const dragOver = ref(false);
 
-const coverImage = computed(() => safePublicImageUrl(props.form.cover_image) || String(props.form.cover_image || '').trim());
+const coverImage = computed(() => safePublicImageUrl(props.form.cover_image));
 const busy = computed(() => props.saving || uploading.value);
 
 function fieldError(name) {
@@ -47,7 +47,18 @@ function fieldError(name) {
 }
 
 function setCover(url) {
-  props.form.cover_image = safePublicImageUrl(url) || String(url || '').trim() || '';
+  const trimmed = String(url || '').trim();
+  const normalized = safePublicImageUrl(trimmed);
+  props.form.cover_image = normalized;
+  if (!trimmed) {
+    uploadError.value = '';
+    return;
+  }
+  if (!normalized) {
+    uploadError.value = 'Use a public image path (/storage, /images) or upload a file.';
+    return;
+  }
+  uploadError.value = '';
 }
 
 async function uploadFiles(fileList) {

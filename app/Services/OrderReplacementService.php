@@ -266,7 +266,7 @@ class OrderReplacementService
         if ($replacement->fulfillment_method === FulfillmentMethod::Shiprocket) {
             FulfillShiprocketOrder::dispatch($replacement->id);
         }
-        SendOrderConfirmationEmail::dispatch($replacement->id);
+        SendOrderConfirmationEmail::dispatch($replacement->id)->afterResponse();
 
         $this->audit->record(
             $original,
