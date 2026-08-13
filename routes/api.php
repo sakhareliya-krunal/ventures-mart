@@ -126,6 +126,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/orders/{order}/shiprocket/retry', [AdminOrderController::class, 'retryShiprocket']);
     Route::post('/orders/{order}/shiprocket/sync', [AdminOrderController::class, 'syncShiprocket']);
     Route::post('/orders/{order}/fulfillment/manual', [AdminOrderController::class, 'switchToManual']);
+    Route::post('/orders/{order}/fulfillment/shiprocket', [AdminOrderController::class, 'restoreToShiprocket']);
+    Route::post('/orders/{order}/emails/confirmation', [AdminOrderController::class, 'resendConfirmationEmail']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
 

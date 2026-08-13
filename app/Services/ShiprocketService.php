@@ -39,8 +39,22 @@ class ShiprocketService
             $this->pickupLocations(),
             fn (array $location) => (int) ($location['status'] ?? 0) === 2
         ));
-        $configured = trim((string) config('services.shiprocket.pickup_location'));
 
+        if ($locations === []) {
+            throw new ShiprocketException('No active Shiprocket pickup locations were found.');
+        }
+
+        $invoicePin = preg_replace('/\D+/', '', (string) config('invoice.postal_code')) ?: '';
+        if ($invoicePin !== '') {
+            $byPin = collect($locations)->first(
+                fn (array $location) => (preg_replace('/\D+/', '', (string) ($location['pin_code'] ?? '')) ?: '') === $invoicePin
+            );
+            if ($byPin) {
+                return $byPin;
+            }
+        }
+
+        $configured = trim((string) config('services.shiprocket.pickup_location'));
         if ($configured !== '') {
             $match = collect($locations)->first(
                 fn (array $location) => strcasecmp(
@@ -54,6 +68,13 @@ class ShiprocketService
             }
 
             return $match;
+        }
+
+        if ($invoicePin !== '') {
+            throw new ShiprocketException(
+                'No active Shiprocket pickup location matches invoice postal code '.$invoicePin
+                .' ('.(string) config('invoice.city').'). Add or align the warehouse pickup in the Shiprocket dashboard.'
+            );
         }
 
         $primary = array_values(array_filter(
@@ -200,6 +221,9 @@ class ShiprocketService
             'pickup has already',
             'pickup is already',
             'manifest already',
+            'already in pickup queue',
+            'in pickup queue',
+            'pickup queue',
         ];
 
         foreach ($needles as $needle) {

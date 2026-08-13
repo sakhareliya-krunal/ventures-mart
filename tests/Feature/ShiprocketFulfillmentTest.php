@@ -515,6 +515,214 @@ class ShiprocketFulfillmentTest extends TestCase
         ]);
     }
 
+    public function test_empty_awb_sets_awaiting_awb_and_redelays_without_duplicate_create(): void
+    {
+        Queue::fake();
+        $order = $this->makeOrder();
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response($this->pickupResponse()),
+            '*/courier/serviceability/*' => Http::response([
+                'data' => ['recommended_courier_company_id' => 42],
+            ]),
+            '*/orders/create/adhoc' => Http::response(['order_id' => 5001, 'shipment_id' => 6001]),
+            '*/courier/assign/awb' => Http::response([
+                'awb_assign_status' => 0,
+                'response' => ['data' => ['awb_code' => null]],
+            ]),
+            '*/orders*' => Http::response(['data' => []]),
+        ]);
+
+        $shipment = app(ShiprocketFulfillmentService::class)->fulfill($order);
+
+        $this->assertSame('awaiting_awb', $shipment->sync_status);
+        $this->assertSame('order_created', $shipment->stage);
+        $this->assertSame(5001, $shipment->shiprocket_order_id);
+        $this->assertSame(6001, $shipment->shipment_id);
+        $this->assertNull($shipment->awb_code);
+        $this->assertStringContainsStringIgnoringCase('pending', (string) $shipment->last_error);
+        Queue::assertPushed(FulfillShiprocketOrder::class);
+
+        $this->assertCount(1, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/orders/create/adhoc')
+        ));
+        $this->assertGreaterThanOrEqual(2, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/courier/assign/awb')
+        )->count());
+    }
+
+    public function test_awaiting_awb_retry_assigns_awb_and_schedules_pickup(): void
+    {
+        Mail::fake();
+        $order = $this->makeOrder();
+        $order->shiprocketShipment()->create([
+            'sync_status' => 'awaiting_awb',
+            'stage' => 'order_created',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'attempts' => 1,
+            'last_error' => 'AWB assignment pending from Shiprocket.',
+            'order_created_at' => now()->subMinutes(5),
+        ]);
+
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response($this->pickupResponse()),
+            '*/courier/serviceability/*' => Http::response([
+                'data' => ['recommended_courier_company_id' => 42],
+            ]),
+            '*/courier/assign/awb' => Http::sequence()
+                ->push([
+                    'awb_assign_status' => 0,
+                    'response' => ['data' => ['awb_code' => null]],
+                ])
+                ->push([
+                    'awb_assign_status' => 1,
+                    'response' => ['data' => [
+                        'awb_code' => 'AWB999',
+                        'courier_company_id' => 42,
+                        'courier_name' => 'Delhivery Surface',
+                    ]],
+                ]),
+            '*/courier/generate/pickup' => Http::response(['pickup_status' => 'Scheduled']),
+            '*/orders*' => Http::response(['data' => []]),
+        ]);
+
+        $shipment = app(ShiprocketFulfillmentService::class)->fulfill($order->fresh(['items', 'shiprocketShipment']));
+
+        $this->assertSame('completed', $shipment->sync_status);
+        $this->assertSame('AWB999', $shipment->awb_code);
+        $this->assertSame('pickup_scheduled', $shipment->stage);
+        $this->assertCount(0, Http::recorded(
+            fn (Request $request) => str_ends_with($request->url(), '/orders/create/adhoc')
+        ));
+    }
+
+    public function test_pickup_already_in_queue_is_treated_as_success(): void
+    {
+        $order = $this->makeOrder();
+        $order->shiprocketShipment()->create([
+            'sync_status' => 'failed',
+            'stage' => 'awb_assigned',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'awb_code' => 'AWB123',
+            'courier_name' => 'Delhivery Surface',
+            'awb_assigned_at' => now()->subHour(),
+        ]);
+
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response($this->pickupResponse()),
+            '*/courier/generate/pickup' => Http::response([
+                'message' => 'Already in Pickup Queue',
+            ], 400),
+        ]);
+
+        $shipment = app(ShiprocketFulfillmentService::class)->fulfill($order->fresh(['items', 'shiprocketShipment']));
+
+        $this->assertSame('completed', $shipment->sync_status);
+        $this->assertSame('pickup_scheduled', $shipment->stage);
+        $this->assertNotNull($shipment->pickup_scheduled_at);
+        $this->assertStringContainsStringIgnoringCase('pickup queue', (string) $shipment->pickup_status);
+    }
+
+    public function test_pickup_resolve_prefers_invoice_postal_code_match(): void
+    {
+        config(['invoice.postal_code' => '360024']);
+
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/settings/company/pickup' => Http::response([
+                'data' => [
+                    'shipping_address' => [
+                        [
+                            'pickup_location' => 'Other Warehouse',
+                            'pin_code' => '110001',
+                            'city' => 'Delhi',
+                            'state' => 'Delhi',
+                            'status' => 2,
+                            'is_primary_location' => 1,
+                        ],
+                        [
+                            'pickup_location' => 'Shapar Rajkot',
+                            'pin_code' => '360024',
+                            'city' => 'Rajkot',
+                            'state' => 'Gujarat',
+                            'status' => 2,
+                            'is_primary_location' => 0,
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $location = app(ShiprocketService::class)->resolvePickupLocation();
+        $this->assertSame('Shapar Rajkot', $location['pickup_location']);
+        $this->assertSame('360024', (string) $location['pin_code']);
+    }
+
+    public function test_manual_switch_preserves_shiprocket_ids_without_cancel(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Sanctum::actingAs($admin);
+
+        $order = $this->makeOrder();
+        $order->shiprocketShipment()->create([
+            'sync_status' => 'awaiting_awb',
+            'stage' => 'order_created',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'order_created_at' => now(),
+        ]);
+
+        Http::fake([
+            '*/auth/login' => Http::response(['token' => 'test-token']),
+            '*/orders/cancel' => Http::response(['message' => 'cancelled']),
+        ]);
+
+        $response = $this->postJson("/api/admin/orders/{$order->id}/fulfillment/manual", [
+            'reason' => 'Ops handling locally',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.fulfillment_method', 'manual')
+            ->assertJsonPath('data.can_restore_to_shiprocket', true)
+            ->assertJsonPath('data.shiprocket.shiprocket_order_id', 5001)
+            ->assertJsonPath('data.shiprocket.shipment_id', 6001)
+            ->assertJsonPath('data.shiprocket.sync_status', 'switched_to_manual');
+
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/orders/cancel'));
+    }
+
+    public function test_restore_to_shiprocket_queues_fulfillment(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        Sanctum::actingAs($admin);
+
+        $order = $this->makeOrder();
+        $order->forceFill(['fulfillment_method' => 'manual'])->save();
+        $order->shiprocketShipment()->create([
+            'sync_status' => 'switched_to_manual',
+            'stage' => 'switched_to_manual',
+            'shiprocket_order_id' => 5001,
+            'shipment_id' => 6001,
+            'order_created_at' => now(),
+        ]);
+
+        $response = $this->postJson("/api/admin/orders/{$order->id}/fulfillment/shiprocket", [
+            'reason' => 'Resume Shiprocket',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.fulfillment_method', 'shiprocket')
+            ->assertJsonPath('data.shiprocket.sync_status', 'pending')
+            ->assertJsonPath('data.can_restore_to_shiprocket', false);
+
+        Queue::assertPushed(FulfillShiprocketOrder::class, fn (FulfillShiprocketOrder $job) => $job->orderId === $order->id);
+    }
+
     /**
      * @return array<string, mixed>
      */

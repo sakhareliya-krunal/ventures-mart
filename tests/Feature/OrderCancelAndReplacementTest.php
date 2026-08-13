@@ -7,7 +7,7 @@ use App\Enums\InventoryReservationState;
 use App\Jobs\CancelShiprocketOrder;
 use App\Jobs\FulfillShiprocketOrder;
 use App\Jobs\SendOrderCancellationEmail;
-use App\Jobs\SendOrderConfirmationEmail;
+use App\Mail\OrderConfirmation;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderReplacementRequest;
@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\Inventory\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -242,6 +243,7 @@ class OrderCancelAndReplacementTest extends TestCase
     public function test_admin_can_approve_replacement_creating_linked_order(): void
     {
         Queue::fake();
+        Mail::fake();
         config(['services.shiprocket.enabled' => false]);
 
         $admin = User::factory()->admin()->create();
@@ -272,7 +274,8 @@ class OrderCancelAndReplacementTest extends TestCase
         $this->assertSame(0.0, (float) $replacement->total);
         $this->assertSame('paid', $replacement->payment_status);
         $this->assertSame(3, $product->fresh()->stock);
-        Queue::assertPushed(SendOrderConfirmationEmail::class, fn ($job) => $job->orderId === $replacement->id);
+        $this->assertNotNull($replacement->fresh()->order_confirmation_emailed_at);
+        Mail::assertSent(OrderConfirmation::class, 1);
         Queue::assertNotPushed(FulfillShiprocketOrder::class);
     }
 

@@ -6,7 +6,6 @@ use App\Enums\FulfillmentMethod;
 use App\Enums\OrderInventoryStatus;
 use App\Exceptions\InsufficientInventoryException;
 use App\Jobs\FulfillShiprocketOrder;
-use App\Jobs\SendOrderConfirmationEmail;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderReplacementRequest;
@@ -30,6 +29,7 @@ class OrderReplacementService
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly FulfillmentAuditService $audit,
+        private readonly OrderConfirmationMailer $orderConfirmationMailer,
     ) {}
 
     public function canRequest(Order $order): bool
@@ -266,7 +266,7 @@ class OrderReplacementService
         if ($replacement->fulfillment_method === FulfillmentMethod::Shiprocket) {
             FulfillShiprocketOrder::dispatch($replacement->id);
         }
-        SendOrderConfirmationEmail::dispatch($replacement->id)->afterResponse();
+        $this->orderConfirmationMailer->sendAfterResponse($replacement);
 
         $this->audit->record(
             $original,

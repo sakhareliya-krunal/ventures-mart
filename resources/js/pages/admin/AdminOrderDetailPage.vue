@@ -28,6 +28,9 @@ const retryingShiprocket = ref(false);
 const syncingShiprocket = ref(false);
 const switchDialogOpen = ref(false);
 const switchingToManual = ref(false);
+const restoreDialogOpen = ref(false);
+const restoringToShiprocket = ref(false);
+const resendingConfirmation = ref(false);
 const error = ref('');
 const order = ref(null);
 const status = ref('Processing');
@@ -299,13 +302,35 @@ async function switchToManual() {
     order.value = unwrapData(data);
     fillCourierForm(order.value);
     switchDialogOpen.value = false;
-    courierSuccess.value = 'Order switched to manual fulfillment.';
+    courierSuccess.value = 'Order switched to manual fulfillment. Shiprocket IDs were kept for restore.';
   } catch (err) {
     error.value = err.response?.data?.message
       || err.response?.data?.errors?.fulfillment_method?.[0]
       || 'Unable to switch fulfillment method.';
   } finally {
     switchingToManual.value = false;
+  }
+}
+
+async function restoreToShiprocket() {
+  if (!order.value || restoringToShiprocket.value) return;
+  restoringToShiprocket.value = true;
+  error.value = '';
+  courierSuccess.value = '';
+  try {
+    const { data } = await api.post(`/admin/orders/${order.value.id}/fulfillment/shiprocket`, {
+      reason: 'Admin restored fulfillment to Shiprocket',
+    });
+    order.value = unwrapData(data);
+    fillCourierForm(order.value);
+    restoreDialogOpen.value = false;
+    courierSuccess.value = 'Order restored to Shiprocket. Fulfillment was queued.';
+  } catch (err) {
+    error.value = err.response?.data?.message
+      || err.response?.data?.errors?.fulfillment_method?.[0]
+      || 'Unable to restore Shiprocket fulfillment.';
+  } finally {
+    restoringToShiprocket.value = false;
   }
 }
 
@@ -338,6 +363,29 @@ async function markRefunded() {
     error.value = err.response?.data?.message || 'Unable to mark refunded.';
   } finally {
     markingRefunded.value = false;
+  }
+}
+
+async function resendConfirmationEmail() {
+  if (!order.value?.can_resend_confirmation_email || resendingConfirmation.value) return;
+  resendingConfirmation.value = true;
+  error.value = '';
+  inventorySuccess.value = '';
+  try {
+    const force = Boolean(order.value.order_confirmation_emailed_at);
+    const { data } = await api.post(`/admin/orders/${order.value.id}/emails/confirmation`, {
+      force,
+    });
+    order.value = unwrapData(data);
+    inventorySuccess.value = force
+      ? 'Confirmation email resent.'
+      : 'Confirmation email sent.';
+  } catch (err) {
+    error.value = err.response?.data?.message
+      || err.response?.data?.errors?.email?.[0]
+      || 'Unable to send confirmation email.';
+  } finally {
+    resendingConfirmation.value = false;
   }
 }
 
@@ -451,7 +499,25 @@ async function markRefunded() {
           >
             {{ markingRefunded ? 'Saving…' : 'Mark refunded' }}
           </AppButton>
+          <AppButton
+            v-if="order.can_resend_confirmation_email"
+            type="button"
+            variant="ghost"
+            :disabled="resendingConfirmation"
+            @click="resendConfirmationEmail"
+          >
+            {{
+              resendingConfirmation
+                ? 'Sending…'
+                : order.order_confirmation_emailed_at
+                  ? 'Resend confirmation email'
+                  : 'Send confirmation email'
+            }}
+          </AppButton>
         </div>
+        <p v-if="order.order_confirmation_emailed_at" class="admin-muted">
+          Confirmation emailed {{ formatDateTime(order.order_confirmation_emailed_at) }}
+        </p>
       </section>
 
       <section class="admin-order-detail__section">
@@ -596,7 +662,7 @@ async function markRefunded() {
             <AppButton
               v-if="order.can_switch_to_manual"
               type="button"
-              variant="danger"
+              variant="ghost"
               :disabled="switchingToManual"
               @click="switchDialogOpen = true"
             >
@@ -613,7 +679,7 @@ async function markRefunded() {
                 :class="{
                   'admin-badge--danger': order.shiprocket.sync_status === 'failed' || order.shiprocket.sync_status === 'cancel_failed',
                   'admin-badge--success': order.shiprocket.sync_status === 'completed',
-                  'admin-badge--info': order.shiprocket.sync_status === 'processing' || order.shiprocket.sync_status === 'pending',
+                  'admin-badge--info': ['processing', 'pending', 'awaiting_awb'].includes(order.shiprocket.sync_status),
                 }"
               >
                 {{ order.shiprocket.sync_status || '—' }}
@@ -700,6 +766,13 @@ async function markRefunded() {
             <dt>Last error</dt>
             <dd class="form-error">{{ order.shiprocket.last_error }}</dd>
           </div>
+          <div
+            v-else-if="order.shiprocket.last_error && order.shiprocket.sync_status === 'awaiting_awb'"
+            class="admin-order-address-card__row"
+          >
+            <dt>Status note</dt>
+            <dd class="admin-muted">{{ order.shiprocket.last_error }}</dd>
+          </div>
         </dl>
         <p v-else class="admin-muted">
           No Shiprocket shipment has been created yet. Automatic fulfillment runs after order
@@ -716,7 +789,22 @@ async function markRefunded() {
             <h3>Manual courier / tracking</h3>
             <span class="admin-badge">{{ fulfillmentLabel }}</span>
           </div>
+          <div class="admin-order-detail__actions">
+            <AppButton
+              v-if="order.can_restore_to_shiprocket"
+              type="button"
+              variant="secondary"
+              :disabled="restoringToShiprocket"
+              @click="restoreDialogOpen = true"
+            >
+              Restore to Shiprocket
+            </AppButton>
+          </div>
         </div>
+        <p v-if="order.can_restore_to_shiprocket && order.shiprocket" class="admin-muted">
+          Prior Shiprocket order {{ order.shiprocket.shiprocket_order_id }} · shipment
+          {{ order.shiprocket.shipment_id }} can be resumed without creating a duplicate.
+        </p>
         <form class="admin-form" @submit.prevent="saveCourier">
           <FormField
             v-model="courierForm.courier_partner"
@@ -844,13 +932,23 @@ async function markRefunded() {
     <ConfirmDialog
       v-model:open="switchDialogOpen"
       title="Switch to manual fulfillment?"
-      message="Shiprocket syncing will stop. Existing shipment history will remain for audit, and you will manage courier details manually."
+      message="Shiprocket syncing will stop locally. The remote Shiprocket order is kept so you can restore later. Existing shipment history remains for audit."
       confirm-label="Switch to manual"
       busy-label="Switching…"
       danger
       :busy="switchingToManual"
       :close-on-confirm="false"
       @confirm="switchToManual"
+    />
+    <ConfirmDialog
+      v-model:open="restoreDialogOpen"
+      title="Restore Shiprocket fulfillment?"
+      message="This order will return to Shiprocket ownership and queue fulfillment using the existing Shiprocket order and shipment IDs."
+      confirm-label="Restore to Shiprocket"
+      busy-label="Restoring…"
+      :busy="restoringToShiprocket"
+      :close-on-confirm="false"
+      @confirm="restoreToShiprocket"
     />
   </div>
 </template>

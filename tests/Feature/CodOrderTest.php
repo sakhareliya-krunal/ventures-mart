@@ -83,6 +83,44 @@ class CodOrderTest extends TestCase
         });
     }
 
+    public function test_admin_can_send_and_force_resend_confirmation_email(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+        $product = $this->makeProduct(['stock' => 5, 'price' => 200]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/cart', [
+            'product_id' => $product->id,
+            'quantity' => 1,
+        ])->assertOk();
+
+        $created = $this->postJson('/api/orders', $this->addressPayload([
+            'email' => $user->email,
+            'full_name' => $user->name,
+            'payment_method' => 'cod',
+        ]))->assertCreated();
+
+        $orderId = (int) $created->json('data.id');
+        $order = Order::query()->findOrFail($orderId);
+        $this->assertNotNull($order->order_confirmation_emailed_at);
+        Mail::assertSent(OrderConfirmation::class, 1);
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson("/api/admin/orders/{$orderId}/emails/confirmation")
+            ->assertStatus(422);
+
+        $this->postJson("/api/admin/orders/{$orderId}/emails/confirmation", [
+            'force' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.can_resend_confirmation_email', true)
+            ->assertJsonPath('data.order_confirmation_emailed_at', fn ($value) => filled($value));
+
+        Mail::assertSent(OrderConfirmation::class, 2);
+    }
+
     public function test_cod_order_failure_is_not_reported_as_payment_initialization_failure(): void
     {
         $user = User::factory()->create();

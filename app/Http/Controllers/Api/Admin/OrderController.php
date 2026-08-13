@@ -13,6 +13,8 @@ use App\Models\Order;
 use App\Services\Inventory\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\OrderCancellationService;
+use App\Services\OrderConfirmationMailer;
+use App\Services\RestoreOrderToShiprocketFulfillment;
 use App\Services\SwitchOrderToManualFulfillment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -23,6 +25,8 @@ class OrderController extends Controller
         private readonly InvoiceService $invoices,
         private readonly InventoryService $inventory,
         private readonly SwitchOrderToManualFulfillment $switchToManual,
+        private readonly RestoreOrderToShiprocketFulfillment $restoreToShiprocket,
+        private readonly OrderConfirmationMailer $orderConfirmationMailer,
         private readonly OrderCancellationService $cancellations,
     ) {}
 
@@ -248,6 +252,39 @@ class OrderController extends Controller
             $order,
             (int) $request->user()->id,
             $validated['reason'] ?? null,
+        );
+
+        return new AdminOrderResource($order);
+    }
+
+    public function restoreToShiprocket(Request $request, Order $order)
+    {
+        if (! config('services.shiprocket.enabled')) {
+            return response()->json(['message' => 'Shiprocket integration is disabled.'], 422);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $order = $this->restoreToShiprocket->handle(
+            $order,
+            (int) $request->user()->id,
+            $validated['reason'] ?? null,
+        );
+
+        return new AdminOrderResource($order);
+    }
+
+    public function resendConfirmationEmail(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'force' => ['sometimes', 'boolean'],
+        ]);
+
+        $order = $this->orderConfirmationMailer->sendNow(
+            $order,
+            (bool) ($validated['force'] ?? false),
         );
 
         return new AdminOrderResource($order);

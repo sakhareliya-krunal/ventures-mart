@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\FulfillmentMethod;
 use App\Exceptions\ShiprocketException;
+use App\Jobs\FulfillShiprocketOrder;
 use App\Models\Order;
 use App\Models\ShiprocketShipment;
 use App\Services\Inventory\InventoryService;
@@ -11,6 +12,10 @@ use Throwable;
 
 class ShiprocketFulfillmentService
 {
+    private const AWB_PENDING_REDELAY_MINUTES = 3;
+
+    private const AWB_PENDING_MAX_ATTEMPTS = 10;
+
     public function __construct(
         private readonly ShiprocketService $shiprocket,
         private readonly ShiprocketParcel $parcels,
@@ -61,23 +66,6 @@ class ShiprocketFulfillmentService
 
                 $recovered = $this->recoverRemoteOrder($order, $shipment, $fingerprint);
                 if (! $recovered) {
-                    // #region agent log
-                    file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                        'sessionId' => '8efceb',
-                        'runId' => 'pre-fix',
-                        'hypothesisId' => 'D',
-                        'location' => 'ShiprocketFulfillmentService.php:fulfill',
-                        'message' => 'shiprocket_create_order_with_billing_email',
-                        'data' => [
-                            'order_id' => $order->id,
-                            'channel_order_id' => $payload['order_id'] ?? null,
-                            'billing_email_set' => filled($payload['billing_email'] ?? null),
-                            'note' => 'Shiprocket SaaS may email this address independently of Laravel mailables',
-                        ],
-                        'timestamp' => (int) (microtime(true) * 1000),
-                    ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-                    // #endregion
-
                     $created = $this->shiprocket->createOrder($payload);
                     $shiprocketOrderId = (int) ($created['order_id'] ?? 0);
                     $shipmentId = (int) ($created['shipment_id'] ?? 0);
@@ -115,35 +103,10 @@ class ShiprocketFulfillmentService
                     return $shipment;
                 }
 
-                $courierId = $this->recommendedCourierId($order, $pickup, $parcel);
-                $awbResponse = $this->shiprocket->assignAwb((int) $shipment->shipment_id, $courierId);
-                $awb = (string) data_get($awbResponse, 'response.data.awb_code', '');
-
-                if ($awb === '') {
-                    throw new ShiprocketException(
-                        (string) ($awbResponse['message'] ?? 'Shiprocket did not assign an AWB.')
-                    );
+                $assigned = $this->assignAwbWithFallback($order, $shipment, $pickup, $parcel);
+                if (! $assigned) {
+                    return $this->markAwaitingAwb($order, $shipment);
                 }
-
-                $shipment->forceFill([
-                    'courier_company_id' => data_get($awbResponse, 'response.data.courier_company_id', $courierId),
-                    'courier_name' => data_get($awbResponse, 'response.data.courier_name'),
-                    'awb_code' => $awb,
-                    'stage' => 'awb_assigned',
-                    'awb_assigned_at' => now(),
-                ])->save();
-                $this->syncOrderCourierFields($order, $shipment);
-                $this->shipmentEmails->dispatch($order->fresh(), $shipment);
-                $this->audit->record(
-                    $order,
-                    'awb_assigned',
-                    'job',
-                    "order:{$order->id}:awb-assigned:{$awb}",
-                    [
-                        'shipment' => $shipment,
-                        'external_event_id' => $awb,
-                    ],
-                );
             }
 
             if (! $shipment->pickup_scheduled_at) {
@@ -312,6 +275,124 @@ class ShiprocketFulfillmentService
             'height' => $parcel['height'],
             'weight' => $parcel['weight'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $pickup
+     * @param  array{weight: float, length: float, breadth: float, height: float}  $parcel
+     */
+    private function assignAwbWithFallback(
+        Order $order,
+        ShiprocketShipment $shipment,
+        array $pickup,
+        array $parcel,
+    ): bool {
+        $courierId = $this->recommendedCourierId($order, $pickup, $parcel);
+        $awbResponse = $this->shiprocket->assignAwb((int) $shipment->shipment_id, $courierId);
+        $awb = $this->extractAwbCode($awbResponse);
+        $assignedCourierId = data_get($awbResponse, 'response.data.courier_company_id', $courierId);
+        $courierName = data_get($awbResponse, 'response.data.courier_name');
+
+        if ($awb === '' || (int) data_get($awbResponse, 'awb_assign_status', 1) === 0) {
+            $autoResponse = $this->shiprocket->assignAwb((int) $shipment->shipment_id, null);
+            $autoAwb = $this->extractAwbCode($autoResponse);
+            if ($autoAwb !== '' && (int) data_get($autoResponse, 'awb_assign_status', 1) !== 0) {
+                $awb = $autoAwb;
+                $awbResponse = $autoResponse;
+                $assignedCourierId = data_get($autoResponse, 'response.data.courier_company_id');
+                $courierName = data_get($autoResponse, 'response.data.courier_name');
+            }
+        }
+
+        if ($awb === '') {
+            try {
+                $remote = $this->shiprocket->findOrderByChannelOrderId((string) $order->number);
+            } catch (Throwable) {
+                $remote = null;
+            }
+
+            if ($remote && filled($remote['awb_code'])) {
+                $awb = (string) $remote['awb_code'];
+                $assignedCourierId = $remote['courier_company_id'] ?: $assignedCourierId;
+                $courierName = $remote['courier_name'] ?: $courierName;
+            }
+        }
+
+        if ($awb === '') {
+            return false;
+        }
+
+        $shipment->forceFill([
+            'courier_company_id' => $assignedCourierId,
+            'courier_name' => $courierName,
+            'awb_code' => $awb,
+            'stage' => 'awb_assigned',
+            'awb_assigned_at' => now(),
+            'last_error' => null,
+        ])->save();
+        $this->syncOrderCourierFields($order, $shipment);
+        $this->shipmentEmails->dispatch($order->fresh(), $shipment);
+        $this->audit->record(
+            $order,
+            'awb_assigned',
+            'job',
+            "order:{$order->id}:awb-assigned:{$awb}",
+            [
+                'shipment' => $shipment,
+                'external_event_id' => $awb,
+            ],
+        );
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private function extractAwbCode(array $response): string
+    {
+        $candidates = [
+            data_get($response, 'response.data.awb_code'),
+            data_get($response, 'response.data.awb'),
+            data_get($response, 'awb_code'),
+            data_get($response, 'awb'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $awb = trim((string) $candidate);
+            if ($awb !== '') {
+                return $awb;
+            }
+        }
+
+        return '';
+    }
+
+    private function markAwaitingAwb(Order $order, ShiprocketShipment $shipment): ShiprocketShipment
+    {
+        $shipment->forceFill([
+            'sync_status' => 'awaiting_awb',
+            'stage' => 'order_created',
+            'last_error' => 'AWB assignment pending from Shiprocket.',
+        ])->save();
+
+        $this->audit->record(
+            $order,
+            'awb_assignment_pending',
+            'job',
+            "order:{$order->id}:awb-pending:{$shipment->attempts}",
+            [
+                'shipment' => $shipment,
+                'reason' => 'Shiprocket order exists but AWB is not assigned yet; will retry the same shipment.',
+            ],
+        );
+
+        if ((int) $shipment->attempts < self::AWB_PENDING_MAX_ATTEMPTS) {
+            FulfillShiprocketOrder::dispatch($order->id)
+                ->delay(now()->addMinutes(self::AWB_PENDING_REDELAY_MINUTES));
+        }
+
+        return $shipment->fresh();
     }
 
     private function recommendedCourierId(Order $order, array $pickup, array $parcel): int

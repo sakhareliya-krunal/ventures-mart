@@ -6,6 +6,7 @@ use App\Enums\FulfillmentMethod;
 use App\Models\Order;
 use App\Services\InvoiceService;
 use App\Services\OrderCancellationService;
+use App\Services\OrderConfirmationMailer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,9 @@ class AdminOrderResource extends JsonResource
             'order_type' => $this->order_type ?: 'standard',
             'parent_order_id' => $this->parent_order_id,
             'can_switch_to_manual' => $this->canSwitchToManual(),
+            'can_restore_to_shiprocket' => $this->canRestoreToShiprocket(),
+            'can_resend_confirmation_email' => app(OrderConfirmationMailer::class)->canResend($this->resource),
+            'order_confirmation_emailed_at' => $this->order_confirmation_emailed_at?->toIso8601String(),
             'can_cancel' => app(OrderCancellationService::class)->canAdminCancel($this->resource),
             'can_delete' => $this->resource->canBeDeletedByAdmin(),
             'can_mark_refunded' => $this->payment_status === 'refund_pending',
@@ -163,5 +167,21 @@ class AdminOrderResource extends JsonResource
 
         return ! $shipment?->awb_code
             && ! $shipment?->pickup_scheduled_at;
+    }
+
+    private function canRestoreToShiprocket(): bool
+    {
+        if (
+            $this->fulfillment_method !== FulfillmentMethod::Manual
+            || in_array($this->status, ['Cancelled', 'Shipped', 'Delivered'], true)
+            || ! config('services.shiprocket.enabled')
+        ) {
+            return false;
+        }
+
+        $shipment = $this->shiprocketShipment;
+
+        return filled($shipment?->shiprocket_order_id)
+            && filled($shipment?->shipment_id);
     }
 }

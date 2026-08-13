@@ -18,8 +18,8 @@ serviceable courier, assigns an AWB, and schedules pickup.
    SHIPROCKET_WEBHOOK_TOKEN=
    ```
 
-   Leave `SHIPROCKET_PICKUP_LOCATION` blank to use the account's single active
-   primary pickup location.
+   Leave `SHIPROCKET_PICKUP_LOCATION` blank to prefer an active pickup whose
+   pincode matches `INVOICE_POSTAL_CODE`, then the account's primary pickup.
 3. Run the migrations:
 
    ```bash
@@ -68,10 +68,36 @@ server-side default, and Shiprocket automatically falls back to manual when
 the integration is disabled.
 
 An admin can switch a Shiprocket order to manual fulfillment only before AWB
-assignment, pickup scheduling, or courier handoff. If a remote order already
-exists, Shiprocket cancellation must succeed before the local method changes.
-All attempts and fulfillment transitions are retained in the order's audit
-history.
+assignment, pickup scheduling, or courier handoff. Switching to manual does
+**not** cancel the remote Shiprocket order; local ownership stops and existing
+`shiprocket_order_id` / `shipment_id` are kept so an admin can **Restore to
+Shiprocket** later. All attempts and fulfillment transitions are retained in
+the order's audit history.
+
+### AWB pending vs failed
+
+If Shiprocket creates the order but does not return an AWB yet, local sync
+status becomes `awaiting_awb` (not `failed`). Fulfillment retries the same
+shipment (recommended courier, then auto courier, then channel-order recover)
+and re-queues with a short delay until AWB is available or the attempt cap is
+reached. Use **Retry fulfillment** from admin while waiting; **Switch to
+manual** remains an explicit admin action only.
+
+### Pickup location and seller contact
+
+Warehouse pickup alignment uses existing invoice seller settings (`INVOICE_*`
+in `.env` / `config/invoice.php`):
+
+- Prefer an active Shiprocket pickup whose `pin_code` matches
+  `INVOICE_POSTAL_CODE` (default `360024`).
+- Then fall back to `SHIPROCKET_PICKUP_LOCATION` nickname match, then the
+  account primary pickup.
+- Keep the Shiprocket dashboard pickup contact phone/email aligned with
+  `INVOICE_PHONE` and `INVOICE_EMAIL`. Do not add duplicate
+  `SHIPROCKET_CONTACT_*` keys unless a field is missing from invoice config.
+
+Leave `SHIPROCKET_PICKUP_LOCATION` blank when the invoice pincode uniquely
+identifies the correct active pickup.
 
 ## Package measurements
 
@@ -106,16 +132,21 @@ and height is summed by quantity.
   scheduled-sync updates recover the notification if the AWB arrived outside
   the initial fulfillment request.
 - Keep `php artisan queue:work` running continuously in production; otherwise
-  Shiprocket cancel jobs, cancellation emails, confirmation mail, and tracking
-  emails wait until a worker processes the queue.
+  Shiprocket cancel jobs, cancellation emails, and tracking emails wait until a
+  worker processes the queue. Order confirmation mail does **not** need the
+  worker (it sends after the HTTP response).
 
 ### Customer emails (website vs Shiprocket)
 
-- **Website order confirmation** (`OrderConfirmation`) is queued after checkout
-  (COD immediately; Razorpay after payment) and runs **after the HTTP response**
-  so it does not depend on `queue:work` for delivery. It still requires a real
-  mail transport (`MAIL_MAILER=smtp` or similar). `MAIL_MAILER=log` only writes
-  to `storage/logs` and never reaches the customer inbox.
+- **Website order confirmation** (`OrderConfirmation`) sends to the order’s
+  customer email: **COD at checkout create**, **Razorpay after payment is
+  verified or marked paid via webhook**. It runs **synchronously after the HTTP
+  response** (no `queue:work` required). It still requires a real mail transport
+  (`MAIL_MAILER=smtp`). `MAIL_MAILER=log` only writes to `storage/logs` and never
+  reaches the customer inbox. Set `MAIL_FROM_ADDRESS` to a mailbox you can
+  authenticate (for example `support@venturesmart.in`).
+- Admins can **Send / Resend confirmation email** from the order detail page
+  (`POST /api/admin/orders/{order}/emails/confirmation`, optional `force=true`).
 - **Website tracking mail** (`ShipmentTracking`) still uses the queue after AWB
   assignment — keep a queue worker running for that path.
 - **Shiprocket’s own buyer emails** are separate. Creating a remote order always
@@ -131,9 +162,10 @@ duplicate order.
 ### Pickup and tracking reconciliation
 
 - Pickup scheduling is idempotent. If Shiprocket responds that pickup was
-  already generated/scheduled, local `pickup_status`, `pickup_scheduled_at`,
-  `stage`, and `sync_status` are marked completed instead of leaving the
-  shipment stuck as `failed` with `awb_assigned`.
+  already generated/scheduled, or that the shipment is already in the pickup
+  queue, local `pickup_status`, `pickup_scheduled_at`, `stage`, and
+  `sync_status` are marked completed instead of leaving the shipment stuck as
+  `failed` with `awb_assigned`.
 - Webhook and Sync Tracking updates reconcile the same pickup/sync fields when
   provider status text indicates pickup (for example `Pickup Generated`). This
   heals older stuck rows without manual database edits.

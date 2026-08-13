@@ -7,13 +7,11 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class SwitchOrderToManualFulfillment
 {
     public function __construct(
         private readonly OrderFulfillmentLock $lock,
-        private readonly ShiprocketService $shiprocket,
         private readonly FulfillmentAuditService $audit,
     ) {}
 
@@ -56,30 +54,6 @@ class SwitchOrderToManualFulfillment
                 ],
             );
 
-            try {
-                if ($shipment?->shiprocket_order_id) {
-                    $this->shiprocket->cancelOrder((int) $shipment->shiprocket_order_id);
-                }
-            } catch (Throwable $exception) {
-                $this->audit->record(
-                    $order,
-                    'manual_switch_failed',
-                    'admin',
-                    "order:{$order->id}:manual-switch-failed:{$attemptId}",
-                    [
-                        'shipment' => $shipment,
-                        'actor_user_id' => $actorUserId,
-                        'previous_method' => FulfillmentMethod::Shiprocket,
-                        'new_method' => FulfillmentMethod::Manual,
-                        'reason' => $exception->getMessage(),
-                    ],
-                );
-
-                throw ValidationException::withMessages([
-                    'fulfillment_method' => 'Shiprocket could not confirm cancellation. The order remains Shiprocket-managed.',
-                ]);
-            }
-
             return DB::transaction(function () use (
                 $order,
                 $shipment,
@@ -96,10 +70,9 @@ class SwitchOrderToManualFulfillment
 
                 if ($shipment) {
                     $shipment->forceFill([
-                        'sync_status' => 'cancelled',
+                        'sync_status' => 'switched_to_manual',
                         'stage' => 'switched_to_manual',
-                        'shipment_status' => 'Cancelled before AWB',
-                        'cancelled_at' => now(),
+                        'shipment_status' => 'Switched to manual before AWB',
                         'last_error' => null,
                     ])->save();
                 }

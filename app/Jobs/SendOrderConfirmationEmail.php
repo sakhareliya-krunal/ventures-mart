@@ -47,77 +47,22 @@ class SendOrderConfirmationEmail implements ShouldQueue
             ->findOrFail($this->orderId);
 
         if (! $this->shouldSend($order)) {
-            // #region agent log
-            file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                'sessionId' => '8efceb',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'B',
-                'location' => 'SendOrderConfirmationEmail.php:handle',
-                'message' => 'confirmation_should_send_false',
-                'data' => [
-                    'order_id' => $order->id,
-                    'status' => $order->status,
-                    'payment_method' => $order->payment_method,
-                    'payment_status' => $order->payment_status,
-                    'order_confirmation_emailed_at' => $order->order_confirmation_emailed_at,
-                    'email_valid' => (bool) filter_var($order->email, FILTER_VALIDATE_EMAIL),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
-
             return;
         }
 
-        try {
-            $document = $invoices->pdfDocument($order);
-            $issuedOrder = $document['order']->loadMissing('items');
+        $document = $invoices->pdfDocument($order);
+        $issuedOrder = $document['order']->loadMissing('items');
 
-            Mail::to($issuedOrder->email)->send(new OrderConfirmation(
-                $issuedOrder,
-                $document['contents'],
-                $document['filename'],
-            ));
+        Mail::to($issuedOrder->email)->send(new OrderConfirmation(
+            $issuedOrder,
+            $document['contents'],
+            $document['filename'],
+        ));
 
-            Order::query()
-                ->whereKey($issuedOrder->id)
-                ->whereNull('order_confirmation_emailed_at')
-                ->update(['order_confirmation_emailed_at' => now()]);
-
-            // #region agent log
-            file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                'sessionId' => '8efceb',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'B',
-                'location' => 'SendOrderConfirmationEmail.php:handle',
-                'message' => 'confirmation_mail_sent',
-                'data' => [
-                    'order_id' => $issuedOrder->id,
-                    'to' => $issuedOrder->email,
-                    'mailer' => (string) config('mail.default'),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
-        } catch (Throwable $exception) {
-            // #region agent log
-            file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                'sessionId' => '8efceb',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'B',
-                'location' => 'SendOrderConfirmationEmail.php:handle',
-                'message' => 'confirmation_mail_failed',
-                'data' => [
-                    'order_id' => $order->id,
-                    'error' => mb_substr($exception->getMessage(), 0, 800),
-                    'mailer' => (string) config('mail.default'),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
-
-            throw $exception;
-        }
+        Order::query()
+            ->whereKey($issuedOrder->id)
+            ->whereNull('order_confirmation_emailed_at')
+            ->update(['order_confirmation_emailed_at' => now()]);
     }
 
     public function failed(?Throwable $exception): void

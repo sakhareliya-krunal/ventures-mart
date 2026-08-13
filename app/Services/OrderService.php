@@ -8,7 +8,6 @@ use App\Enums\OrderInventoryStatus;
 use App\Exceptions\InsufficientInventoryException;
 use App\Exceptions\PaymentInitializationException;
 use App\Jobs\FulfillShiprocketOrder;
-use App\Jobs\SendOrderConfirmationEmail;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Inventory\InventoryService;
@@ -28,6 +27,7 @@ class OrderService
         private readonly RazorpayService $razorpay,
         private readonly InventoryService $inventory,
         private readonly FulfillmentAuditService $fulfillmentAudit,
+        private readonly OrderConfirmationMailer $orderConfirmationMailer,
     ) {}
 
     /**
@@ -442,83 +442,7 @@ class OrderService
 
     private function dispatchOrderConfirmationEmail(Order $order): void
     {
-        // #region agent log
-        $skipReason = null;
-        if ($order->order_confirmation_emailed_at) {
-            $skipReason = 'already_emailed';
-        } elseif (in_array($order->status, ['Cancelled', 'InventoryHold'], true)) {
-            $skipReason = 'status_'.$order->status;
-        } elseif ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid') {
-            $skipReason = 'razorpay_unpaid';
-        }
-        file_put_contents(base_path('debug-8efceb.log'), json_encode([
-            'sessionId' => '8efceb',
-            'runId' => 'pre-fix',
-            'hypothesisId' => 'A',
-            'location' => 'OrderService.php:dispatchOrderConfirmationEmail',
-            'message' => $skipReason ? 'confirmation_enqueue_skipped' : 'confirmation_enqueue_attempt',
-            'data' => [
-                'order_id' => $order->id,
-                'order_number' => $order->number,
-                'email' => $order->email,
-                'status' => $order->status,
-                'payment_method' => $order->payment_method,
-                'payment_status' => $order->payment_status,
-                'order_confirmation_emailed_at' => $order->order_confirmation_emailed_at,
-                'skip_reason' => $skipReason,
-            ],
-            'timestamp' => (int) (microtime(true) * 1000),
-        ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-        // #endregion
-
-        if (
-            $order->order_confirmation_emailed_at
-            || in_array($order->status, ['Cancelled', 'InventoryHold'], true)
-            || ($order->payment_method === 'razorpay' && $order->payment_status !== 'paid')
-        ) {
-            return;
-        }
-
-        try {
-            // Send after the HTTP response so confirmation does not depend on a
-            // queue worker (Shiprocket SaaS mail can still go out without one).
-            SendOrderConfirmationEmail::dispatch($order->id)->afterResponse();
-            // #region agent log
-            file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                'sessionId' => '8efceb',
-                'runId' => 'post-fix',
-                'hypothesisId' => 'E',
-                'location' => 'OrderService.php:dispatchOrderConfirmationEmail',
-                'message' => 'confirmation_job_dispatched_after_response',
-                'data' => [
-                    'order_id' => $order->id,
-                    'order_number' => $order->number,
-                    'mailer' => (string) config('mail.default'),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
-        } catch (Throwable $e) {
-            // #region agent log
-            file_put_contents(base_path('debug-8efceb.log'), json_encode([
-                'sessionId' => '8efceb',
-                'runId' => 'pre-fix',
-                'hypothesisId' => 'A',
-                'location' => 'OrderService.php:dispatchOrderConfirmationEmail',
-                'message' => 'confirmation_enqueue_failed',
-                'data' => [
-                    'order_id' => $order->id,
-                    'error' => mb_substr($e->getMessage(), 0, 500),
-                ],
-                'timestamp' => (int) (microtime(true) * 1000),
-            ], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
-            app(ApplicationErrorRecorder::class)->recordThrowable($e, [
-                'order_id' => $order->id,
-                'order_number' => $order->number,
-                'phase' => 'order_confirmation_email_enqueue',
-            ], 'email');
-        }
+        $this->orderConfirmationMailer->sendAfterResponse($order);
     }
 
     /**
