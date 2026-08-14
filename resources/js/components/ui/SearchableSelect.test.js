@@ -24,8 +24,9 @@ describe('SearchableSelect', () => {
       },
     });
 
-    await wrapper.find('.searchable-select__trigger').trigger('click');
-    await wrapper.find('input[type="search"]').setValue('guj');
+    const input = wrapper.find('input[role="combobox"]');
+    await input.trigger('focus');
+    await input.setValue('guj');
 
     expect(wrapper.findAll('[role="option"]')).toHaveLength(1);
     expect(wrapper.find('[role="option"]').text()).toContain('Gujarat');
@@ -43,14 +44,14 @@ describe('SearchableSelect', () => {
       },
     });
 
-    await wrapper.find('.searchable-select__trigger').trigger('click');
-    const search = wrapper.find('input[type="search"]');
-    await search.trigger('keydown', { key: 'ArrowDown' });
-    await search.trigger('keydown', { key: 'Enter' });
+    const input = wrapper.find('input[role="combobox"]');
+    await input.trigger('focus');
+    await input.trigger('keydown', { key: 'ArrowDown' });
+    await input.trigger('keydown', { key: 'Enter' });
     expect(wrapper.emitted('update:modelValue')).toEqual([['Gujarat']]);
 
-    await wrapper.find('.searchable-select__trigger').trigger('click');
-    await wrapper.find('input[type="search"]').setValue('not available');
+    await input.trigger('focus');
+    await input.setValue('not available');
     expect(wrapper.text()).toContain('No matching options');
   });
 });

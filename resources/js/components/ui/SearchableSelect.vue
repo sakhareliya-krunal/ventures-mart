@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
-import { Check, ChevronDown, Search } from '@lucide/vue';
+import { Check, ChevronDown } from '@lucide/vue';
 
 const props = defineProps({
   modelValue: {
@@ -44,7 +44,7 @@ const triggerId = `searchable-select-${generatedId}`;
 const listId = `${triggerId}-list`;
 const errorId = `${triggerId}-error`;
 const rootRef = ref(null);
-const searchRef = ref(null);
+const inputRef = ref(null);
 const open = ref(false);
 const query = ref('');
 const highlightIndex = ref(-1);
@@ -58,6 +58,7 @@ const filteredOptions = computed(() => {
 
   return props.options.filter((option) => String(option.label).toLowerCase().includes(needle));
 });
+const inputDisplay = computed(() => (open.value ? query.value : selectedOption.value?.label || ''));
 
 function close() {
   open.value = false;
@@ -66,7 +67,7 @@ function close() {
 }
 
 function openMenu() {
-  if (props.disabled) return;
+  if (props.disabled || open.value) return;
 
   open.value = true;
   query.value = '';
@@ -74,15 +75,7 @@ function openMenu() {
     (option) => String(option.value) === String(props.modelValue),
   );
   highlightIndex.value = selectedIndex >= 0 ? selectedIndex : 0;
-  nextTick(() => searchRef.value?.focus());
-}
-
-function toggle() {
-  if (open.value) {
-    close();
-  } else {
-    openMenu();
-  }
+  nextTick(() => inputRef.value?.focus());
 }
 
 function selectOption(option) {
@@ -100,14 +93,35 @@ function moveHighlight(direction) {
       : (current - 1 + filteredOptions.value.length) % filteredOptions.value.length;
 }
 
-function onSearchKeydown(event) {
+function onInput(event) {
+  if (props.disabled) return;
+
+  if (!open.value) {
+    open.value = true;
+  }
+
+  query.value = event.target.value;
+}
+
+function onFocus() {
+  openMenu();
+}
+
+function onKeydown(event) {
+  if (props.disabled) return;
+
   if (event.key === 'ArrowDown') {
     event.preventDefault();
-    moveHighlight(1);
+    if (!open.value) {
+      openMenu();
+    } else {
+      moveHighlight(1);
+    }
   } else if (event.key === 'ArrowUp') {
     event.preventDefault();
-    moveHighlight(-1);
+    if (open.value) moveHighlight(-1);
   } else if (event.key === 'Enter') {
+    if (!open.value) return;
     event.preventDefault();
     const option = filteredOptions.value[highlightIndex.value];
     if (option) selectOption(option);
@@ -117,8 +131,12 @@ function onSearchKeydown(event) {
   }
 }
 
-function onDocumentClick(event) {
+function onPointerDownOutside(event) {
   if (!rootRef.value?.contains(event.target)) close();
+}
+
+function onFocusOut(event) {
+  if (!rootRef.value?.contains(event.relatedTarget)) close();
 }
 
 watch(query, () => {
@@ -132,8 +150,8 @@ watch(
   },
 );
 
-onMounted(() => document.addEventListener('click', onDocumentClick));
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
+onMounted(() => document.addEventListener('pointerdown', onPointerDownOutside));
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onPointerDownOutside));
 </script>
 
 <template>
@@ -141,44 +159,38 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
     ref="rootRef"
     class="searchable-select"
     :class="{ 'is-open': open, 'has-error': Boolean(error), 'is-disabled': disabled }"
+    @focusout="onFocusOut"
   >
     <label class="searchable-select__label" :for="triggerId">
       {{ label }}<template v-if="required"> *</template>
     </label>
-    <button
-      :id="triggerId"
-      type="button"
-      class="searchable-select__trigger"
-      :disabled="disabled"
-      :aria-expanded="open"
-      :aria-controls="listId"
-      :aria-invalid="error ? 'true' : undefined"
-      :aria-describedby="error ? errorId : undefined"
-      :aria-required="required ? 'true' : undefined"
-      aria-haspopup="listbox"
-      @click="toggle"
-      @keydown.down.prevent="openMenu"
-      @keydown.esc.prevent="close"
-    >
-      <span :class="{ 'is-placeholder': !selectedOption }">
-        {{ selectedOption?.label || placeholder }}
-      </span>
+    <div class="searchable-select__control">
+      <input
+        :id="triggerId"
+        ref="inputRef"
+        class="searchable-select__input"
+        type="text"
+        inputmode="search"
+        autocomplete="off"
+        role="combobox"
+        :disabled="disabled"
+        :value="inputDisplay"
+        :placeholder="open ? searchPlaceholder : placeholder"
+        :aria-expanded="open"
+        :aria-controls="listId"
+        :aria-invalid="error ? 'true' : undefined"
+        :aria-describedby="error ? errorId : undefined"
+        :aria-required="required ? 'true' : undefined"
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        @input="onInput"
+        @focus="onFocus"
+        @keydown="onKeydown"
+      />
       <ChevronDown :size="18" aria-hidden="true" />
-    </button>
+    </div>
 
     <div v-show="open" class="searchable-select__popover">
-      <div class="searchable-select__search">
-        <Search :size="17" aria-hidden="true" />
-        <input
-          ref="searchRef"
-          v-model="query"
-          type="search"
-          :placeholder="searchPlaceholder"
-          :aria-label="searchPlaceholder"
-          autocomplete="off"
-          @keydown="onSearchKeydown"
-        />
-      </div>
       <ul :id="listId" class="searchable-select__menu" role="listbox" :aria-label="label">
         <li
           v-for="(option, index) in filteredOptions"

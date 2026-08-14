@@ -7,6 +7,7 @@ import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useAuthStore } from '@/stores/auth';
+import { resolvePostAuthPath } from '@/utils/authRedirect';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
 
@@ -37,13 +38,15 @@ const resetNotice = computed(() =>
 );
 
 function defaultPostLoginPath() {
-  return auth.isAdmin ? '/admin' : '/profile';
+  return auth.isAdmin ? '/admin' : '/';
 }
 
 function postLoginPath() {
-  return String(
-    auth.takePendingReturnUrl() || route.query.redirect || defaultPostLoginPath(),
-  );
+  return resolvePostAuthPath({
+    pending: auth.takePendingReturnUrl(),
+    redirect: route.query.redirect,
+    fallback: defaultPostLoginPath(),
+  });
 }
 
 const registerLink = computed(() => ({

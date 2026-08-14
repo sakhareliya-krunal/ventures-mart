@@ -110,4 +110,21 @@ class ProfileAddressTest extends TestCase
             'postal_code' => '100002',
         ])->assertNotFound();
     }
+
+    public function test_district_is_required_when_saving_an_address(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/addresses', [
+            'label' => 'Home',
+            'full_name' => 'Test User',
+            'phone' => '9999999999',
+            'address' => '12 Test Street',
+            'city' => 'Ahmedabad',
+            'state' => 'Gujarat',
+            'postal_code' => '380001',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['district']);
+    }
 }

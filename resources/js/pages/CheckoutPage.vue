@@ -6,6 +6,7 @@ import { Banknote, CreditCard, MapPin, Pencil, Plus } from '@lucide/vue';
 import OrderSummary from '@/components/cart/OrderSummary.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import PageHero from '@/components/ui/PageHero.vue';
 import SearchableSelect from '@/components/ui/SearchableSelect.vue';
 import api from '@/services/api';
@@ -75,6 +76,15 @@ const editingAddressId = ref(null);
 const savingAddress = ref(false);
 const addressesLoading = ref(Boolean(auth.user));
 const addError = ref('');
+const addFieldErrors = reactive({
+  full_name: '',
+  phone: '',
+  address: '',
+  city: '',
+  district: '',
+  state: '',
+  postal_code: '',
+});
 const addForm = reactive({
   label: 'Home',
   full_name: '',
@@ -87,6 +97,8 @@ const addForm = reactive({
   is_default: false,
 });
 
+const ADD_ADDRESS_KEYS = ['full_name', 'phone', 'address', 'city', 'district', 'state', 'postal_code'];
+let addressesRequestId = 0;
 let bannerTimer = null;
 
 const isLoggedIn = computed(() => Boolean(auth.user));
@@ -215,6 +227,26 @@ function applyApiFieldErrors(errors) {
   return applied;
 }
 
+function clearAddFieldErrors() {
+  for (const key of ADD_ADDRESS_KEYS) {
+    addFieldErrors[key] = '';
+  }
+}
+
+function validateAddAddressForm() {
+  clearAddFieldErrors();
+  let ok = true;
+
+  for (const key of ADD_ADDRESS_KEYS) {
+    if (!String(addForm[key] || '').trim()) {
+      addFieldErrors[key] = `${FIELD_LABELS[key]} is required.`;
+      ok = false;
+    }
+  }
+
+  return ok;
+}
+
 function applySavedAddress(item) {
   if (!item) return;
   address.full_name = item.full_name || address.full_name || auth.user?.name || '';
@@ -262,6 +294,7 @@ function resetAddForm() {
   addForm.postal_code = '';
   addForm.is_default = true;
   addError.value = '';
+  clearAddFieldErrors();
 }
 
 function openAddForm() {
@@ -285,6 +318,7 @@ function openEditForm(item, event) {
   addForm.postal_code = item.postal_code || '';
   addForm.is_default = Boolean(item.is_default);
   addError.value = '';
+  clearAddFieldErrors();
   showAddForm.value = true;
 }
 
@@ -292,19 +326,26 @@ function cancelAddForm() {
   showAddForm.value = false;
   editingAddressId.value = null;
   addError.value = '';
+  clearAddFieldErrors();
 }
 
 async function loadAddresses({ selectId = null } = {}) {
-  if (!auth.user) {
+  const userId = auth.user?.id;
+  if (!userId) {
     savedAddresses.value = [];
     selectedAddressId.value = null;
     addressesLoading.value = false;
     return;
   }
 
+  const requestId = ++addressesRequestId;
   addressesLoading.value = true;
+  savedAddresses.value = [];
+
   try {
     const { data } = await api.get('/addresses');
+    if (requestId !== addressesRequestId || auth.user?.id !== userId) return;
+
     const list = unwrapData(data) || [];
     savedAddresses.value = list;
 
@@ -323,25 +364,25 @@ async function loadAddresses({ selectId = null } = {}) {
       address.email = auth.user.email || address.email;
     }
   } catch {
+    if (requestId !== addressesRequestId || auth.user?.id !== userId) return;
     savedAddresses.value = [];
   } finally {
-    addressesLoading.value = false;
+    if (requestId === addressesRequestId) {
+      addressesLoading.value = false;
+    }
   }
 }
 
 async function saveAddressForm() {
   if (savingAddress.value || !auth.user) return;
 
-  const required = ['full_name', 'phone', 'address', 'city', 'district', 'state', 'postal_code'];
-  for (const key of required) {
-    if (!String(addForm[key] || '').trim()) {
-      addError.value = 'Complete every address field before saving.';
-      return;
-    }
+  addError.value = '';
+  if (!validateAddAddressForm()) {
+    addError.value = 'Complete every required address field.';
+    return;
   }
 
   savingAddress.value = true;
-  addError.value = '';
 
   const payload = {
     label: addForm.label || 'Home',
@@ -507,6 +548,38 @@ for (const key of FIELD_KEYS) {
   );
 }
 
+for (const key of ADD_ADDRESS_KEYS) {
+  watch(
+    () => addForm[key],
+    () => {
+      if (addFieldErrors[key]) {
+        addFieldErrors[key] = '';
+      }
+    },
+  );
+}
+
+watch(
+  () => auth.user?.id,
+  (userId, previousUserId) => {
+    if (userId === previousUserId) return;
+
+    selectedAddressId.value = null;
+    showAddForm.value = false;
+    resetAddForm();
+
+    if (userId) {
+      address.full_name = auth.user?.name || '';
+      address.email = auth.user?.email || '';
+      loadAddresses();
+    } else {
+      addressesRequestId += 1;
+      savedAddresses.value = [];
+      addressesLoading.value = false;
+    }
+  },
+);
+
 onMounted(async () => {
   await cart.fetch();
 
@@ -640,9 +713,9 @@ async function submit() {
               </button>
             </div>
 
-            <p v-if="addressesLoading" class="checkout-addresses__loading" aria-live="polite">
-              Loading addresses…
-            </p>
+            <div v-if="addressesLoading" class="checkout-addresses__loading" aria-live="polite">
+              <LoadingSpinner size="sm" label="Loading addresses…" />
+            </div>
             <div
               v-else-if="savedAddresses.length"
               class="checkout-addresses__list"
@@ -701,9 +774,24 @@ async function submit() {
               <h4 class="checkout-addresses__add-title">{{ addressFormTitle }}</h4>
               <p v-if="addError" class="form-error">{{ addError }}</p>
               <FormField v-model="addForm.label" label="Label" placeholder="Home, Work…" />
-              <FormField v-model="addForm.full_name" label="Full name" required />
-              <FormField v-model="addForm.phone" label="Phone" required />
-              <FormField v-model="addForm.address" label="Address" required />
+              <FormField
+                v-model="addForm.full_name"
+                label="Full name"
+                required
+                :error="addFieldErrors.full_name"
+              />
+              <FormField
+                v-model="addForm.phone"
+                label="Phone"
+                required
+                :error="addFieldErrors.phone"
+              />
+              <FormField
+                v-model="addForm.address"
+                label="Address"
+                required
+                :error="addFieldErrors.address"
+              />
               <div class="form-grid address-location-grid">
                 <SearchableSelect
                   v-model="addForm.state"
@@ -712,6 +800,7 @@ async function submit() {
                   placeholder="Select state"
                   search-placeholder="Search states…"
                   required
+                  :error="addFieldErrors.state"
                 />
                 <SearchableSelect
                   v-model="addForm.district"
@@ -721,9 +810,20 @@ async function submit() {
                   search-placeholder="Search districts…"
                   :disabled="!addForm.state"
                   required
+                  :error="addFieldErrors.district"
                 />
-                <FormField v-model="addForm.city" label="City / Town" required />
-                <FormField v-model="addForm.postal_code" label="Postal code" required />
+                <FormField
+                  v-model="addForm.city"
+                  label="City / Town"
+                  required
+                  :error="addFieldErrors.city"
+                />
+                <FormField
+                  v-model="addForm.postal_code"
+                  label="Postal code"
+                  required
+                  :error="addFieldErrors.postal_code"
+                />
               </div>
               <label class="checkout-addresses__default">
                 <input v-model="addForm.is_default" type="checkbox" />

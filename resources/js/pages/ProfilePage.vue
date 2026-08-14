@@ -6,6 +6,7 @@ import { LogOut, Package } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import SearchableSelect from '@/components/ui/SearchableSelect.vue';
 import api from '@/services/api';
 import { emailHref, phoneHref } from '@/utils/contactLinks';
@@ -32,7 +33,20 @@ const addressSuccess = ref('');
 const savingPassword = ref(false);
 const savingAddress = ref(false);
 const addresses = ref([]);
+const addressesLoading = ref(true);
 const editingId = ref(null);
+let addressesRequestId = 0;
+
+const ADDRESS_FIELD_KEYS = ['full_name', 'phone', 'address', 'city', 'district', 'state', 'postal_code'];
+const ADDRESS_FIELD_LABELS = {
+  full_name: 'Full name',
+  phone: 'Phone',
+  address: 'Address',
+  city: 'City / Town',
+  district: 'District',
+  state: 'State',
+  postal_code: 'Postal code',
+};
 
 const passwordForm = reactive({
   current_password: '',
@@ -50,6 +64,16 @@ const addressForm = reactive({
   state: '',
   postal_code: '',
   is_default: false,
+});
+
+const addressFieldErrors = reactive({
+  full_name: '',
+  phone: '',
+  address: '',
+  city: '',
+  district: '',
+  state: '',
+  postal_code: '',
 });
 
 const displayName = computed(() => auth.user?.name || 'Account');
@@ -78,12 +102,49 @@ onMounted(async () => {
   await loadAddresses();
 });
 
+function clearAddressFieldErrors() {
+  for (const key of ADDRESS_FIELD_KEYS) {
+    addressFieldErrors[key] = '';
+  }
+}
+
+function validateAddressForm() {
+  clearAddressFieldErrors();
+  let ok = true;
+
+  for (const key of ADDRESS_FIELD_KEYS) {
+    if (!String(addressForm[key] || '').trim()) {
+      addressFieldErrors[key] = `${ADDRESS_FIELD_LABELS[key]} is required.`;
+      ok = false;
+    }
+  }
+
+  return ok;
+}
+
 async function loadAddresses() {
+  const userId = auth.user?.id;
+  if (!userId) {
+    addresses.value = [];
+    addressesLoading.value = false;
+    return;
+  }
+
+  const requestId = ++addressesRequestId;
+  addressesLoading.value = true;
+  addresses.value = [];
+
   try {
     const { data } = await api.get('/addresses');
+    if (requestId !== addressesRequestId || auth.user?.id !== userId) return;
     addresses.value = unwrapData(data) || [];
   } catch {
+    if (requestId !== addressesRequestId || auth.user?.id !== userId) return;
     addresses.value = [];
+  } finally {
+    if (requestId === addressesRequestId) {
+      addressesLoading.value = false;
+    }
   }
 }
 
@@ -98,6 +159,7 @@ function resetAddressForm() {
   addressForm.district = '';
   addressForm.postal_code = '';
   addressForm.is_default = addresses.value.length === 0;
+  clearAddressFieldErrors();
 }
 
 function editAddress(item) {
@@ -113,6 +175,7 @@ function editAddress(item) {
   addressForm.is_default = Boolean(item.is_default);
   addressError.value = '';
   addressSuccess.value = '';
+  clearAddressFieldErrors();
 }
 
 async function savePassword() {
@@ -151,8 +214,8 @@ async function saveAddress() {
   addressError.value = '';
   addressSuccess.value = '';
 
-  if (!addressForm.state || !addressForm.district) {
-    addressError.value = 'Select both a state and district.';
+  if (!validateAddressForm()) {
+    addressError.value = 'Complete every required address field.';
     return;
   }
 
@@ -197,6 +260,32 @@ watch(
     addressForm.city = cityForDistrictChange(addressForm.city, district, previousDistrict);
   },
 );
+
+watch(
+  () => auth.user?.id,
+  (userId, previousUserId) => {
+    if (userId === previousUserId) return;
+    resetAddressForm();
+    if (userId) {
+      loadAddresses();
+    } else {
+      addressesRequestId += 1;
+      addresses.value = [];
+      addressesLoading.value = false;
+    }
+  },
+);
+
+for (const key of ADDRESS_FIELD_KEYS) {
+  watch(
+    () => addressForm[key],
+    () => {
+      if (addressFieldErrors[key]) {
+        addressFieldErrors[key] = '';
+      }
+    },
+  );
+}
 
 async function setDefaultAddress(id) {
   await api.post(`/addresses/${id}/default`);
@@ -328,7 +417,8 @@ async function logout() {
         <p v-if="addressError" class="form-error">{{ addressError }}</p>
         <p v-if="addressSuccess" class="form-success">{{ addressSuccess }}</p>
 
-        <ul v-if="addresses.length" class="address-list">
+        <LoadingSpinner v-if="addressesLoading" size="sm" label="Loading addresses…" />
+        <ul v-else-if="addresses.length" class="address-list">
           <li v-for="item in addresses" :key="item.id" class="address-card">
             <div class="address-card__body">
               <div class="address-card__title">
@@ -367,13 +457,28 @@ async function logout() {
         <p v-else class="profile-empty">No saved addresses yet.</p>
 
         <h3 class="profile-block__subheader">{{ editingId ? 'Edit address' : 'Add address' }}</h3>
-        <form class="profile-form" @submit.prevent="saveAddress">
+        <form class="profile-form" novalidate @submit.prevent="saveAddress">
           <div class="form-grid">
             <FormField v-model="addressForm.label" label="Label" />
-            <FormField v-model="addressForm.full_name" label="Full name" required />
-            <FormField v-model="addressForm.phone" label="Phone" required />
+            <FormField
+              v-model="addressForm.full_name"
+              label="Full name"
+              required
+              :error="addressFieldErrors.full_name"
+            />
+            <FormField
+              v-model="addressForm.phone"
+              label="Phone"
+              required
+              :error="addressFieldErrors.phone"
+            />
           </div>
-          <FormField v-model="addressForm.address" label="Address" required />
+          <FormField
+            v-model="addressForm.address"
+            label="Address"
+            required
+            :error="addressFieldErrors.address"
+          />
           <div class="form-grid address-location-grid">
             <SearchableSelect
               v-model="addressForm.state"
@@ -382,6 +487,7 @@ async function logout() {
               placeholder="Select state"
               search-placeholder="Search states…"
               required
+              :error="addressFieldErrors.state"
             />
             <SearchableSelect
               v-model="addressForm.district"
@@ -391,9 +497,20 @@ async function logout() {
               search-placeholder="Search districts…"
               :disabled="!addressForm.state"
               required
+              :error="addressFieldErrors.district"
             />
-            <FormField v-model="addressForm.city" label="City / Town" required />
-            <FormField v-model="addressForm.postal_code" label="Postal code" required />
+            <FormField
+              v-model="addressForm.city"
+              label="City / Town"
+              required
+              :error="addressFieldErrors.city"
+            />
+            <FormField
+              v-model="addressForm.postal_code"
+              label="Postal code"
+              required
+              :error="addressFieldErrors.postal_code"
+            />
           </div>
           <label class="checkbox-row">
             <input v-model="addressForm.is_default" type="checkbox" />
