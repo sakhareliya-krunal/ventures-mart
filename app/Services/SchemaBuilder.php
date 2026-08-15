@@ -117,7 +117,6 @@ class SchemaBuilder
             '@id' => $url.'#product',
             'name' => $product->name,
             'sku' => $product->sku,
-            'image' => collect($product->localGallery())->map(fn ($image) => $this->absoluteUrl($image, $baseUrl))->values()->all(),
             'description' => $description ?: $this->plainText($product->description),
             'category' => $product->category?->name,
             'brand' => [
@@ -126,6 +125,16 @@ class SchemaBuilder
             ],
             'offers' => $offer,
         ];
+
+        $images = collect($product->localGallery())
+            ->map(fn ($image) => $this->absoluteUrl($image, $baseUrl))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($images !== []) {
+            $schema['image'] = count($images) === 1 ? $images[0] : $images;
+        }
 
         if ((int) $product->reviews > 0 && (float) $product->rating > 0) {
             $schema['aggregateRating'] = [

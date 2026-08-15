@@ -4,6 +4,7 @@ import MainLayout from '@/layouts/MainLayout.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { syncSeoForPath } from '@/utils/seoHead';
+import { trackMetaEvent } from '@/services/metaPixel';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -415,6 +416,7 @@ router.afterEach((to) => {
 
   if (!String(to.path || '').startsWith('/admin')) {
     syncSeoForPath(to.path || '/');
+    trackMetaEvent('PageView');
   }
 });
 

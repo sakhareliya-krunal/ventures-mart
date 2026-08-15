@@ -28,6 +28,7 @@ class OrderService
         private readonly InventoryService $inventory,
         private readonly FulfillmentAuditService $fulfillmentAudit,
         private readonly OrderConfirmationMailer $orderConfirmationMailer,
+        private readonly MetaConversionsService $metaConversions,
     ) {}
 
     /**
@@ -60,6 +61,7 @@ class OrderService
             if ($existing) {
                 $existing->load('items');
                 $this->dispatchOrderConfirmationEmail($existing);
+                $this->metaConversions->trackPurchase($existing, $request);
 
                 return $existing;
             }
@@ -178,6 +180,7 @@ class OrderService
             $this->cart->clear($request);
             $this->dispatchShiprocketFulfillment($order);
             $this->dispatchOrderConfirmationEmail($order);
+            $this->metaConversions->trackPurchase($order, $request);
 
             return $order->fresh('items');
         }
@@ -212,6 +215,7 @@ class OrderService
         if ($order->payment_status === 'paid') {
             $this->dispatchShiprocketFulfillment($order);
             $this->dispatchOrderConfirmationEmail($order);
+            $this->metaConversions->trackPurchase($order, $request);
 
             return $order->load('items');
         }
@@ -269,6 +273,7 @@ class OrderService
 
         $this->dispatchShiprocketFulfillment($paidOrder);
         $this->dispatchOrderConfirmationEmail($paidOrder);
+        $this->metaConversions->trackPurchase($paidOrder, $request);
 
         return $paidOrder;
     }
@@ -281,6 +286,7 @@ class OrderService
         if ($order->payment_status === 'paid') {
             $this->dispatchShiprocketFulfillment($order);
             $this->dispatchOrderConfirmationEmail($order);
+            $this->metaConversions->trackPurchase($order, request());
 
             return $order->load('items');
         }
@@ -301,6 +307,7 @@ class OrderService
 
         $this->dispatchShiprocketFulfillment($paidOrder);
         $this->dispatchOrderConfirmationEmail($paidOrder);
+        $this->metaConversions->trackPurchase($paidOrder, request());
 
         return $paidOrder;
     }

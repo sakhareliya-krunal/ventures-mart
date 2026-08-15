@@ -24,6 +24,7 @@ import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
 import { seoHeadFromServer } from '@/utils/seoHead';
+import { cartMetaParams, trackMetaEvent } from '@/services/metaPixel';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -595,6 +596,10 @@ onMounted(async () => {
   }
 
   await refreshTotalsForState();
+
+  if (cart.items.length) {
+    trackMetaEvent('InitiateCheckout', cartMetaParams(cart.items, cart.totals?.total));
+  }
 });
 
 onUnmounted(() => {

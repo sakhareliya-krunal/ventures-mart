@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\GoogleAuthController;
+use App\Http\Controllers\Api\MetaEventController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderReplacementController;
 use App\Http\Controllers\Api\OrderTrackController;
@@ -56,6 +57,7 @@ Route::post('/cart', [CartController::class, 'store']);
 Route::patch('/cart/items/{product}', [CartController::class, 'update']);
 Route::delete('/cart/items/{product}', [CartController::class, 'destroy']);
 Route::delete('/cart', [CartController::class, 'clear']);
+Route::post('/meta/events', [MetaEventController::class, 'store'])->middleware('throttle:60,1');
 
 Route::get('/wishlist', [WishlistController::class, 'index']);
 Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);

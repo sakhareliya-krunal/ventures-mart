@@ -15,6 +15,7 @@ import { useCartStore } from '@/stores/cart';
 import { useProductsStore } from '@/stores/products';
 import { useThemeStore } from '@/stores/theme';
 import { useWishlistStore } from '@/stores/wishlist';
+import { productMetaParams, trackMetaEvent } from '@/services/metaPixel';
 
 const route = useRoute();
 const router = useRouter();
@@ -240,6 +241,9 @@ async function load() {
       scrollTrackTo(activeIndex.value, { smooth: false }),
       products.fetchReviews(slug.value),
     ]);
+    if (product.value?.id) {
+      trackMetaEvent('ViewContent', productMetaParams(product.value));
+    }
   } catch {
     await router.replace('/shop');
   }

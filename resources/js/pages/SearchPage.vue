@@ -5,6 +5,7 @@ import { useHead } from '@unhead/vue';
 import ShopPage from '@/pages/ShopPage.vue';
 import { useSearchStore } from '@/stores/search';
 import { useThemeStore } from '@/stores/theme';
+import { trackMetaEvent } from '@/services/metaPixel';
 
 const route = useRoute();
 const theme = useThemeStore();
@@ -16,6 +17,10 @@ watch(
   query,
   (value) => {
     search.setQuery(value);
+    const term = String(value || '').trim();
+    if (term) {
+      trackMetaEvent('Search', { search_string: term, content_type: 'product' });
+    }
   },
   { immediate: true },
 );

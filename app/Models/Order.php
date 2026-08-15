@@ -47,6 +47,7 @@ class Order extends Model
         'razorpay_order_id',
         'razorpay_payment_id',
         'razorpay_signature',
+        'meta_purchase_event_id',
         'paid_at',
         'payment_expires_at',
         'cancel_requested_at',

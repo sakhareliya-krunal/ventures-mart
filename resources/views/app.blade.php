@@ -191,6 +191,7 @@
     <script>
         window.__APP__ = {
             googleClientId: @json(config('services.google.client_id')),
+            metaPixelId: @json(config('services.meta.pixel_id')),
             seo: @json($seo ?? []),
         };
     </script>

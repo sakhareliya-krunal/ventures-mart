@@ -10,6 +10,7 @@ import { downloadOrderInvoice } from '@/utils/downloadInvoice';
 import { formatCurrency, unwrapData } from '@/utils/format';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
+import { orderMetaParams, trackMetaEvent } from '@/services/metaPixel';
 
 const theme = useThemeStore();
 const ui = useUiStore();
@@ -79,6 +80,18 @@ onMounted(async () => {
     order.value = unwrapData(data);
     if (!order.value) {
       throw new Error('Order not found.');
+    }
+
+    const eventId = order.value.meta_purchase_event_id;
+    if (eventId && typeof sessionStorage !== 'undefined') {
+      const key = `meta_purchase_${order.value.id}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, eventId);
+        trackMetaEvent('Purchase', orderMetaParams(order.value), {
+          eventId,
+          sendCapi: false,
+        });
+      }
     }
   } catch {
     error.value = 'Unable to load this order.';

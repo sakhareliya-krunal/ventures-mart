@@ -30,6 +30,7 @@ class OrderResource extends JsonResource
             'cancellation_reason' => $this->cancellation_reason,
             'payment_status' => $this->payment_status,
             'payment_method' => $this->payment_method,
+            'meta_purchase_event_id' => $this->meta_purchase_event_id,
             'paid_at' => $this->paid_at?->toIso8601String(),
             'subtotal' => (float) $this->subtotal,
             'shipping' => (float) $this->shipping,

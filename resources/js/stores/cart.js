@@ -4,6 +4,7 @@ import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import { friendlyApiError } from '@/utils/apiError';
 import { isOutOfStockProduct, maxCartQuantityFor } from '@/utils/cartStock';
+import { productMetaParams, trackMetaEvent } from '@/services/metaPixel';
 
 const emptyTotals = {
   subtotal: 0,
@@ -156,6 +157,11 @@ export const useCartStore = defineStore('cart', () => {
       });
       applyPayload({ items, itemCount, quantityCount, totals }, data);
       trayOpen.value = true;
+      const line = items.value.find((item) => Number(item.product_id) === id);
+      trackMetaEvent(
+        'AddToCart',
+        productMetaParams(line?.product || { id, name: line?.product?.name, price: line?.product?.price }, line?.quantity || quantity),
+      );
     } catch (err) {
       error.value = friendlyApiError(err, 'Unable to add to cart.');
       import('@/stores/ui').then(({ useUiStore }) => {
