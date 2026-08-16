@@ -2,16 +2,26 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CheckoutPage from './CheckoutPage.vue';
 
-const { get, post, patch, push, showToast } = vi.hoisted(() => ({
+const { get, post, patch, push, showToast, trackMetaEvent } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
   push: vi.fn(),
   showToast: vi.fn(),
+  trackMetaEvent: vi.fn(),
 }));
 
 vi.mock('@/services/api', () => ({
   default: { get, post, patch },
+}));
+
+vi.mock('@/services/metaPixel', () => ({
+  cartMetaParams: (items, total) => ({
+    content_ids: items.map((item) => String(item.product_id || item.id)).filter(Boolean),
+    currency: 'INR',
+    value: Number(total || 0),
+  }),
+  trackMetaEvent,
 }));
 
 vi.mock('vue-router', () => ({
@@ -38,7 +48,7 @@ vi.mock('@/stores/auth', () => ({
 
 vi.mock('@/stores/cart', () => ({
   useCartStore: () => ({
-    items: [{ id: 1, quantity: 1 }],
+    items: [{ id: 1, product_id: 10, quantity: 1 }],
     totals: {
       subtotal: 200,
       shipping: 0,
@@ -88,6 +98,9 @@ describe('CheckoutPage address and payment cards', () => {
     post.mockReset();
     patch.mockReset();
     showToast.mockReset();
+    trackMetaEvent.mockReset();
+    push.mockReset();
+    delete window.Razorpay;
 
     get.mockImplementation((url) => {
       if (url === '/addresses') {
@@ -176,5 +189,59 @@ describe('CheckoutPage address and payment cards', () => {
     expect(wrapper.text()).toContain('₹210');
     expect(wrapper.text()).toContain('₹309');
     expect(wrapper.text()).toContain('+₹99 COD charge');
+  });
+
+  it('tracks AddPaymentInfo when the Razorpay payment screen opens', async () => {
+    post.mockImplementation((url) => {
+      if (url === '/orders') {
+        return Promise.resolve({
+          data: {
+            data: { id: 55, number: 'VM-TEST55', total: 210 },
+            razorpay: {
+              key: 'rzp_test_dummy',
+              order_id: 'order_meta_55',
+              amount: 21000,
+              currency: 'INR',
+              name: 'Ventures Mart',
+            },
+          },
+        });
+      }
+
+      if (url === '/orders/55/payment/verify') {
+        return Promise.resolve({ data: { data: { id: 55 } } });
+      }
+
+      return Promise.resolve({ data: {} });
+    });
+
+    window.Razorpay = vi.fn(function Razorpay(options) {
+      this.on = vi.fn();
+      this.open = vi.fn(() => options.handler({
+        razorpay_order_id: 'order_meta_55',
+        razorpay_payment_id: 'pay_meta_55',
+        razorpay_signature: 'sig_meta_55',
+      }));
+    });
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(trackMetaEvent).toHaveBeenCalledWith('AddPaymentInfo', expect.objectContaining({
+      content_ids: ['10'],
+      currency: 'INR',
+      value: 210,
+      payment_type: 'razorpay',
+      order_id: 'VM-TEST55',
+    }));
+    expect(window.Razorpay).toHaveBeenCalled();
+    expect(post).toHaveBeenCalledWith('/orders/55/payment/verify', {
+      razorpay_order_id: 'order_meta_55',
+      razorpay_payment_id: 'pay_meta_55',
+      razorpay_signature: 'sig_meta_55',
+    });
   });
 });

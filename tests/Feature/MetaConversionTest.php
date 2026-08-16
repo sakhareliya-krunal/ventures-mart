@@ -93,6 +93,41 @@ class MetaConversionTest extends TestCase
         });
     }
 
+    public function test_add_payment_info_capi_uses_the_server_cart_and_payment_type(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->makeProduct(['price' => 150, 'name' => 'Puzzle Set']);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/cart', [
+            'product_id' => $product->id,
+            'quantity' => 2,
+        ])->assertOk();
+
+        $this->postJson('/api/meta/events', [
+            'event_name' => 'AddPaymentInfo',
+            'event_id' => 'evt-payment-info-1',
+            'event_source_url' => 'https://venturesmart.test/checkout',
+            'custom_data' => [
+                'payment_type' => 'razorpay',
+                'value' => 1,
+            ],
+        ])->assertOk();
+
+        Http::assertSent(function ($request) use ($product) {
+            $event = $request['data'][0] ?? [];
+            $custom = $event['custom_data'] ?? [];
+
+            return ($event['event_name'] ?? null) === 'AddPaymentInfo'
+                && ($event['event_id'] ?? null) === 'evt-payment-info-1'
+                && $custom['content_ids'] === [(string) $product->id]
+                && $custom['contents'][0]['quantity'] === 2
+                && $custom['payment_type'] === 'razorpay'
+                && $custom['currency'] === 'INR'
+                && (float) $custom['value'] > 1;
+        });
+    }
+
     public function test_purchase_is_rejected_on_the_browser_capi_endpoint(): void
     {
         $this->postJson('/api/meta/events', [

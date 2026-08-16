@@ -19,6 +19,7 @@ class MetaConversionsService
         'ViewContent',
         'AddToCart',
         'InitiateCheckout',
+        'AddPaymentInfo',
         'Search',
     ];
 
@@ -131,6 +132,10 @@ class MetaConversionsService
         return match ($eventName) {
             'ViewContent', 'AddToCart' => $this->productCustomData($this->productFromInput($input), $eventName === 'AddToCart' ? $this->quantityFromInput($input) : 1),
             'InitiateCheckout' => $this->cartCustomData($request),
+            'AddPaymentInfo' => array_filter(array_merge(
+                $this->cartCustomData($request),
+                ['payment_type' => trim((string) ($input['payment_type'] ?? '')) ?: null],
+            )),
             'Search' => array_filter([
                 'search_string' => trim((string) ($input['search_string'] ?? '')),
                 'content_type' => 'product',

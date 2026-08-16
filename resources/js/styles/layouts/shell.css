@@ -736,6 +736,10 @@
     display: none;
   }
 
+  .header-wishlist-link {
+    display: none;
+  }
+
   .mobile-menu-button {
     display: inline-flex;
   }

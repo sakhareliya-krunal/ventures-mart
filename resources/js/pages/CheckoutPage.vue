@@ -651,6 +651,12 @@ async function submit() {
       throw new Error('Payment session missing. Please try again.');
     }
 
+    trackMetaEvent('AddPaymentInfo', {
+      ...cartMetaParams(cart.items, order.total || cart.totals?.total),
+      payment_type: 'razorpay',
+      order_id: order.number || String(order.id),
+    });
+
     const payment = await openRazorpayCheckout(razorpay);
 
     await api.post(`/orders/${order.id}/payment/verify`, {

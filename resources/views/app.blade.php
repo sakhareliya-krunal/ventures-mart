@@ -224,6 +224,13 @@
             height="0" width="0" style="display:none;visibility:hidden"></iframe>
     </noscript>
     @endif
+    @if (filled(config('services.meta.pixel_id')))
+    <noscript>
+        <img height="1" width="1" style="display:none"
+            src="https://www.facebook.com/tr?id={{ urlencode((string) config('services.meta.pixel_id')) }}&amp;ev=PageView&amp;noscript=1"
+            alt="">
+    </noscript>
+    @endif
     <div id="brand-splash" class="brand-splash" role="status" aria-live="polite" aria-label="Loading Ventures Mart">
         <span class="brand-splash__orb brand-splash__orb--1" aria-hidden="true"></span>
         <span class="brand-splash__orb brand-splash__orb--2" aria-hidden="true"></span>

@@ -160,7 +160,7 @@ export const useCartStore = defineStore('cart', () => {
       const line = items.value.find((item) => Number(item.product_id) === id);
       trackMetaEvent(
         'AddToCart',
-        productMetaParams(line?.product || { id, name: line?.product?.name, price: line?.product?.price }, line?.quantity || quantity),
+        productMetaParams(line?.product || { id, name: line?.product?.name, price: line?.product?.price }, quantity),
       );
     } catch (err) {
       error.value = friendlyApiError(err, 'Unable to add to cart.');

@@ -122,7 +122,7 @@ function openCart() {
           <User :size="20" aria-hidden="true" />
         </RouterLink>
         <RouterLink
-          class="icon-link"
+          class="icon-link header-wishlist-link"
           to="/wishlist"
           :aria-label="wishlist.count ? `Wishlist, ${wishlist.count} items` : 'Wishlist'"
         >
