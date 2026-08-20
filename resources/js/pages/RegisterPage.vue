@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import AuthShell from '@/components/auth/AuthShell.vue';
 import GoogleContinueButton from '@/components/auth/GoogleContinueButton.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -131,14 +132,12 @@ function onGoogleError(message) {
 </script>
 
 <template>
-  <section class="auth-page">
-    <form
-      class="form-panel auth-card"
-      :class="{ 'is-busy': auth.loading || auth.redirecting }"
-      @submit.prevent="submit"
-    >
-      <span class="eyebrow">Account</span>
-      <h1>Register</h1>
+  <AuthShell
+    title="Create your account"
+    :lead="`Join ${theme.brandName} to shop toys and lunch boxes with saved details.`"
+    :busy="auth.loading || auth.redirecting"
+  >
+    <form class="auth-form" @submit.prevent="submit">
       <p v-if="error" class="form-error">{{ error }}</p>
       <FormField
         v-model="form.name"
@@ -191,8 +190,10 @@ function onGoogleError(message) {
         @token="continueWithGoogle"
         @error="onGoogleError"
       />
-
-      <p>Already registered? <RouterLink :to="loginLink">Login</RouterLink></p>
     </form>
-  </section>
+
+    <template #footer>
+      <p>Already registered? <RouterLink :to="loginLink">Sign in</RouterLink></p>
+    </template>
+  </AuthShell>
 </template>

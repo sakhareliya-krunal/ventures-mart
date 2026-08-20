@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown, Heart, Menu, ShoppingBag, User, X } from '@lucide/vue';
+import { ChevronDown, Heart, Menu, ShoppingCart, User, X } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import CartBadge from '@/components/common/CartBadge.vue';
 import MobileDrawer from '@/components/common/MobileDrawer.vue';
@@ -172,11 +172,11 @@ onUnmounted(() => {
 
       <div class="header-actions">
         <RouterLink
-          class="icon-link"
+          class="icon-link header-action-button"
           :to="profileTo"
           :aria-label="auth.user ? 'Account profile' : 'Sign in'"
         >
-          <User :size="20" aria-hidden="true" />
+          <User :size="22" aria-hidden="true" />
         </RouterLink>
         <RouterLink
           class="icon-link header-wishlist-link"
@@ -187,16 +187,16 @@ onUnmounted(() => {
           <CartBadge :count="wishlist.count" />
         </RouterLink>
         <button
-          class="icon-link"
+          class="header-cart-button"
           type="button"
           :aria-label="cart.itemCount ? `Cart, ${cart.itemCount} items` : 'Cart'"
           @click="openCart"
         >
-          <ShoppingBag :size="20" aria-hidden="true" />
+          <ShoppingCart :size="18" aria-hidden="true" />
           <CartBadge :count="cart.itemCount" />
         </button>
         <button
-          class="icon-button mobile-menu-button"
+          class="icon-button header-action-button mobile-menu-button"
           type="button"
           :aria-label="open ? 'Close menu' : 'Open menu'"
           aria-controls="mobile-navigation-drawer"

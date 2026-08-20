@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import AuthShell from '@/components/auth/AuthShell.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
@@ -44,17 +45,12 @@ async function submit() {
 </script>
 
 <template>
-  <section class="auth-page">
-    <form
-      class="form-panel auth-card"
-      :class="{ 'is-busy': loading }"
-      @submit.prevent="submit"
-    >
-      <span class="eyebrow">Account</span>
-      <h1>Forgot password</h1>
-      <p class="auth-lead">
-        Enter your account email and we will send a reset link if it matches an account.
-      </p>
+  <AuthShell
+    title="Forgot password"
+    lead="Enter your email and we'll send a reset link if it matches an account."
+    :busy="loading"
+  >
+    <form class="auth-form" @submit.prevent="submit">
       <p v-if="error" class="form-error">{{ error }}</p>
       <p v-if="success" class="form-success">{{ success }}</p>
       <FormField
@@ -69,7 +65,10 @@ async function submit() {
         <LoadingSpinner v-if="loading" size="sm" label="Sending…" />
         <template v-else>Send reset link</template>
       </AppButton>
-      <p><RouterLink to="/login">Back to login</RouterLink></p>
     </form>
-  </section>
+
+    <template #footer>
+      <p><RouterLink to="/login">Back to login</RouterLink></p>
+    </template>
+  </AuthShell>
 </template>

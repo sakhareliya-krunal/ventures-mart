@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import AuthShell from '@/components/auth/AuthShell.vue';
 import GoogleContinueButton from '@/components/auth/GoogleContinueButton.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -126,14 +127,12 @@ function onGoogleError(message) {
 </script>
 
 <template>
-  <section class="auth-page">
-    <form
-      class="form-panel auth-card"
-      :class="{ 'is-busy': auth.loading || auth.redirecting }"
-      @submit.prevent="submit"
-    >
-      <span class="eyebrow">Account</span>
-      <h1>Login</h1>
+  <AuthShell
+    title="Welcome back"
+    lead="Sign in to track orders, manage your wishlist, and checkout faster."
+    :busy="auth.loading || auth.redirecting"
+  >
+    <form class="auth-form" @submit.prevent="submit">
       <p v-if="resetNotice" class="form-success">{{ resetNotice }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <FormField
@@ -165,7 +164,7 @@ function onGoogleError(message) {
           size="sm"
           :label="auth.redirecting && !auth.loading ? 'Redirecting…' : 'Signing in…'"
         />
-        <template v-else>Login</template>
+        <template v-else>Sign in</template>
       </AppButton>
 
       <div class="auth-divider" role="separator"><span>or</span></div>
@@ -175,8 +174,10 @@ function onGoogleError(message) {
         @token="continueWithGoogle"
         @error="onGoogleError"
       />
-
-      <p>New here? <RouterLink :to="registerLink">Create an account</RouterLink></p>
     </form>
-  </section>
+
+    <template #footer>
+      <p>New here? <RouterLink :to="registerLink">Create an account</RouterLink></p>
+    </template>
+  </AuthShell>
 </template>

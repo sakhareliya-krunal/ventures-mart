@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
+import AuthShell from '@/components/auth/AuthShell.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
@@ -61,15 +62,13 @@ async function submit() {
 </script>
 
 <template>
-  <section class="auth-page">
-    <form
-      class="form-panel auth-card"
-      :class="{ 'is-busy': loading }"
-      @submit.prevent="submit"
-    >
-      <span class="eyebrow">Account</span>
-      <h1>Reset password</h1>
-      <p class="auth-lead">Choose a new password for {{ form.email || 'your account' }}.</p>
+  <AuthShell
+    title="Reset password"
+    lead="Choose a new password for your account."
+    :busy="loading"
+  >
+    <form class="auth-form" @submit.prevent="submit">
+      <p v-if="form.email" class="auth-lead">Updating password for {{ form.email }}.</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <p v-if="success" class="form-success">{{ success }}</p>
       <FormField
@@ -96,7 +95,10 @@ async function submit() {
         <LoadingSpinner v-if="loading" size="sm" label="Saving…" />
         <template v-else>Update password</template>
       </AppButton>
-      <p><RouterLink to="/forgot-password">Request a new link</RouterLink></p>
     </form>
-  </section>
+
+    <template #footer>
+      <p><RouterLink to="/forgot-password">Request a new link</RouterLink></p>
+    </template>
+  </AuthShell>
 </template>
