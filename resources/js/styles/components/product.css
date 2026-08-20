@@ -1489,22 +1489,3 @@
     transform: none;
   }
 }
-
-@media (max-width: 480px) {
-  .product-grid {
-    gap: 0.85rem;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .product-card {
-    padding: 0.6rem 0.6rem 0.72rem;
-  }
-
-  .product-card__body {
-    padding-top: 0.72rem;
-  }
-
-  .product-card__footer {
-    gap: 0.65rem;
-  }
-}

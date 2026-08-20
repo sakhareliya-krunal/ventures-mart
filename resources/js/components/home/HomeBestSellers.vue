@@ -102,6 +102,27 @@ onUnmounted(() => {
   <section class="home-best-sellers page-section" aria-labelledby="home-best-sellers-title">
     <div class="home-best-sellers__header">
       <h2 id="home-best-sellers-title">Best Seller</h2>
+
+      <div v-if="products.length" class="home-best-sellers__controls" aria-label="Best seller carousel controls">
+        <button
+          v-show="canScrollLeft"
+          type="button"
+          class="home-best-sellers__nav"
+          aria-label="Scroll best sellers left"
+          @click="scrollRail('previous')"
+        >
+          <ChevronLeft :size="20" aria-hidden="true" />
+        </button>
+        <button
+          v-show="canScrollRight"
+          type="button"
+          class="home-best-sellers__nav"
+          aria-label="Scroll best sellers right"
+          @click="scrollRail('next')"
+        >
+          <ChevronRight :size="20" aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="home-best-sellers__rail" aria-label="Loading best sellers">
@@ -112,39 +133,17 @@ onUnmounted(() => {
       {{ error }}
     </p>
 
-    <div v-else-if="products.length" class="home-best-sellers__viewport">
-      <div class="home-best-sellers__controls" aria-label="Best seller carousel controls">
-        <button
-          v-show="canScrollLeft"
-          type="button"
-          class="home-best-sellers__nav home-best-sellers__nav--prev"
-          aria-label="Scroll best sellers left"
-          @click="scrollRail('previous')"
-        >
-          <ChevronLeft :size="20" aria-hidden="true" />
-        </button>
-        <button
-          v-show="canScrollRight"
-          type="button"
-          class="home-best-sellers__nav home-best-sellers__nav--next"
-          aria-label="Scroll best sellers right"
-          @click="scrollRail('next')"
-        >
-          <ChevronRight :size="20" aria-hidden="true" />
-        </button>
-      </div>
-
-      <div
-        ref="railEl"
-        class="home-best-sellers__rail"
-        @scroll.passive="updateScrollButtons"
-      >
-        <ProductCard
-          v-for="product in products"
-          :key="product.id"
-          :product="product"
-        />
-      </div>
+    <div
+      v-else-if="products.length"
+      ref="railEl"
+      class="home-best-sellers__rail"
+      @scroll.passive="updateScrollButtons"
+    >
+      <ProductCard
+        v-for="product in products"
+        :key="product.id"
+        :product="product"
+      />
     </div>
 
     <p v-else class="home-best-sellers__empty">
@@ -159,7 +158,12 @@ onUnmounted(() => {
 }
 
 .home-best-sellers__header {
+  align-items: end;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
   margin-bottom: 1.2rem;
+  position: relative;
   text-align: center;
 }
 
@@ -170,60 +174,31 @@ onUnmounted(() => {
   margin: 0.35rem 0 0;
 }
 
-.home-best-sellers__viewport {
-  min-width: 0;
-  overflow: hidden;
-  position: relative;
-}
-
 .home-best-sellers__controls {
-  inset: 0;
-  pointer-events: none;
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  min-height: 2.55rem;
   position: absolute;
-  z-index: 3;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .home-best-sellers__nav {
   align-items: center;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  box-shadow: 0 14px 32px rgba(7, 31, 99, 0.16);
-  color: #fff;
+  box-shadow: var(--shadow-sm);
+  color: var(--color-primary-dark);
   cursor: pointer;
   display: inline-flex;
-  height: clamp(2.6rem, 4.4vw, 3.25rem);
+  height: 2.45rem;
   justify-content: center;
-  line-height: 0;
-  opacity: 0.5;
   padding: 0;
-  pointer-events: auto;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
-  width: clamp(2.6rem, 4.4vw, 3.25rem);
-}
-
-.home-best-sellers__nav :deep(svg) {
-  display: block;
-  flex-shrink: 0;
-}
-
-.home-best-sellers__nav--prev {
-  left: clamp(0.9rem, 3vw, 2.25rem);
-}
-
-.home-best-sellers__nav--prev :deep(svg) {
-  transform: translateX(-1px);
-}
-
-.home-best-sellers__nav--next {
-  right: clamp(0.9rem, 3vw, 2.25rem);
-}
-
-.home-best-sellers__nav--next :deep(svg) {
-  transform: translateX(1px);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  width: 2.45rem;
 }
 
 .home-best-sellers__nav:hover,
@@ -231,16 +206,15 @@ onUnmounted(() => {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
-  opacity: 1;
 }
 
 .home-best-sellers__nav:focus-visible {
-  outline: 3px solid color-mix(in srgb, #fff 62%, transparent);
-  outline-offset: 3px;
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  outline-offset: 2px;
 }
 
 .home-best-sellers__nav:active {
-  transform: translateY(-50%) scale(0.96);
+  transform: scale(0.96);
 }
 
 .home-best-sellers__rail {
@@ -248,6 +222,7 @@ onUnmounted(() => {
   gap: 0.9rem;
   grid-auto-columns: clamp(11.25rem, 21vw, 15.5rem);
   grid-auto-flow: column;
+  justify-content: safe center;
   margin-inline: calc(clamp(1rem, 4vw, 1.25rem) * -1);
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -277,28 +252,26 @@ onUnmounted(() => {
   text-align: center;
 }
 
-@media (max-width: 720px) {
-  .home-best-sellers__nav {
-    box-shadow: none;
-    height: 2.3rem;
-    width: 2.3rem;
-  }
-
-  .home-best-sellers__nav--prev {
-    left: max(0.7rem, env(safe-area-inset-left));
-  }
-
-  .home-best-sellers__nav--next {
-    right: max(0.7rem, env(safe-area-inset-right));
+@media (max-width: 1024px) {
+  .home-best-sellers__controls {
+    display: none;
   }
 
   .home-best-sellers__rail {
     gap: 0.72rem;
-    grid-auto-columns: minmax(0, min(72vw, 13.5rem));
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
     margin-inline: 0;
-    padding-inline: 0;
+    overflow-x: visible;
+    padding: 0;
     scroll-padding-inline: 0;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: none;
+  }
+
+  .home-best-sellers__rail > :deep(*) {
+    scroll-snap-align: none;
   }
 }
 

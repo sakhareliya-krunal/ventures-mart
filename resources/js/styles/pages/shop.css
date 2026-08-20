@@ -518,9 +518,3 @@
     width: 100%;
   }
 }
-
-@media (max-width: 480px) {
-  .shop-layout__main .product-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}

@@ -66,6 +66,12 @@ function onShopCategoryClick() {
   }
 }
 
+function openMobileMenu() {
+  closeShopMenu();
+  cart.closeTray();
+  open.value = true;
+}
+
 function openCart() {
   if (cart.isEmpty) {
     router.push('/shop');
@@ -188,8 +194,9 @@ onUnmounted(() => {
           class="icon-button mobile-menu-button"
           type="button"
           aria-label="Open menu"
+          aria-controls="mobile-navigation-drawer"
           :aria-expanded="open"
-          @click="open = true"
+          @click.stop="openMobileMenu"
         >
           <Menu :size="22" aria-hidden="true" />
         </button>

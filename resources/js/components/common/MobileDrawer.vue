@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ChevronDown, X } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
@@ -17,6 +17,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
+const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const cart = useCartStore();
@@ -50,6 +51,7 @@ function onKeydown(event) {
 }
 
 function lockScroll(locked) {
+  if (typeof document === 'undefined') return;
   document.body.style.overflow = locked ? 'hidden' : '';
 }
 
@@ -65,6 +67,16 @@ watch(
       shopExpanded.value = false;
     }
   },
+  { immediate: true },
+);
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (props.open) {
+      close();
+    }
+  },
 );
 
 onBeforeUnmount(() => {
@@ -76,14 +88,14 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <Transition name="mobile-drawer">
-      <div v-if="open" class="mobile-drawer">
+      <div v-if="open" id="mobile-navigation-drawer" class="mobile-drawer">
         <button
           class="mobile-drawer__backdrop"
           type="button"
           aria-label="Close menu"
           @click="close"
         />
-        <div class="mobile-panel" role="dialog" aria-modal="true" aria-label="Menu">
+        <div class="mobile-panel" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1">
           <div class="mobile-panel__top">
             <RouterLink class="mobile-panel__brand" to="/" :aria-label="`${theme.brandName} home`" @click="close">
               <img :src="brandAssets.logo" :alt="theme.brandName" />

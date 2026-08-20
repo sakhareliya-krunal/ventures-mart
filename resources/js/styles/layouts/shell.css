@@ -341,7 +341,7 @@
 .mobile-drawer {
   inset: 0;
   position: fixed;
-  z-index: 50;
+  z-index: 90;
 }
 
 .mobile-drawer__backdrop {
@@ -360,6 +360,9 @@
   display: grid;
   gap: 1.5rem;
   grid-template-rows: auto 1fr;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.15rem 1.25rem 1.75rem;
   position: absolute;
   right: 0;
