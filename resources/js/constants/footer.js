@@ -20,7 +20,7 @@ export const footerWhatsApp = {
 export const footerShopLinks = [
   { label: 'Toys', href: '/category/toys' },
   { label: 'Lunch Box', href: '/category/lunch-box' },
-  { label: 'Shop all', href: '/shop' },
+  { label: 'All products', href: '/shop' },
   { label: 'Favourites', href: '/wishlist' },
 ];
 

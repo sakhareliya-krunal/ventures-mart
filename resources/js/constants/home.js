@@ -22,6 +22,10 @@ export const homePillars = [
   },
 ];
 
+export const homeCurated = {
+  title: 'Curated Collection',
+};
+
 export const homeRails = {
   lunch: {
     title: 'Lunch boxes for every school day',
@@ -111,6 +115,38 @@ export const homeTrust = {
     {
       quote: 'Clear shipping and support made ordering for our family simple.',
       attribution: 'Parent, Bengaluru',
+    },
+  ],
+};
+
+export const homeBenefits = {
+  eyebrow: 'Why Ventures Mart',
+  title: 'A focused store with practical promises',
+  text: 'We keep the catalog clear so parents can shop with confidence—not endless clutter.',
+  items: [
+    {
+      title: 'Curated for families',
+      text: 'Toys and lunch boxes chosen for daily use, not shelf filler.',
+      icon: 'Package',
+      tone: 'primary',
+    },
+    {
+      title: 'Durable everyday quality',
+      text: 'Products meant for school bags, playrooms, and real routines.',
+      icon: 'ShieldCheck',
+      tone: 'accent',
+    },
+    {
+      title: 'Free shipping',
+      text: 'On every order across India',
+      icon: 'Truck',
+      tone: 'success',
+    },
+    {
+      title: '7-day replacement',
+      text: 'Clear support if something arrives wrong',
+      icon: 'RefreshCw',
+      tone: 'secondary',
     },
   ],
 };

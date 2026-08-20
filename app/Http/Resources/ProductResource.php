@@ -35,6 +35,7 @@ class ProductResource extends JsonResource
             'details' => $this->details ?? [],
             'specifications' => $this->specifications ?? [],
             'stock' => (int) $this->stock,
+            'is_low_stock' => $this->isLowStock(),
             'weight_kg' => $this->weight_kg !== null ? (float) $this->weight_kg : null,
             'length_cm' => $this->length_cm !== null ? (float) $this->length_cm : null,
             'breadth_cm' => $this->breadth_cm !== null ? (float) $this->breadth_cm : null,

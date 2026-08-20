@@ -1,204 +1,203 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { ChevronRight } from '@lucide/vue';
-import AppButton from '@/components/ui/AppButton.vue';
+import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import { brandAssets } from '@/constants/assets';
-import { homeHero } from '@/constants/home';
-import { useThemeStore } from '@/stores/theme';
 
-const SLIDE_INTERVAL_MS = 5000;
+const AUTO_ADVANCE_MS = 4000;
+const SLIDE_TRANSITION_MS = 700;
+const SWIPE_THRESHOLD_PX = 44;
 
-const theme = useThemeStore();
-const heroRef = ref(null);
-const videoRef = ref(null);
-const useSlideshow = ref(false);
 const activeSlide = ref(0);
+const previousSlideIndex = ref(null);
+const slideDirection = ref('next');
+const transitionReady = ref(false);
 
-const slides = computed(() =>
-  brandAssets.heroSlidesMobileTablet.map((webp, index) => ({
-    webp,
-    jpg: brandAssets.heroSlidesMobileTabletJpg[index],
-  })),
-);
+const slides = computed(() => brandAssets.heroCarouselSlides || []);
+const currentSlide = computed(() => slides.value[activeSlide.value] || slides.value[0] || null);
 
-let motionQuery = null;
-let compactQuery = null;
-let visibilityObserver = null;
-let isVisible = true;
-let slideTimer = null;
+let touchStartX = 0;
+let autoAdvanceTimer = null;
+let previousSlideTimer = null;
+let transitionFrame = null;
+let transitionStartFrame = null;
 
-function canPlayVideo() {
-  return Boolean(videoRef.value) && !useSlideshow.value && isVisible && !motionQuery?.matches;
+function slideCount() {
+  return slides.value.length;
 }
 
-function syncVideoPlayback() {
-  const video = videoRef.value;
-  if (!video) {
+function clearPreviousSlideTimer() {
+  if (previousSlideTimer) {
+    window.clearTimeout(previousSlideTimer);
+    previousSlideTimer = null;
+  }
+}
+
+function clearTransitionFrames() {
+  if (transitionFrame) {
+    window.cancelAnimationFrame(transitionFrame);
+    transitionFrame = null;
+  }
+
+  if (transitionStartFrame) {
+    window.cancelAnimationFrame(transitionStartFrame);
+    transitionStartFrame = null;
+  }
+}
+
+function clearAutoAdvanceTimer() {
+  if (autoAdvanceTimer) {
+    window.clearInterval(autoAdvanceTimer);
+    autoAdvanceTimer = null;
+  }
+}
+
+function startAutoAdvanceTimer() {
+  clearAutoAdvanceTimer();
+
+  if (slideCount() <= 1) {
     return;
   }
 
-  if (!canPlayVideo()) {
-    video.pause();
-    return;
-  }
-
-  video.play().catch(() => {});
+  autoAdvanceTimer = window.setInterval(() => {
+    goToSlide(activeSlide.value + 1, 'next', { resetTimer: false });
+  }, AUTO_ADVANCE_MS);
 }
 
-function applyDesktopVideo({ forceReload = false } = {}) {
-  const video = videoRef.value;
-  if (!video || useSlideshow.value) {
-    return;
-  }
-
-  const nextSrc = brandAssets.heroVideo;
-  const currentSrc = video.currentSrc || video.getAttribute('src') || '';
-  if (!forceReload && currentSrc.endsWith(nextSrc)) {
-    syncVideoPlayback();
-    return;
-  }
-
-  video.setAttribute('src', nextSrc);
-  video.load();
+function resetAutoAdvanceTimer() {
+  startAutoAdvanceTimer();
 }
 
-function clearSlideTimer() {
-  if (slideTimer) {
-    window.clearInterval(slideTimer);
-    slideTimer = null;
-  }
-}
+function goToSlide(index, direction = 'next', { resetTimer = true } = {}) {
+  const count = slideCount();
+  if (!count) return;
 
-function canAdvanceSlides() {
-  return useSlideshow.value && isVisible && !motionQuery?.matches && slides.value.length > 1;
-}
-
-function syncSlideshow() {
-  clearSlideTimer();
-  if (!canAdvanceSlides()) {
-    return;
-  }
-
-  slideTimer = window.setInterval(() => {
-    activeSlide.value = (activeSlide.value + 1) % slides.value.length;
-  }, SLIDE_INTERVAL_MS);
-}
-
-function syncMediaMode() {
-  const nextSlideshow = Boolean(compactQuery?.matches);
-  if (nextSlideshow === useSlideshow.value) {
-    if (useSlideshow.value) {
-      syncSlideshow();
-    } else {
-      syncVideoPlayback();
+  const nextIndex = ((index % count) + count) % count;
+  if (nextIndex === activeSlide.value) {
+    if (resetTimer) {
+      resetAutoAdvanceTimer();
     }
     return;
   }
 
-  useSlideshow.value = nextSlideshow;
-  activeSlide.value = 0;
-  clearSlideTimer();
+  clearPreviousSlideTimer();
+  clearTransitionFrames();
+  transitionReady.value = false;
+  slideDirection.value = direction;
+  previousSlideIndex.value = activeSlide.value;
+  activeSlide.value = nextIndex;
 
-  if (useSlideshow.value) {
-    videoRef.value?.pause();
-    syncSlideshow();
+  transitionFrame = window.requestAnimationFrame(() => {
+    transitionStartFrame = window.requestAnimationFrame(() => {
+      transitionReady.value = true;
+      transitionFrame = null;
+      transitionStartFrame = null;
+    });
+  });
+
+  previousSlideTimer = window.setTimeout(() => {
+    previousSlideIndex.value = null;
+    transitionReady.value = false;
+    previousSlideTimer = null;
+  }, SLIDE_TRANSITION_MS);
+
+  if (resetTimer) {
+    resetAutoAdvanceTimer();
+  }
+}
+
+function nextSlide() {
+  goToSlide(activeSlide.value + 1, 'next');
+}
+
+function previousSlide() {
+  goToSlide(activeSlide.value - 1, 'previous');
+}
+
+function onTouchStart(event) {
+  touchStartX = event.changedTouches?.[0]?.clientX || 0;
+}
+
+function onTouchEnd(event) {
+  const endX = event.changedTouches?.[0]?.clientX || 0;
+  const delta = endX - touchStartX;
+  touchStartX = 0;
+
+  if (Math.abs(delta) < SWIPE_THRESHOLD_PX) {
     return;
   }
 
-  applyDesktopVideo({ forceReload: true });
-}
-
-function onLoadedData() {
-  syncVideoPlayback();
+  if (delta < 0) {
+    nextSlide();
+  } else {
+    previousSlide();
+  }
 }
 
 onMounted(() => {
-  motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-  compactQuery = window.matchMedia('(max-width: 1024px)');
-  motionQuery.addEventListener('change', syncMediaMode);
-  compactQuery.addEventListener('change', syncMediaMode);
-
-  if (heroRef.value && 'IntersectionObserver' in window) {
-    visibilityObserver = new IntersectionObserver(
-      ([entry]) => {
-        isVisible = Boolean(entry?.isIntersecting);
-        if (useSlideshow.value) {
-          syncSlideshow();
-        } else {
-          syncVideoPlayback();
-        }
-      },
-      { threshold: 0.35 },
-    );
-    visibilityObserver.observe(heroRef.value);
-  }
-
-  syncMediaMode();
-  if (!useSlideshow.value) {
-    applyDesktopVideo({ forceReload: true });
-  }
+  startAutoAdvanceTimer();
 });
 
 onUnmounted(() => {
-  motionQuery?.removeEventListener('change', syncMediaMode);
-  compactQuery?.removeEventListener('change', syncMediaMode);
-  visibilityObserver?.disconnect();
-  clearSlideTimer();
+  clearAutoAdvanceTimer();
+  clearPreviousSlideTimer();
+  clearTransitionFrames();
 });
 </script>
 
 <template>
-  <section ref="heroRef" class="hero" :class="{ 'hero--slideshow': useSlideshow }">
-    <div v-if="useSlideshow" class="hero__slides" aria-hidden="true">
+  <section
+    class="hero hero--carousel"
+    @touchstart.passive="onTouchStart"
+    @touchend.passive="onTouchEnd"
+  >
+    <div class="hero__slides" aria-live="polite">
       <picture
         v-for="(slide, index) in slides"
-        :key="slide.webp"
+        :key="slide.largeDesktop || slide.desktop || slide.mobile || slide.webp || slide.jpg"
         class="hero__slide"
-        :class="{ 'is-active': index === activeSlide }"
+        :class="{
+          'is-active': index === activeSlide,
+          'is-previous': index === previousSlideIndex,
+          'is-entering-next': index === activeSlide && slideDirection === 'next' && previousSlideIndex !== null,
+          'is-entering-previous': index === activeSlide && slideDirection === 'previous' && previousSlideIndex !== null,
+          'is-exiting-next': index === previousSlideIndex && slideDirection === 'next',
+          'is-exiting-previous': index === previousSlideIndex && slideDirection === 'previous',
+          'is-transitioning': transitionReady && (index === activeSlide || index === previousSlideIndex),
+        }"
       >
-        <source :srcset="slide.webp" type="image/webp" />
+        <source v-if="slide.largeDesktop" media="(min-width: 1440px)" :srcset="slide.largeDesktop" />
+        <source v-if="slide.desktop" media="(min-width: 1025px)" :srcset="slide.desktop" />
+        <source v-if="slide.webp" :srcset="slide.webp" type="image/webp" />
         <img
-          :src="slide.jpg"
-          :alt="index === 0 ? `${theme.brandName} toys and steel lunch boxes` : ''"
-          :aria-hidden="index === 0 ? undefined : 'true'"
+          :src="slide.mobile || slide.desktop || slide.jpg"
+          :alt="index === activeSlide ? slide.alt : ''"
+          :aria-hidden="index === activeSlide ? undefined : 'true'"
           :fetchpriority="index === 0 ? 'high' : 'low'"
           :loading="index === 0 ? 'eager' : 'lazy'"
           decoding="async"
         />
       </picture>
     </div>
-    <video
-      v-else
-      ref="videoRef"
-      class="hero__video"
-      :poster="brandAssets.heroPoster"
-      autoplay
-      muted
-      loop
-      playsinline
-      webkit-playsinline
-      preload="metadata"
-      aria-hidden="true"
-      @loadeddata="onLoadedData"
-    />
     <div class="hero__veil" aria-hidden="true" />
-    <div class="hero__inner">
-      <div class="hero__copy">
-        <h1>{{ theme.brandName }}</h1>
-        <p class="hero__lead">
-          {{ homeHero.lead }}
-        </p>
-        <p class="hero__assurances">{{ homeHero.assurances }}</p>
-        <div class="hero__actions">
-          <AppButton to="/category/toys" size="lg">
-            Shop toys
-            <ChevronRight :size="18" />
-          </AppButton>
-          <AppButton to="/category/lunch-box" variant="secondary" size="lg" class="hero__cta-secondary">
-            Shop lunch boxes
-          </AppButton>
-        </div>
-      </div>
+
+    <div v-if="slides.length > 1" class="hero__carousel-controls" aria-label="Hero carousel controls">
+      <button
+        class="hero__nav-button hero__nav-button--previous"
+        type="button"
+        aria-label="Previous hero slide"
+        @click="previousSlide"
+      >
+        <ChevronLeft :size="20" aria-hidden="true" />
+      </button>
+      <button
+        class="hero__nav-button hero__nav-button--next"
+        type="button"
+        aria-label="Next hero slide"
+        @click="nextSlide"
+      >
+        <ChevronRight :size="20" aria-hidden="true" />
+      </button>
     </div>
+    <span class="sr-only">{{ currentSlide?.alt }}</span>
   </section>
 </template>

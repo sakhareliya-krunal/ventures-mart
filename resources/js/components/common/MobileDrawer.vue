@@ -117,9 +117,11 @@ onBeforeUnmount(() => {
                 </button>
                 <Transition name="mobile-shop-panel">
                   <div v-if="shopExpanded" class="mobile-shop__children">
+                    <p class="mobile-shop__kicker">Collections</p>
                     <RouterLink
-                      v-for="child in shopNavChildren"
+                      v-for="(child, index) in shopNavChildren"
                       :key="child.href"
+                      :class="{ 'mobile-shop__link--featured': index === 0 }"
                       :to="child.href"
                       active-class="active"
                       @click="closeShopAndDrawer"

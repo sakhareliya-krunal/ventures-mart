@@ -210,10 +210,12 @@ onMounted(async () => {
           :price-ceiling="priceCeiling"
           :categories="categories.list"
         />
-        <ProductGrid
-          :products="products.list"
-          :loading="catalogLoading"
-        />
+        <div class="shop-layout__main">
+          <ProductGrid
+            :products="products.list"
+            :loading="catalogLoading"
+          />
+        </div>
       </div>
 
       <section

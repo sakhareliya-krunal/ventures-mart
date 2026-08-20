@@ -59,7 +59,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'app-shell--home': route.name === 'home' }">
     <AppHeader />
     <main ref="mainRef">
       <p v-if="welcomeMessage" class="form-success layout-welcome" role="status">

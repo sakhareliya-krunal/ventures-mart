@@ -140,6 +140,28 @@ class ProductStorefrontAlignmentTest extends TestCase
         $this->assertSame(['lunch-box'], $categories);
     }
 
+    public function test_product_detail_exposes_is_low_stock_flag(): void
+    {
+        $inStock = $this->makeProduct([
+            'slug' => 'well-stocked-box',
+            'sku' => 'STOCK-20',
+            'stock' => 20,
+        ]);
+        $lowStock = $this->makeProduct([
+            'slug' => 'low-stock-box',
+            'sku' => 'STOCK-3',
+            'stock' => 3,
+        ]);
+
+        $this->getJson('/api/products/'.$inStock->slug)
+            ->assertOk()
+            ->assertJsonPath('data.is_low_stock', false);
+
+        $this->getJson('/api/products/'.$lowStock->slug)
+            ->assertOk()
+            ->assertJsonPath('data.is_low_stock', true);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

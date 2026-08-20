@@ -46,7 +46,7 @@
     <meta name="theme-color" content="#ffffff">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Jost:wght@400&display=swap" rel="stylesheet">
     <style>
         #brand-splash.brand-splash {
             align-items: center;
@@ -55,7 +55,7 @@
                 radial-gradient(ellipse 70% 50% at 85% 75%, rgba(255, 193, 7, 0.16), transparent 50%),
                 linear-gradient(160deg, #e8eef8 0%, #f5f7fb 42%, #ffffff 100%);
             display: flex;
-            font-family: "Poppins", sans-serif;
+            font-family: "DM Sans", sans-serif;
             inset: 0;
             justify-content: center;
             overflow: hidden;
@@ -138,9 +138,10 @@
         }
         #brand-splash .brand-splash__name {
             color: #1c2c4c;
+            font-family: "Jost", sans-serif;
             font-size: clamp(1.35rem, 3vw, 1.75rem);
-            font-weight: 800;
-            letter-spacing: -0.03em;
+            font-weight: 700;
+            letter-spacing: 0.06rem;
             margin: 0;
         }
         #brand-splash .brand-splash__tagline {

@@ -60,7 +60,7 @@
 .article-premium__brand {
   color: rgba(255, 255, 255, 0.92);
   font-size: clamp(1.35rem, 3.2vw, 1.85rem);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
   margin: 0 0 0.85rem;
@@ -202,7 +202,7 @@
   color: var(--color-muted);
   flex: 0 0 auto;
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   margin-right: 0.35rem;
   text-transform: uppercase;
@@ -294,7 +294,7 @@
   align-items: center;
   color: var(--color-primary);
   display: inline-flex;
-  font-weight: 800;
+  font-weight: 700;
   gap: 0.2rem;
   text-decoration: none;
   transition: gap 160ms ease, color 160ms ease;

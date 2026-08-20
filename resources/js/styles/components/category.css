@@ -36,7 +36,7 @@
 .category-card span {
   font-family: var(--font-sans);
   font-size: 1.12rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .category-card p {
@@ -55,5 +55,50 @@
   .category-grid,
   .category-grid--wide {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Ishhaara-inspired visual theme pass: category tiles only. */
+.category-grid {
+  gap: 0.9rem;
+}
+
+.category-card {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  min-height: 210px;
+  padding: 0.75rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.category-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.category-card img {
+  border-radius: var(--radius-sm);
+  max-width: 145px;
+}
+
+.category-card span {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.category-card p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .category-grid,
+  .category-grid--wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .category-card {
+    min-height: 190px;
   }
 }

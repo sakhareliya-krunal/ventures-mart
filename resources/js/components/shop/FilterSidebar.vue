@@ -3,8 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Search, SlidersHorizontal, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
-
-const PRICE_BUCKET_STEP = 500;
+import { formatCurrency } from '@/utils/format';
 
 const props = defineProps({
   query: {
@@ -51,29 +50,52 @@ const emit = defineEmits([
 
 const filtersOpen = ref(false);
 
-const categoryChips = computed(() => [
-  { value: '', label: 'All' },
+const categoryOptions = computed(() => [
+  { value: '', label: 'All Categories' },
   ...props.categories.map((item) => ({
     value: item.slug,
     label: item.name,
   })),
 ]);
 
-const priceBuckets = computed(() => {
-  const ceiling = Math.max(Number(props.priceCeiling) || 0, PRICE_BUCKET_STEP - 1);
-  const buckets = [];
-
-  for (let start = 0; start <= ceiling; start += PRICE_BUCKET_STEP) {
-    const end = start + PRICE_BUCKET_STEP - 1;
-    buckets.push({
-      id: `${start}-${end}`,
-      min: start,
-      max: end,
-      label: `${start}–${end}`,
-    });
+function nicePriceStep(span) {
+  if (span <= 1500) {
+    return 500;
   }
+  if (span <= 6000) {
+    return 1000;
+  }
+  return Math.ceil(span / 3 / 1000) * 1000;
+}
 
-  return buckets;
+const pricePresets = computed(() => {
+  const floor = Number(props.priceFloor) || 0;
+  const ceiling = Math.max(Number(props.priceCeiling) || 0, floor + 1);
+  const span = ceiling - floor;
+  const step = nicePriceStep(span);
+  const tier1Max = Math.min(floor + step, ceiling);
+  const tier2Max = Math.min(floor + step * 2, ceiling);
+
+  return [
+    {
+      id: 'low',
+      min: floor,
+      max: tier1Max,
+      label: `< ${formatCurrency(tier1Max)}`,
+    },
+    {
+      id: 'mid',
+      min: tier1Max,
+      max: tier2Max,
+      label: `${formatCurrency(tier1Max)} – ${formatCurrency(tier2Max)}`,
+    },
+    {
+      id: 'high',
+      min: tier2Max,
+      max: ceiling,
+      label: `${formatCurrency(tier2Max)}+`,
+    },
+  ];
 });
 
 const isFullPriceRange = computed(
@@ -82,33 +104,42 @@ const isFullPriceRange = computed(
     Number(props.maxPrice) === Number(props.priceCeiling),
 );
 
-const activePriceBucketId = computed(() => {
-  if (isFullPriceRange.value) return 'any';
+const activePricePresetId = computed(() => {
+  if (isFullPriceRange.value) {
+    return null;
+  }
 
-  const match = priceBuckets.value.find(
-    (bucket) =>
-      Number(props.minPrice) === bucket.min && Number(props.maxPrice) === bucket.max,
+  const match = pricePresets.value.find(
+    (preset) =>
+      Number(props.minPrice) === preset.min && Number(props.maxPrice) === preset.max,
   );
 
   return match?.id || null;
 });
 
-const sortOptions = [
-  { value: 'featured', label: 'Featured' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'rating', label: 'Top rated' },
-  { value: 'price-asc', label: 'Price: low to high' },
-  { value: 'price-desc', label: 'Price: high to low' },
-];
+const sliderMax = computed({
+  get: () => Number(props.maxPrice),
+  set: (value) => {
+    emit('update:minPrice', props.priceFloor);
+    emit('update:maxPrice', Number(value));
+  },
+});
 
-function selectAnyPrice() {
-  emit('update:minPrice', props.priceFloor);
-  emit('update:maxPrice', props.priceCeiling);
+function selectPricePreset(preset) {
+  emit('update:minPrice', preset.min);
+  emit('update:maxPrice', preset.max);
 }
 
-function selectPriceBucket(bucket) {
-  emit('update:minPrice', bucket.min);
-  emit('update:maxPrice', bucket.max);
+function onSliderInput(event) {
+  sliderMax.value = Number(event.target.value);
+}
+
+function resetAll() {
+  emit('update:query', '');
+  emit('update:category', '');
+  emit('update:minPrice', props.priceFloor);
+  emit('update:maxPrice', props.priceCeiling);
+  emit('update:sort', 'featured');
 }
 
 function openFilters() {
@@ -140,14 +171,89 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="shop-toolbar">
+  <aside class="filter-matrix filter-matrix--desktop" aria-label="Filters">
+    <div class="filter-matrix__card">
+      <div class="filter-matrix__header">
+        <div class="filter-matrix__title">
+          <SlidersHorizontal :size="20" aria-hidden="true" />
+          <h2>Filter Matrix</h2>
+        </div>
+        <button class="filter-matrix__reset" type="button" @click="resetAll">
+          Reset all
+        </button>
+      </div>
+
+      <div class="filter-matrix__section">
+        <label class="filter-matrix__label" for="filter-matrix-search-desktop">Search keywords</label>
+        <div class="filter-matrix__search">
+          <Search :size="18" aria-hidden="true" />
+          <input
+            id="filter-matrix-search-desktop"
+            :value="query"
+            type="search"
+            placeholder="Type name here…"
+            @input="emit('update:query', $event.target.value)"
+          />
+        </div>
+      </div>
+
+      <div class="filter-matrix__section">
+        <span class="filter-matrix__label">Category</span>
+        <AppSelect
+          :model-value="category"
+          :options="categoryOptions"
+          aria-label="Category"
+          placeholder="All Categories"
+          @update:model-value="emit('update:category', $event)"
+        />
+      </div>
+
+      <div class="filter-matrix__section filter-matrix__section--price">
+        <span class="filter-matrix__label">Price ceiling</span>
+        <div class="filter-matrix__pills" role="list" aria-label="Price presets">
+          <button
+            v-for="preset in pricePresets"
+            :key="preset.id"
+            type="button"
+            class="filter-matrix__pill"
+            :class="{ 'is-active': activePricePresetId === preset.id }"
+            role="listitem"
+            @click="selectPricePreset(preset)"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
+
+        <div class="filter-matrix__slider-wrap">
+          <input
+            class="filter-matrix__slider"
+            type="range"
+            :min="priceFloor"
+            :max="priceCeiling"
+            :value="sliderMax"
+            :aria-valuemin="priceFloor"
+            :aria-valuemax="priceCeiling"
+            :aria-valuenow="sliderMax"
+            aria-label="Maximum price"
+            @input="onSliderInput"
+          />
+          <div class="filter-matrix__slider-labels">
+            <span>Min</span>
+            <span>Max</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="shop-toolbar shop-toolbar--mobile">
     <div class="shop-toolbar__search">
       <Search :size="18" aria-hidden="true" />
       <input
         :value="query"
         type="search"
         aria-label="Search products"
-        placeholder="Search products by name or SKU"
+        placeholder="Type name here…"
         @input="emit('update:query', $event.target.value)"
       />
     </div>
@@ -171,77 +277,94 @@ onBeforeUnmount(() => {
         @click="closeFilters"
       />
       <div
-        class="filters-dialog__panel"
+        class="filters-dialog__panel filter-matrix__card filter-matrix__card--drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby="shop-filters-title"
       >
-        <div class="filters-dialog__header">
-          <h2 id="shop-filters-title">Filters</h2>
-          <button
-            class="icon-button"
-            type="button"
-            aria-label="Close filters"
-            @click="closeFilters"
-          >
-            <X :size="22" />
-          </button>
+        <div class="filter-matrix__header">
+          <div class="filter-matrix__title">
+            <SlidersHorizontal :size="20" aria-hidden="true" />
+            <h2 id="shop-filters-title">Filter Matrix</h2>
+          </div>
+          <div class="filter-matrix__header-actions">
+            <button class="filter-matrix__reset" type="button" @click="resetAll">
+              Reset all
+            </button>
+            <button
+              class="icon-button filter-matrix__close"
+              type="button"
+              aria-label="Close filters"
+              @click="closeFilters"
+            >
+              <X :size="22" />
+            </button>
+          </div>
         </div>
+
         <div class="filters-dialog__body">
-          <div class="filters-field">
-            <span class="filters-field__label">Category</span>
-            <div class="filter-chips" role="list">
-              <button
-                v-for="chip in categoryChips"
-                :key="chip.value || 'all'"
-                type="button"
-                class="filter-chip"
-                :class="{ 'is-active': category === chip.value }"
-                role="listitem"
-                @click="emit('update:category', chip.value)"
-              >
-                {{ chip.label }}
-              </button>
+          <div class="filter-matrix__section">
+            <label class="filter-matrix__label" for="filter-matrix-search-mobile">Search keywords</label>
+            <div class="filter-matrix__search">
+              <Search :size="18" aria-hidden="true" />
+              <input
+                id="filter-matrix-search-mobile"
+                :value="query"
+                type="search"
+                placeholder="Type name here…"
+                @input="emit('update:query', $event.target.value)"
+              />
             </div>
           </div>
 
-          <div class="filters-field">
-            <span class="filters-field__label">Price</span>
-            <div class="filter-chips" role="list" aria-label="Price range">
-              <button
-                type="button"
-                class="filter-chip"
-                :class="{ 'is-active': activePriceBucketId === 'any' }"
-                role="listitem"
-                @click="selectAnyPrice"
-              >
-                Any
-              </button>
-              <button
-                v-for="bucket in priceBuckets"
-                :key="bucket.id"
-                type="button"
-                class="filter-chip"
-                :class="{ 'is-active': activePriceBucketId === bucket.id }"
-                role="listitem"
-                @click="selectPriceBucket(bucket)"
-              >
-                {{ bucket.label }}
-              </button>
-            </div>
-          </div>
-
-          <div class="filters-field">
-            <span class="filters-field__label">Sort</span>
+          <div class="filter-matrix__section">
+            <span class="filter-matrix__label">Category</span>
             <AppSelect
-              :model-value="sort"
-              :options="sortOptions"
-              aria-label="Sort"
-              placeholder="Featured"
-              @update:model-value="emit('update:sort', $event)"
+              :model-value="category"
+              :options="categoryOptions"
+              aria-label="Category"
+              placeholder="All Categories"
+              @update:model-value="emit('update:category', $event)"
             />
           </div>
+
+          <div class="filter-matrix__section filter-matrix__section--price">
+            <span class="filter-matrix__label">Price ceiling</span>
+            <div class="filter-matrix__pills" role="list" aria-label="Price presets">
+              <button
+                v-for="preset in pricePresets"
+                :key="preset.id"
+                type="button"
+                class="filter-matrix__pill"
+                :class="{ 'is-active': activePricePresetId === preset.id }"
+                role="listitem"
+                @click="selectPricePreset(preset)"
+              >
+                {{ preset.label }}
+              </button>
+            </div>
+
+            <div class="filter-matrix__slider-wrap">
+              <input
+                class="filter-matrix__slider"
+                type="range"
+                :min="priceFloor"
+                :max="priceCeiling"
+                :value="sliderMax"
+                :aria-valuemin="priceFloor"
+                :aria-valuemax="priceCeiling"
+                :aria-valuenow="sliderMax"
+                aria-label="Maximum price"
+                @input="onSliderInput"
+              />
+              <div class="filter-matrix__slider-labels">
+                <span>Min</span>
+                <span>Max</span>
+              </div>
+            </div>
+          </div>
         </div>
+
         <div class="filters-dialog__footer">
           <AppButton type="button" @click="closeFilters">Done</AppButton>
         </div>

@@ -5,12 +5,12 @@ const REVEAL_SELECTORS = [
   '.category-card',
   '.category-pillar',
   '.home-why__item',
+  '.home-benefits__card',
+  '.about-commitment__stat',
   '.home-trust__quote',
   '.product-detail__gallery',
   '.product-detail__copy',
   '.page-hero',
-  '.about-cta',
-  '.about-value',
   '.article-premium__section',
   '.article-premium__close',
   '.article-premium__intro',
@@ -19,7 +19,7 @@ const REVEAL_SELECTORS = [
 ].join(', ');
 
 const SOFT_SELECTORS =
-  '.product-card, .category-card, .category-pillar, .about-value, .home-why__item, .home-trust__quote, .article-premium__section';
+  '.product-card, .category-card, .category-pillar, .about-commitment__stat, .home-why__item, .home-benefits__card, .home-trust__quote, .article-premium__section';
 const VIEWPORT_MARGIN = 100;
 
 let observer = null;

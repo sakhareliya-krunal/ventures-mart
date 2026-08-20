@@ -16,6 +16,8 @@ body {
   margin: 0;
   background: var(--color-background);
   color: var(--color-ink);
+  font-family: var(--font-body-family);
+  font-weight: var(--font-body-weight);
 }
 
 a {
@@ -52,16 +54,20 @@ main {
   color: var(--color-primary-dark);
   display: inline-block;
   font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: 0.13rem;
   margin-bottom: 0.6rem;
   text-transform: uppercase;
 }
 
 h1,
 h2,
-h3 {
-  font-family: var(--font-sans);
+h3,
+h4,
+h5 {
+  font-family: var(--font-heading-family);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--font-heading-letter-spacing);
   line-height: 1.05;
   margin: 0;
 }
@@ -107,7 +113,7 @@ p {
 
 .section-header a {
   color: var(--color-primary-dark);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .price {
@@ -125,7 +131,7 @@ p {
 .price strong {
   color: var(--color-ink);
   font-size: 1.05em;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -139,7 +145,7 @@ p {
 .price__off {
   color: var(--color-secondary);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-decoration: none;
 }
@@ -187,7 +193,7 @@ p {
 .check-list li::before {
   color: var(--color-success);
   content: "✓ ";
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .stock-note {
@@ -220,8 +226,10 @@ p {
 .skeleton-card {
   background: var(--color-surface);
   border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
+  padding: 0.7rem 0.7rem 0.85rem;
 }
 
 .skeleton-card__media,
@@ -238,12 +246,13 @@ p {
 
 .skeleton-card__media {
   aspect-ratio: 1;
+  border-radius: calc(var(--radius-md) - 4px);
 }
 
 .skeleton-card__body {
   display: grid;
   gap: 0.4rem;
-  padding: 0.85rem 0.75rem 0.95rem;
+  padding: 0.85rem 0.15rem 0.15rem;
 }
 
 .skeleton-card__line {
@@ -298,7 +307,7 @@ p {
 .breadcrumb__current {
   color: var(--color-ink);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.01em;
   max-width: min(52vw, 18rem);
   overflow: hidden;

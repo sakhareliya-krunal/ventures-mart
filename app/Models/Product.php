@@ -105,6 +105,17 @@ class Product extends Model
         return (int) $this->stock;
     }
 
+    public function lowStockThreshold(): int
+    {
+        return $this->low_stock_threshold
+            ?? (int) config('inventory.default_low_stock_threshold', 5);
+    }
+
+    public function isLowStock(): bool
+    {
+        return $this->stock > 0 && $this->stock <= $this->lowStockThreshold();
+    }
+
     public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);

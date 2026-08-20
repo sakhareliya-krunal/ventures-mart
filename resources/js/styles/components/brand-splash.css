@@ -5,7 +5,7 @@
     radial-gradient(ellipse 70% 50% at 85% 75%, rgba(255, 193, 7, 0.16), transparent 50%),
     linear-gradient(160deg, var(--color-soft-2) 0%, var(--color-background) 42%, #fff 100%);
   display: flex;
-  font-family: var(--font-sans);
+  font-family: var(--font-body-family);
   inset: 0;
   justify-content: center;
   overflow: hidden;
@@ -116,9 +116,10 @@
 
 .brand-splash__name {
   color: var(--color-ink);
+  font-family: var(--font-heading-family);
   font-size: clamp(1.35rem, 3vw, 1.75rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--font-heading-letter-spacing);
   margin: 0;
 }
 

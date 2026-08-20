@@ -31,6 +31,16 @@
   --container: 1180px;
   --content-measure: 720px;
   --section-space: clamp(3rem, 7vw, 6rem);
-  --font-sans: "Poppins", sans-serif;
-  font-family: var(--font-sans);
+  --font-body-family: "DM Sans", sans-serif;
+  --font-body-weight: 400;
+  --font-body-weight-bold: 700;
+  --font-heading-family: Jost, sans-serif;
+  --font-heading-weight: 400;
+  --font-heading-letter-spacing: 0.06rem;
+  --font-sans: var(--font-body-family);
+  --font-heading: var(--font-heading-family);
+  --font-weight-bold: 700;
+  --font-weight-heading: 400;
+  font-family: var(--font-body-family);
+  font-weight: var(--font-body-weight);
 }

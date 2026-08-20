@@ -7,7 +7,7 @@ export const primaryNav = [
 ];
 
 export const shopNavChildren = [
-  { label: 'Shop All', href: '/shop' },
+  { label: 'All Products', href: '/shop' },
   { label: 'Lunch Box', href: '/category/lunch-box' },
   { label: 'Toys', href: '/category/toys' },
 ];

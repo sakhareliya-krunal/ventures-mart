@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ChevronDown, Heart, Menu, ShoppingBag, User } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
@@ -12,14 +12,25 @@ import { useCartStore } from '@/stores/cart';
 import { useWishlistStore } from '@/stores/wishlist';
 import { useThemeStore } from '@/stores/theme';
 
+const TOP_STRIP_ROTATION_MS = 5000;
+const topStripMessages = [
+  'Free shipping across India on every order',
+  'Thoughtfully picked toys and lunch boxes for everyday joy',
+  'COD available at checkout',
+  'New drops for school, play, and gifting',
+];
+
 const open = ref(false);
 const shopMenuOpen = ref(false);
+const activeTopStripMessage = ref(0);
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const cart = useCartStore();
 const wishlist = useWishlistStore();
 const theme = useThemeStore();
+
+let topStripTimer = null;
 
 const profileTo = computed(() => {
   if (!auth.user) {
@@ -41,6 +52,13 @@ function closeShopMenu() {
   shopMenuOpen.value = false;
 }
 
+function onShopFocusOut(event) {
+  const shopNav = event.currentTarget;
+  if (shopNav instanceof HTMLElement && !shopNav.contains(event.relatedTarget)) {
+    closeShopMenu();
+  }
+}
+
 function onShopCategoryClick() {
   shopMenuOpen.value = false;
   if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -56,12 +74,29 @@ function openCart() {
 
   cart.openTray();
 }
+
+onMounted(() => {
+  topStripTimer = window.setInterval(() => {
+    activeTopStripMessage.value = (activeTopStripMessage.value + 1) % topStripMessages.length;
+  }, TOP_STRIP_ROTATION_MS);
+});
+
+onUnmounted(() => {
+  if (topStripTimer) {
+    window.clearInterval(topStripTimer);
+    topStripTimer = null;
+  }
+});
 </script>
 
 <template>
   <header class="site-header">
     <div class="top-strip">
-      Free shipping on all orders. Carefully curated for kids and families.
+      <Transition name="top-strip-message" mode="out-in">
+        <span :key="activeTopStripMessage" class="top-strip__message">
+          {{ topStripMessages[activeTopStripMessage] }}
+        </span>
+      </Transition>
     </div>
     <div class="header-main">
       <RouterLink class="brand" to="/" :aria-label="`${theme.brandName} home`">
@@ -77,6 +112,7 @@ function openCart() {
             @mouseenter="openShopMenu"
             @mouseleave="closeShopMenu"
             @focusin="openShopMenu"
+            @focusout="onShopFocusOut"
           >
             <RouterLink
               class="nav-item__trigger"
@@ -88,19 +124,29 @@ function openCart() {
               <span>Shop</span>
               <ChevronDown class="nav-item__chevron" :size="14" aria-hidden="true" />
             </RouterLink>
-            <div class="nav-item__panel" role="menu" aria-label="Shop categories">
-              <RouterLink
-                v-for="child in shopNavChildren"
-                :key="child.href"
-                class="nav-item__link"
-                :to="child.href"
-                role="menuitem"
-                active-class="active"
-                @click="onShopCategoryClick"
+            <Transition name="shop-nav-panel">
+              <div
+                v-show="shopMenuOpen"
+                class="nav-item__panel"
+                role="menu"
+                aria-label="Shop categories"
               >
-                {{ child.label }}
-              </RouterLink>
-            </div>
+                <p class="nav-item__panel-kicker">Collections</p>
+                <RouterLink
+                  v-for="(child, index) in shopNavChildren"
+                  :key="child.href"
+                  class="nav-item__link"
+                  :class="{ 'nav-item__link--featured': index === 0 }"
+                  :style="{ '--nav-link-delay': `${index * 45}ms` }"
+                  :to="child.href"
+                  role="menuitem"
+                  active-class="active"
+                  @click="onShopCategoryClick"
+                >
+                  <span class="nav-item__link-label">{{ child.label }}</span>
+                </RouterLink>
+              </div>
+            </Transition>
           </div>
           <RouterLink
             v-else
