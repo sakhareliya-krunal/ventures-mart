@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown, Heart, Menu, ShoppingBag, User } from '@lucide/vue';
+import { ChevronDown, Heart, Menu, ShoppingBag, User, X } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import CartBadge from '@/components/common/CartBadge.vue';
 import MobileDrawer from '@/components/common/MobileDrawer.vue';
@@ -66,7 +66,12 @@ function onShopCategoryClick() {
   }
 }
 
-function openMobileMenu() {
+function toggleMobileMenu() {
+  if (open.value) {
+    open.value = false;
+    return;
+  }
+
   closeShopMenu();
   cart.closeTray();
   open.value = true;
@@ -96,7 +101,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="site-header">
+  <header class="site-header" :class="{ 'is-mobile-menu-open': open }">
     <div class="top-strip">
       <Transition name="top-strip-message" mode="out-in">
         <span :key="activeTopStripMessage" class="top-strip__message">
@@ -193,12 +198,13 @@ onUnmounted(() => {
         <button
           class="icon-button mobile-menu-button"
           type="button"
-          aria-label="Open menu"
+          :aria-label="open ? 'Close menu' : 'Open menu'"
           aria-controls="mobile-navigation-drawer"
           :aria-expanded="open"
-          @click.stop="openMobileMenu"
+          @click.stop="toggleMobileMenu"
         >
-          <Menu :size="22" aria-hidden="true" />
+          <X v-if="open" :size="22" aria-hidden="true" />
+          <Menu v-else :size="22" aria-hidden="true" />
         </button>
       </div>
     </div>

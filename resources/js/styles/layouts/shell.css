@@ -368,8 +368,13 @@
   right: 0;
   top: 0;
   transform: translateX(0);
-  width: min(340px, 92vw);
+  width: min(520px, 78vw);
   z-index: 1;
+}
+
+.site-header.is-mobile-menu-open .mobile-menu-button {
+  position: relative;
+  z-index: 100;
 }
 
 .mobile-panel__top {
@@ -874,6 +879,10 @@
     display: inline-flex;
   }
 
+  .mobile-panel {
+    width: min(520px, 78vw);
+  }
+
   .footer-features {
     grid-template-columns: 1fr;
   }
@@ -896,6 +905,13 @@
   .header-main {
     padding-block: 0.75rem;
     padding-inline: max(1rem, env(safe-area-inset-left), env(safe-area-inset-right));
+  }
+
+  .mobile-panel {
+    border-left: 0;
+    box-shadow: none;
+    padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
+    width: 100%;
   }
 
   .brand img {

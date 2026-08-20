@@ -43,6 +43,14 @@ async function openMenu(wrapper) {
   await nextTick();
 }
 
+async function toggleMenu(wrapper) {
+  const label = document.querySelector('#mobile-navigation-drawer')
+    ? 'Close menu'
+    : 'Open menu';
+  await wrapper.get(`[aria-label="${label}"]`).trigger('click');
+  await nextTick();
+}
+
 describe('AppHeader mobile drawer', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -62,6 +70,20 @@ describe('AppHeader mobile drawer', () => {
 
     expect(document.querySelector('#mobile-navigation-drawer')).not.toBeNull();
     expect(document.body.style.overflow).toBe('hidden');
+    expect(wrapper.get('[aria-label="Close menu"]').attributes('aria-expanded')).toBe('true');
+
+    wrapper.unmount();
+  });
+
+  test('closes the mobile drawer when the header toggle is clicked again', async () => {
+    const { wrapper } = await mountHeader();
+
+    await openMenu(wrapper);
+    await toggleMenu(wrapper);
+
+    expect(document.querySelector('#mobile-navigation-drawer')).toBeNull();
+    expect(document.body.style.overflow).toBe('');
+    expect(wrapper.get('[aria-label="Open menu"]').attributes('aria-expanded')).toBe('false');
 
     wrapper.unmount();
   });
