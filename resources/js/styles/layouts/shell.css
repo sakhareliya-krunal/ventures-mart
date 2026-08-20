@@ -368,7 +368,7 @@
   right: 0;
   top: 0;
   transform: translateX(0);
-  width: min(520px, 78vw);
+  width: min(400px, 72vw);
   z-index: 1;
 }
 
@@ -880,11 +880,22 @@
   }
 
   .mobile-panel {
-    width: min(520px, 78vw);
+    width: min(400px, 72vw);
+  }
+
+  .footer-inner {
+    max-width: 100%;
+    overflow-x: hidden;
+    padding-inline: max(1rem, env(safe-area-inset-left), env(safe-area-inset-right));
   }
 
   .footer-features {
     grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .footer-features__item {
+    justify-content: center;
   }
 
   .footer-grid {
@@ -896,7 +907,43 @@
     grid-column: 1 / -1;
   }
 
+  .footer-brand {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .footer-brand p {
+    margin-inline: auto;
+  }
+
+  .footer-col:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+
   .footer-col {
+    text-align: center;
+  }
+
+  .footer-help {
+    justify-self: center;
+    width: min(100%, 420px);
+  }
+
+  .footer-payments {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .footer-payments__copy {
+    justify-content: center;
+  }
+
+  .footer-payments__pills {
+    justify-content: center;
+  }
+
+  .footer-bottom__inner {
+    justify-content: center;
     text-align: center;
   }
 }
@@ -908,10 +955,8 @@
   }
 
   .mobile-panel {
-    border-left: 0;
-    box-shadow: none;
     padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
-    width: 100%;
+    width: min(360px, 86vw);
   }
 
   .brand img {
@@ -925,22 +970,22 @@
 
   .footer-grid {
     gap: 1.75rem;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .footer-brand,
   .footer-help,
-  .footer-col:nth-child(4) {
+  .footer-col {
     grid-column: 1 / -1;
   }
 
   .footer-payments {
-    align-items: flex-start;
+    align-items: center;
     flex-direction: column;
   }
 
   .footer-bottom__inner {
-    align-items: flex-start;
+    align-items: center;
     flex-direction: column;
   }
 }
@@ -1241,9 +1286,11 @@
   border-radius: var(--radius-sm);
 }
 
-.footer-grid {
-  gap: 1.5rem;
-  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(120px, 0.7fr)) minmax(220px, 1.15fr);
+@media (min-width: 1041px) {
+  .footer-grid {
+    gap: 1.5rem;
+    grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(120px, 0.7fr)) minmax(220px, 1.15fr);
+  }
 }
 
 .footer-col a {
@@ -1279,11 +1326,6 @@
   .icon-button {
     height: 37px;
     width: 37px;
-  }
-
-  .footer-grid,
-  .footer-features {
-    text-align: left;
   }
 }
 

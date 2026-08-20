@@ -218,12 +218,14 @@ onUnmounted(() => {
 }
 
 .home-best-sellers__rail {
+  -webkit-overflow-scrolling: touch;
   display: grid;
   gap: 0.9rem;
   grid-auto-columns: clamp(11.25rem, 21vw, 15.5rem);
   grid-auto-flow: column;
   justify-content: safe center;
   margin-inline: calc(clamp(1rem, 4vw, 1.25rem) * -1);
+  min-width: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 0.1rem clamp(1rem, 4vw, 1.25rem) 0.6rem;
@@ -256,22 +258,11 @@ onUnmounted(() => {
   .home-best-sellers__controls {
     display: none;
   }
+}
 
+@media (max-width: 720px) {
   .home-best-sellers__rail {
-    gap: 0.72rem;
-    grid-auto-columns: auto;
-    grid-auto-flow: row;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    justify-content: stretch;
-    margin-inline: 0;
-    overflow-x: visible;
-    padding: 0;
-    scroll-padding-inline: 0;
-    scroll-snap-type: none;
-  }
-
-  .home-best-sellers__rail > :deep(*) {
-    scroll-snap-align: none;
+    grid-auto-columns: clamp(10.5rem, 78vw, 15.5rem);
   }
 }
 

@@ -233,6 +233,27 @@
   position: relative;
 }
 
+.product-detail__swipe-viewport {
+  aspect-ratio: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.product-detail__swipe-viewport .product-detail__track {
+  height: 100%;
+}
+
+.product-detail__gallery-chrome {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.product-detail__gallery-chrome .product-detail__wish-icon {
+  pointer-events: auto;
+}
+
 .product-detail__badge-overlay {
   background: var(--color-secondary);
   border-radius: 999px;

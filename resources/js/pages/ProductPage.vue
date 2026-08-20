@@ -4,7 +4,6 @@ import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import {
   ChevronLeft,
-  Heart,
   MessageSquareQuote,
   Minus,
   Plus,
@@ -14,6 +13,7 @@ import {
   Star,
   Truck,
 } from '@lucide/vue';
+import ProductGalleryChrome from '@/components/product/ProductGalleryChrome.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
@@ -391,44 +391,37 @@ onBeforeUnmount(() => {
             aria-roledescription="carousel"
             :aria-label="`${product.name} images`"
           >
-            <div
-              ref="trackEl"
-              class="product-detail__track"
-              tabindex="0"
-              @scroll.passive="onTrackScroll"
-            >
+            <div class="product-detail__swipe-viewport">
               <div
-                v-for="(image, index) in gallery"
-                :key="image"
-                class="product-detail__slide"
-                role="group"
-                aria-roledescription="slide"
-                :aria-label="`${index + 1} of ${gallery.length}`"
+                ref="trackEl"
+                class="product-detail__track"
+                tabindex="0"
+                @scroll.passive="onTrackScroll"
               >
-                <div class="product-detail__media-frame">
-                  <img
-                    :src="image"
-                    :alt="productImageAlt(index)"
-                    :title="productImageTitle(index)"
-                    :loading="index === 0 ? 'eager' : 'lazy'"
-                    :fetchpriority="index === 0 ? 'high' : undefined"
-                  />
-                  <span v-if="product.badge && index === activeIndex" class="product-detail__badge-overlay">
-                    {{ product.badge }}
-                  </span>
-                  <button
-                    v-if="index === activeIndex"
-                    type="button"
-                    class="product-detail__wish-icon"
-                    :class="{ 'is-wished': wished }"
-                    :aria-pressed="wished"
-                    :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'"
-                    @click="toggleWish"
-                  >
-                    <Heart :size="20" :fill="wished ? 'currentColor' : 'none'" aria-hidden="true" />
-                  </button>
+                <div
+                  v-for="(image, index) in gallery"
+                  :key="image"
+                  class="product-detail__slide"
+                  role="group"
+                  aria-roledescription="slide"
+                  :aria-label="`${index + 1} of ${gallery.length}`"
+                >
+                  <div class="product-detail__media-frame">
+                    <img
+                      :src="image"
+                      :alt="productImageAlt(index)"
+                      :title="productImageTitle(index)"
+                      :loading="index === 0 ? 'eager' : 'lazy'"
+                      :fetchpriority="index === 0 ? 'high' : undefined"
+                    />
+                  </div>
                 </div>
               </div>
+              <ProductGalleryChrome
+                :badge="product.badge"
+                :wished="wished"
+                @toggle-wish="toggleWish"
+              />
             </div>
             <div
               v-if="gallery.length > 1"
@@ -477,19 +470,11 @@ onBeforeUnmount(() => {
                 :title="productImageTitle(Math.max(0, gallery.indexOf(displayImage)))"
                 fetchpriority="high"
               />
-              <span v-if="product.badge" class="product-detail__badge-overlay">
-                {{ product.badge }}
-              </span>
-              <button
-                type="button"
-                class="product-detail__wish-icon"
-                :class="{ 'is-wished': wished }"
-                :aria-pressed="wished"
-                :aria-label="wished ? 'Remove from wishlist' : 'Add to wishlist'"
-                @click="toggleWish"
-              >
-                <Heart :size="20" :fill="wished ? 'currentColor' : 'none'" aria-hidden="true" />
-              </button>
+              <ProductGalleryChrome
+                :badge="product.badge"
+                :wished="wished"
+                @toggle-wish="toggleWish"
+              />
             </div>
           </div>
         </div>
