@@ -200,7 +200,8 @@
   right: 0;
   top: 0;
   transform: translateX(0);
-  width: min(400px, 100vw);
+  width: min(400px, 100%);
+  max-width: calc(100dvw - env(safe-area-inset-left) - env(safe-area-inset-right));
   z-index: 1;
 }
 

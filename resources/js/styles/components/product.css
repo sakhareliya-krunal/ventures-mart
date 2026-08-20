@@ -1365,7 +1365,10 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(440px, calc(100vw - 2rem));
+  width: min(
+    440px,
+    calc(100dvw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right))
+  );
   z-index: 1;
 }
 

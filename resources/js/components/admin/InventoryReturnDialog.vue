@@ -3,6 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -40,6 +41,8 @@ const valid = computed(
     (maxReturnable.value === null || Number(form.quantity) <= maxReturnable.value) &&
     form.reason.trim().length >= 3,
 );
+
+useScrollLock('admin-modal-return', () => props.open);
 
 watch(
   () => props.open,

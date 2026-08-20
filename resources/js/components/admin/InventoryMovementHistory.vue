@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -46,17 +47,17 @@ function onKeydown(event) {
   if (event.key === 'Escape' && props.open) close();
 }
 
+useScrollLock('inventory-history', () => props.open);
+
 watch(
   () => props.open,
   (open) => {
-    document.body.style.overflow = open ? 'hidden' : '';
     if (open) window.addEventListener('keydown', onKeydown);
     else window.removeEventListener('keydown', onKeydown);
   },
 );
 
 onBeforeUnmount(() => {
-  document.body.style.overflow = '';
   window.removeEventListener('keydown', onKeydown);
 });
 </script>

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Minus, Plus, ShoppingBag, Trash2, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 import { formatCurrency } from '@/utils/format';
 import { isOutOfStockProduct, maxCartQuantityFor } from '@/utils/cartStock';
 import { requireLogin } from '@/utils/authRedirect';
@@ -30,9 +31,7 @@ const lineLabel = computed(() => {
 const showIgst = computed(() => Number(cart.totals.igst || 0) > 0);
 const isEstimate = computed(() => cart.totals.tax_type === 'estimate');
 
-function lockScroll(locked) {
-  document.body.style.overflow = locked ? 'hidden' : '';
-}
+useScrollLock('cart-tray', () => visible.value);
 
 function onKeydown(event) {
   if (event.key === 'Escape') {
@@ -76,8 +75,6 @@ function goToCart() {
 }
 
 watch(visible, (isOpen) => {
-  lockScroll(isOpen);
-
   if (isOpen) {
     window.addEventListener('keydown', onKeydown);
   } else {
@@ -92,7 +89,6 @@ watch(hiddenOnRoute, (hidden) => {
 });
 
 onBeforeUnmount(() => {
-  lockScroll(false);
   window.removeEventListener('keydown', onKeydown);
 });
 </script>

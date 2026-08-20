@@ -5,6 +5,7 @@ import { ChevronDown, X } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import { primaryNav, shopNavChildren } from '@/constants/navigation';
+import { useScrollLock } from '@/composables/useScrollLock';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
 import { useThemeStore } from '@/stores/theme';
@@ -50,16 +51,11 @@ function onKeydown(event) {
   }
 }
 
-function lockScroll(locked) {
-  if (typeof document === 'undefined') return;
-  document.body.style.overflow = locked ? 'hidden' : '';
-}
+useScrollLock('mobile-drawer', () => props.open);
 
 watch(
   () => props.open,
   (isOpen) => {
-    lockScroll(isOpen);
-
     if (isOpen) {
       window.addEventListener('keydown', onKeydown);
     } else {
@@ -80,7 +76,6 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  lockScroll(false);
   window.removeEventListener('keydown', onKeydown);
 });
 </script>

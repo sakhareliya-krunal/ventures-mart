@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Search, SlidersHorizontal, X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 import { formatCurrency } from '@/utils/format';
 
 const props = defineProps({
@@ -156,9 +157,7 @@ function onKeydown(event) {
   }
 }
 
-watch(filtersOpen, (open) => {
-  document.body.style.overflow = open ? 'hidden' : '';
-});
+useScrollLock('shop-filters', () => filtersOpen.value);
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown);
@@ -166,7 +165,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
-  document.body.style.overflow = '';
 });
 </script>
 

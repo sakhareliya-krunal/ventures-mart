@@ -4,6 +4,10 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -18,6 +22,39 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body-family);
   font-weight: var(--font-body-weight);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+html.is-scroll-locked,
+html.is-scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+:where(
+  .mobile-drawer,
+  .cart-tray,
+  .filters-dialog,
+  .confirm-dialog,
+  .review-dialog,
+  .admin-modal,
+  .inventory-history
+) {
+  inset: 0;
+  position: fixed;
+  width: 100%;
+  max-width: 100dvw;
+  box-sizing: border-box;
 }
 
 a {
@@ -44,10 +81,14 @@ textarea {
 
 main {
   min-height: 60vh;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app-shell {
   min-height: 100vh;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .eyebrow {

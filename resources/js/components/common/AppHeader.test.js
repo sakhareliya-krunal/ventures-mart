@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { nextTick } from 'vue';
 import AppHeader from '@/components/common/AppHeader.vue';
 import { useCartStore } from '@/stores/cart';
+import { isScrollLocked, resetScrollLock } from '@/utils/scrollLock';
 
 function makeRouter() {
   return createRouter({
@@ -54,12 +55,12 @@ async function toggleMenu(wrapper) {
 describe('AppHeader mobile drawer', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
-    document.body.style.overflow = '';
+    resetScrollLock();
   });
 
   afterEach(() => {
+    resetScrollLock();
     document.body.innerHTML = '';
-    document.body.style.overflow = '';
     vi.restoreAllMocks();
   });
 
@@ -69,7 +70,7 @@ describe('AppHeader mobile drawer', () => {
     await openMenu(wrapper);
 
     expect(document.querySelector('#mobile-navigation-drawer')).not.toBeNull();
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(isScrollLocked()).toBe(true);
     expect(wrapper.get('[aria-label="Close menu"]').attributes('aria-expanded')).toBe('true');
 
     wrapper.unmount();
@@ -82,7 +83,7 @@ describe('AppHeader mobile drawer', () => {
     await toggleMenu(wrapper);
 
     expect(document.querySelector('#mobile-navigation-drawer')).toBeNull();
-    expect(document.body.style.overflow).toBe('');
+    expect(isScrollLocked()).toBe(false);
     expect(wrapper.get('[aria-label="Open menu"]').attributes('aria-expanded')).toBe('false');
 
     wrapper.unmount();
@@ -96,7 +97,7 @@ describe('AppHeader mobile drawer', () => {
     await nextTick();
 
     expect(document.querySelector('#mobile-navigation-drawer')).toBeNull();
-    expect(document.body.style.overflow).toBe('');
+    expect(isScrollLocked()).toBe(false);
 
     await openMenu(wrapper);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

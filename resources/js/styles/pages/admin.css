@@ -2941,7 +2941,10 @@
   position: absolute;
   right: 0;
   top: 0;
-  width: min(92vw, 620px);
+  width: min(
+    620px,
+    calc(100dvw - env(safe-area-inset-left) - env(safe-area-inset-right))
+  );
 }
 
 .inventory-history__drawer .admin-modal__header {
@@ -3732,7 +3735,10 @@
     top: 0;
     transform: translateX(-105%);
     transition: transform 0.22s ease;
-    width: min(300px, 86vw);
+    width: min(
+      300px,
+      calc(100dvw - env(safe-area-inset-left) - env(safe-area-inset-right))
+    );
     z-index: 70;
   }
 

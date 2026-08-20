@@ -3,6 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -40,6 +41,8 @@ const valid = computed(() => {
     (['set_count', 'set_available'].includes(form.operation) || quantity.value > 0)
   );
 });
+
+useScrollLock('admin-modal-adjustment', () => props.open);
 
 watch(
   () => props.open,

@@ -2,6 +2,7 @@
 import { onBeforeUnmount, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({
   open: {
@@ -64,22 +65,21 @@ function onKeydown(event) {
   }
 }
 
+useScrollLock('confirm-dialog', () => props.open);
+
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
       window.addEventListener('keydown', onKeydown);
-      document.body.style.overflow = 'hidden';
     } else {
       window.removeEventListener('keydown', onKeydown);
-      document.body.style.overflow = '';
     }
   },
 );
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
-  document.body.style.overflow = '';
 });
 </script>
 

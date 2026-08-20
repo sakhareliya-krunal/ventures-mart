@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from '@lucide/vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
+import { useScrollLock } from '@/composables/useScrollLock';
 import { brandAssets } from '@/constants/assets';
 import { useAdminNavigationCountsStore } from '@/stores/adminNavigationCounts';
 import { useAuthStore } from '@/stores/auth';
@@ -108,9 +109,7 @@ function onVisibilityChange() {
   }
 }
 
-function lockScroll(locked) {
-  document.body.style.overflow = locked ? 'hidden' : '';
-}
+useScrollLock('admin-nav', () => navOpen.value);
 
 function requestLogout() {
   closeAccountMenu();
@@ -134,10 +133,6 @@ watch(
   },
   { immediate: true },
 );
-
-watch(navOpen, (isOpen) => {
-  lockScroll(isOpen);
-});
 
 watch([navOpen, accountMenuOpen], ([isNavOpen, isAccountOpen]) => {
   if (isNavOpen || isAccountOpen) {
@@ -166,7 +161,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  lockScroll(false);
   window.removeEventListener('keydown', onKeydown);
   window.removeEventListener('focus', refreshNavigationCounts);
   document.removeEventListener('visibilitychange', onVisibilityChange);
