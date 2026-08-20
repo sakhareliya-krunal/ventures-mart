@@ -134,7 +134,6 @@ function onGoogleError(message) {
 <template>
   <AuthShell
     title="Create your account"
-    :lead="`Join ${theme.brandName} to shop toys and lunch boxes with saved details.`"
     :busy="auth.loading || auth.redirecting"
   >
     <form class="auth-form" @submit.prevent="submit">

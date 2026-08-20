@@ -43,8 +43,10 @@
 
 .header-actions {
   align-items: center;
-  display: flex;
+  display: grid;
   gap: 0.45rem;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(3, 44px);
   justify-content: flex-end;
 }
 
@@ -197,10 +199,10 @@
   border-radius: var(--radius-sm);
   color: var(--color-ink);
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 700;
   overflow: hidden;
-  padding: 0.72rem 0.85rem 0.72rem 1rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.9rem;
   position: relative;
   text-decoration: none;
   text-transform: none;
@@ -918,6 +920,7 @@
 
   .header-actions {
     gap: 0.5rem;
+    grid-template-columns: repeat(3, 44px);
   }
 
   .header-action-button,
@@ -1294,14 +1297,14 @@
 .nav-item__panel {
   border-radius: var(--radius-sm);
   box-shadow: 0 22px 48px rgba(7, 31, 99, 0.14);
-  min-width: 230px;
-  padding: 0.55rem;
+  min-width: 210px;
+  padding: 0.45rem;
 }
 
 .nav-item__link {
   border-radius: 6px;
-  font-size: 0.82rem;
-  padding: 0.72rem 0.82rem 0.72rem 1rem;
+  font-size: 0.76rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.9rem;
   text-transform: none;
 }
 

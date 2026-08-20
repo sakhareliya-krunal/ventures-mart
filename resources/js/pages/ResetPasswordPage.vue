@@ -64,7 +64,6 @@ async function submit() {
 <template>
   <AuthShell
     title="Reset password"
-    lead="Choose a new password for your account."
     :busy="loading"
   >
     <form class="auth-form" @submit.prevent="submit">

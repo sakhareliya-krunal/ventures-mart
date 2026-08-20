@@ -37,102 +37,14 @@
 
 .auth-page__inner {
   align-items: center;
-  display: grid;
-  gap: clamp(1.5rem, 4vw, 3.5rem);
-  grid-template-columns: 1fr;
+  display: flex;
+  justify-content: center;
   margin-inline: auto;
-  max-width: 1080px;
+  max-width: 480px;
   min-height: calc(100dvh - 7.5rem - clamp(2.5rem, 6vw, 5rem));
   position: relative;
   width: 100%;
   z-index: 1;
-}
-
-.auth-brand {
-  display: grid;
-  gap: 1.25rem;
-  min-width: 0;
-  text-align: center;
-}
-
-.auth-brand__logo {
-  display: inline-flex;
-  justify-content: center;
-  margin-inline: auto;
-}
-
-.auth-brand__logo img {
-  height: 2.5rem;
-  object-fit: contain;
-  width: auto;
-}
-
-.auth-brand__copy {
-  display: grid;
-  gap: 0.65rem;
-}
-
-.auth-brand__title {
-  color: var(--color-primary-dark);
-  font-size: clamp(1.85rem, 4vw, 2.75rem);
-  letter-spacing: -0.04em;
-  line-height: 1.08;
-  margin: 0;
-}
-
-.auth-brand__lead {
-  color: color-mix(in srgb, var(--color-ink) 72%, var(--color-muted));
-  font-size: clamp(0.95rem, 1.8vw, 1.05rem);
-  line-height: 1.6;
-  margin: 0 auto;
-  max-width: 28rem;
-}
-
-.auth-brand__benefits {
-  display: none;
-  gap: 0.85rem;
-  list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0;
-}
-
-.auth-brand__benefit {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.85rem;
-  text-align: left;
-}
-
-.auth-brand__benefit-icon {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(11, 46, 138, 0.1);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-primary);
-  display: inline-flex;
-  flex-shrink: 0;
-  height: 2.5rem;
-  justify-content: center;
-  width: 2.5rem;
-}
-
-.auth-brand__benefit-copy {
-  display: grid;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.auth-brand__benefit-copy strong {
-  color: var(--color-ink);
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.auth-brand__benefit-copy span {
-  color: var(--color-muted);
-  font-size: 0.88rem;
-  line-height: 1.45;
 }
 
 .auth-panel {
@@ -169,10 +81,16 @@
 .auth-card__header {
   display: grid;
   gap: 0.35rem;
+  text-align: center;
+}
+
+.auth-card__header .eyebrow {
+  margin-bottom: 0;
 }
 
 .auth-card__header h2 {
   font-size: clamp(1.45rem, 2.5vw, 1.75rem);
+  font-weight: 700;
   letter-spacing: -0.03em;
   margin: 0;
 }
@@ -342,11 +260,10 @@
 .google-continue__shell {
   align-items: center;
   appearance: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #1a73e8;
+  border: 0;
   border-radius: 999px;
-  box-shadow: var(--shadow-sm);
-  color: var(--color-ink);
+  color: #fff;
   cursor: pointer;
   display: inline-flex;
   font: inherit;
@@ -358,7 +275,7 @@
   line-height: 1;
   min-height: 44px;
   padding: 0.78rem 1.1rem;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   width: 100%;
 }
 
@@ -367,21 +284,18 @@
 }
 
 .google-continue.is-ready:not(.is-disabled) .google-continue__shell:hover {
-  background: var(--color-surface-soft);
-  border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
-  box-shadow: var(--shadow-md);
+  background: #1765cc;
   transform: translateY(-1px);
 }
 
 .google-continue.is-ready:not(.is-disabled) .google-continue__shell:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline: 2px solid #1a73e8;
   outline-offset: 3px;
 }
 
 .google-continue__icon {
   align-items: center;
   background: #fff;
-  border: 1px solid var(--color-border);
   border-radius: 50%;
   display: inline-flex;
   flex-shrink: 0;
@@ -407,36 +321,6 @@
   text-align: center;
 }
 
-@media (min-width: 901px) {
-  .auth-page__inner {
-    align-items: center;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    min-height: calc(100dvh - 7.5rem - clamp(2.5rem, 6vw, 5rem));
-  }
-
-  .auth-brand {
-    padding-inline: clamp(0.5rem, 2vw, 1.5rem);
-    text-align: left;
-  }
-
-  .auth-brand__logo {
-    justify-content: flex-start;
-    margin-inline: 0;
-  }
-
-  .auth-brand__lead {
-    margin-inline: 0;
-  }
-
-  .auth-brand__benefits {
-    display: grid;
-  }
-
-  .auth-panel {
-    justify-content: flex-end;
-  }
-}
-
 @media (max-width: 900px) {
   .auth-page {
     min-height: calc(100dvh - 6.5rem);
@@ -444,10 +328,6 @@
 
   .auth-page__inner {
     min-height: auto;
-  }
-
-  .auth-brand__benefits {
-    display: none;
   }
 }
 
