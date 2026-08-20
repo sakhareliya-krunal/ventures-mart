@@ -191,6 +191,7 @@ onMounted(() => {
 
 .home-category-products__panel {
   min-width: 0;
+  overflow: hidden;
 }
 
 .home-product-rail {
@@ -254,7 +255,10 @@ onMounted(() => {
 
   .home-product-rail {
     gap: 0.72rem;
-    grid-auto-columns: min(58vw, 13.5rem);
+    grid-auto-columns: minmax(0, min(72vw, 13.5rem));
+    margin-inline: 0;
+    padding-inline: 0;
+    scroll-padding-inline: 0;
     scroll-snap-type: x mandatory;
   }
 }
