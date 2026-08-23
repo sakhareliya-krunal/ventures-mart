@@ -214,6 +214,7 @@ onMounted(async () => {
           <ProductGrid
             :products="products.list"
             :loading="catalogLoading"
+            :eager-count="4"
           />
         </div>
       </div>

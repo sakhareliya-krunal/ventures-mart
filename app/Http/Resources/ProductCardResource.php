@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Services\SeoService;
+use App\Services\ImageVariantService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
@@ -12,7 +12,7 @@ class ProductCardResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $seo = app(SeoService::class)->serializeForResource($this->resource);
+        $seo = $this->relationLoaded('seoMetadata') ? $this->seoMetadata : null;
 
         return [
             'id' => $this->id,
@@ -25,15 +25,17 @@ class ProductCardResource extends JsonResource
             'rating' => (float) $this->rating,
             'reviews' => (int) $this->reviews,
             'image' => $this->image,
+            'image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($this->image),
             'hover_image' => $this->hover_image,
+            'hover_image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($this->hover_image),
             'badge' => $this->badge,
             'description' => $this->description,
             'stock' => (int) $this->stock,
             'color_name' => $this->color_name,
             'color_hex' => $this->color_hex,
             'variants' => $this->variantPayload(),
-            'image_alt' => $seo['metadata']['image_alt_text'] ?? null,
-            'seo_score' => $seo['score'] ?? 0,
+            'image_alt' => $seo?->image_alt_text,
+            'seo_score' => (int) ($seo?->score ?? 0),
         ];
     }
 
@@ -51,7 +53,9 @@ class ProductCardResource extends JsonResource
                 'slug' => $variant->slug,
                 'name' => $variant->name,
                 'image' => $variant->image,
+                'image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($variant->image),
                 'hover_image' => $variant->hover_image,
+                'hover_image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($variant->hover_image),
                 'price' => (float) $variant->price,
                 'compare_at_price' => $variant->compare_at_price !== null ? (float) $variant->compare_at_price : null,
                 'rating' => (float) $variant->rating,

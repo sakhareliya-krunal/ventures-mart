@@ -2,13 +2,15 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 const SHOW_DELAY_MS = 120;
+const SPLASH_DELAY_MS = 250;
 const TOAST_MS = 3500;
 
 export const useUiStore = defineStore('ui', () => {
   const navigating = ref(false);
-  const splashVisible = ref(true);
+  const splashVisible = ref(false);
   const toast = ref(null);
   let showTimer = null;
+  let splashTimer = null;
   let toastTimer = null;
 
   function clearShowTimer() {
@@ -22,6 +24,13 @@ export const useUiStore = defineStore('ui', () => {
     if (toastTimer != null) {
       clearTimeout(toastTimer);
       toastTimer = null;
+    }
+  }
+
+  function clearSplashTimer() {
+    if (splashTimer != null) {
+      clearTimeout(splashTimer);
+      splashTimer = null;
     }
   }
 
@@ -39,7 +48,16 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function dismissSplash() {
+    clearSplashTimer();
     splashVisible.value = false;
+  }
+
+  function scheduleSplash(delayMs = SPLASH_DELAY_MS) {
+    clearSplashTimer();
+    splashTimer = setTimeout(() => {
+      splashTimer = null;
+      splashVisible.value = true;
+    }, delayMs);
   }
 
   function dismissToast() {
@@ -74,6 +92,7 @@ export const useUiStore = defineStore('ui', () => {
     toast,
     startNavigating,
     stopNavigating,
+    scheduleSplash,
     dismissSplash,
     showToast,
     dismissToast,

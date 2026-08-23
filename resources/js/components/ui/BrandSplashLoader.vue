@@ -5,9 +5,8 @@ import { brandAssets } from '@/constants/assets';
 import { useThemeStore } from '@/stores/theme';
 import { useUiStore } from '@/stores/ui';
 
-const MIN_MS = import.meta.env.DEV ? 0 : 1400;
 const READY_MAX_MS = 2000;
-const EXIT_MS = import.meta.env.DEV ? 150 : 400;
+const EXIT_MS = import.meta.env.DEV ? 120 : 260;
 
 const router = useRouter();
 const theme = useThemeStore();
@@ -24,7 +23,7 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
-  const started = performance.now();
+  ui.scheduleSplash();
 
   try {
     await Promise.race([
@@ -35,10 +34,9 @@ onMounted(async () => {
     // Continue dismiss even if router readiness fails.
   }
 
-  const elapsed = performance.now() - started;
-  const wait = Math.max(0, MIN_MS - elapsed);
-  if (wait > 0) {
-    await new Promise((resolve) => setTimeout(resolve, wait));
+  if (!ui.splashVisible) {
+    ui.dismissSplash();
+    return;
   }
 
   exiting.value = true;
@@ -59,6 +57,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div
+      v-if="ui.splashVisible"
       class="brand-splash"
       :class="{ 'is-exiting': exiting, 'is-handoff': handoff }"
       role="status"

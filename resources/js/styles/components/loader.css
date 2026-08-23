@@ -1,3 +1,22 @@
+.app-route-progress {
+  height: 3px;
+  inset: 0 0 auto;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  z-index: 95;
+}
+
+.app-route-progress span {
+  animation: app-route-progress 1.05s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-accent));
+  border-radius: 999px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-primary) 26%, transparent);
+  display: block;
+  height: 100%;
+  width: 42%;
+}
+
 .vm-loader {
   align-items: center;
   display: flex;
@@ -8,7 +27,7 @@
 }
 
 .vm-loader--sm {
-  gap: 0;
+  gap: 0.45rem;
   margin: 0;
 }
 
@@ -27,7 +46,8 @@
 }
 
 .vm-loader--overlay {
-  background: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);
+  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--color-surface, #fff) 86%, transparent);
   inset: 0;
   margin: 0;
   min-height: 0;
@@ -36,17 +56,19 @@
 }
 
 .vm-loader__mark {
+  filter: drop-shadow(0 12px 24px color-mix(in srgb, var(--color-primary) 18%, transparent));
+  isolation: isolate;
   position: relative;
 }
 
 .vm-loader--sm .vm-loader__mark {
-  height: 28px;
-  width: 28px;
+  height: 20px;
+  width: 20px;
 }
 
 .vm-loader--md .vm-loader__mark {
-  height: 48px;
-  width: 48px;
+  height: 46px;
+  width: 46px;
 }
 
 .vm-loader--lg .vm-loader__mark {
@@ -62,43 +84,72 @@
 }
 
 .vm-loader__ring--outer {
-  animation: vm-loader-spin 0.9s linear infinite;
-  border: 2.5px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
-  border-top-color: var(--color-secondary);
-  border-right-color: color-mix(in srgb, var(--color-secondary) 45%, transparent);
+  animation: vm-loader-spin 1s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 18%,
+    color-mix(in srgb, var(--color-primary) 36%, transparent) 22%,
+    var(--color-secondary) 48%,
+    var(--color-primary) 72%,
+    transparent 82% 100%
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
 }
 
 .vm-loader__ring--inner {
-  animation: vm-loader-spin-reverse 1.35s linear infinite;
-  border: 2px solid transparent;
-  border-bottom-color: var(--color-primary);
-  border-left-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  animation: vm-loader-spin-reverse 1.6s linear infinite;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0 30%,
+    color-mix(in srgb, var(--color-accent) 76%, var(--color-secondary)) 45%,
+    transparent 64% 100%
+  );
   inset: 18%;
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
 }
 
 .vm-loader__core {
-  animation: vm-loader-pulse 1.4s ease-in-out infinite;
-  background: var(--color-primary);
+  animation: vm-loader-pulse 1.35s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 35% 30%, #fff 0 18%, transparent 20%),
+    linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   border-radius: 50%;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-soft-2) 80%, transparent);
-  height: 22%;
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--color-primary) 8%, transparent),
+    inset 0 1px 3px rgba(255, 255, 255, 0.48);
+  height: 30%;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 22%;
+  width: 30%;
 }
 
 .vm-loader__label {
+  animation: vm-loader-label 1.8s ease-in-out infinite;
   color: var(--color-ink);
   font-size: 0.88rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  opacity: 0.72;
+  font-weight: 700;
+  letter-spacing: 0;
+  opacity: 0.78;
 }
 
 .vm-loader--sm .vm-loader__label {
   font-size: 0.78rem;
+}
+
+@keyframes app-route-progress {
+  0% {
+    transform: translateX(-115%);
+  }
+
+  55% {
+    transform: translateX(95vw);
+  }
+
+  100% {
+    transform: translateX(115vw);
+  }
 }
 
 @keyframes vm-loader-spin {
@@ -116,25 +167,39 @@
 @keyframes vm-loader-pulse {
   0%,
   100% {
-    opacity: 0.85;
-    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.82;
+    transform: translate(-50%, -50%) scale(0.88);
   }
 
   50% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+@keyframes vm-loader-label {
+  0%,
+  100% {
+    opacity: 0.62;
+  }
+
+  50% {
+    opacity: 0.92;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .app-route-progress span,
   .vm-loader__ring--outer,
   .vm-loader__ring--inner,
-  .vm-loader__core {
+  .vm-loader__core,
+  .vm-loader__label {
     animation: none;
   }
 
-  .vm-loader__ring--outer {
-    border-top-color: var(--color-secondary);
+  .app-route-progress span {
+    transform: none;
+    width: 100%;
   }
 
   .vm-loader__core {

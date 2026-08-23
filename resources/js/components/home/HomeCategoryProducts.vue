@@ -1,9 +1,9 @@
 <script setup>
-import { ChevronLeft, ChevronRight } from '@lucide/vue';
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import ProductCard from '@/components/product/ProductCard.vue';
 import SkeletonCard from '@/components/ui/SkeletonCard.vue';
 import api from '@/services/api';
+import { useWhenVisible } from '@/composables/useWhenVisible';
 import { unwrapData } from '@/utils/format';
 
 const categoryTabs = [
@@ -19,15 +19,12 @@ const categoryTabs = [
   },
 ];
 
+const sectionEl = ref(null);
 const selectedSlug = ref(categoryTabs[0].slug);
 const productsByCategory = reactive({});
 const loadingByCategory = reactive({});
 const errorByCategory = reactive({});
 const railEl = ref(null);
-const canScrollLeft = ref(false);
-const canScrollRight = ref(false);
-
-let resizeObserver = null;
 
 const selectedCategory = computed(
   () => categoryTabs.find((category) => category.slug === selectedSlug.value) || categoryTabs[0],
@@ -37,47 +34,11 @@ const selectedProducts = computed(() => productsByCategory[selectedSlug.value] |
 const selectedLoading = computed(() => Boolean(loadingByCategory[selectedSlug.value]));
 const selectedError = computed(() => errorByCategory[selectedSlug.value] || '');
 
-function observeRail() {
-  if (!resizeObserver || !railEl.value) {
-    return;
-  }
-
-  resizeObserver.disconnect();
-  resizeObserver.observe(railEl.value);
-}
-
-function updateScrollButtons() {
-  const rail = railEl.value;
-
-  if (!rail) {
-    canScrollLeft.value = false;
-    canScrollRight.value = false;
-    return;
-  }
-
-  const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-  canScrollLeft.value = rail.scrollLeft > 4;
-  canScrollRight.value = rail.scrollLeft < maxScrollLeft - 4;
-}
-
-function scrollRail(direction) {
-  const rail = railEl.value;
-  if (!rail) return;
-
-  const distance = rail.clientWidth * 0.86;
-  rail.scrollBy({
-    left: direction === 'next' ? distance : -distance,
-    behavior: 'smooth',
-  });
-}
-
 async function syncRailState() {
   await nextTick();
   if (railEl.value) {
     railEl.value.scrollLeft = 0;
   }
-  observeRail();
-  updateScrollButtons();
 }
 
 async function fetchCategoryProducts(slug) {
@@ -112,31 +73,14 @@ function selectCategory(slug) {
   fetchCategoryProducts(slug);
 }
 
-onMounted(() => {
-  fetchCategoryProducts(selectedSlug.value);
-  window.addEventListener('resize', updateScrollButtons);
-
-  if ('ResizeObserver' in window) {
-    resizeObserver = new ResizeObserver(updateScrollButtons);
-    observeRail();
-  }
-});
+useWhenVisible(sectionEl, () => fetchCategoryProducts(selectedSlug.value));
 
 watch(railEl, syncRailState);
 watch(selectedProducts, syncRailState);
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScrollButtons);
-
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
-  }
-});
 </script>
 
 <template>
-  <section class="home-category-products page-section" aria-labelledby="home-category-products-title">
+  <section ref="sectionEl" class="home-category-products page-section" aria-labelledby="home-category-products-title">
     <div class="home-category-products__header">
       <div>
         <span class="eyebrow">Shop by category</span>
@@ -159,31 +103,6 @@ onUnmounted(() => {
             {{ category.label }}
           </button>
         </div>
-
-        <div
-          v-if="selectedProducts.length"
-          class="home-category-products__controls"
-          aria-label="Category products carousel controls"
-        >
-          <button
-            v-show="canScrollLeft"
-            type="button"
-            class="home-category-products__nav"
-            aria-label="Scroll category products left"
-            @click="scrollRail('previous')"
-          >
-            <ChevronLeft :size="20" aria-hidden="true" />
-          </button>
-          <button
-            v-show="canScrollRight"
-            type="button"
-            class="home-category-products__nav"
-            aria-label="Scroll category products right"
-            @click="scrollRail('next')"
-          >
-            <ChevronRight :size="20" aria-hidden="true" />
-          </button>
-        </div>
       </div>
     </div>
 
@@ -204,12 +123,12 @@ onUnmounted(() => {
         v-else-if="selectedProducts.length"
         ref="railEl"
         class="home-product-rail"
-        @scroll.passive="updateScrollButtons"
       >
         <ProductCard
-          v-for="product in selectedProducts"
+          v-for="(product, index) in selectedProducts"
           :key="product.id"
           :product="product"
+          :eager="index < 2"
         />
       </div>
 
@@ -289,48 +208,6 @@ onUnmounted(() => {
   color: var(--color-primary-dark);
 }
 
-.home-category-products__controls {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.45rem;
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.home-category-products__nav {
-  align-items: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
-  color: var(--color-primary-dark);
-  cursor: pointer;
-  display: inline-flex;
-  height: 2.45rem;
-  justify-content: center;
-  padding: 0;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
-  width: 2.45rem;
-}
-
-.home-category-products__nav:hover,
-.home-category-products__nav:focus-visible {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-}
-
-.home-category-products__nav:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-  outline-offset: 2px;
-}
-
-.home-category-products__nav:active {
-  transform: scale(0.96);
-}
-
 .home-category-products__panel {
   min-width: 0;
   overflow: hidden;
@@ -382,10 +259,6 @@ onUnmounted(() => {
     justify-content: center;
   }
 
-  .home-category-products__controls {
-    display: none;
-  }
-
   .home-category-products__tabs {
     flex-wrap: wrap;
     max-width: 100%;
@@ -409,8 +282,7 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-category-products__tab,
-  .home-category-products__nav {
+  .home-category-products__tab {
     transition: none;
   }
 }

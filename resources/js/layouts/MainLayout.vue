@@ -33,10 +33,14 @@ function consumeWelcomeQuery() {
 }
 
 onMounted(() => {
+  auth.fetchUser().finally(() => {
+    if (auth.user) {
+      wishlist.fetch();
+    }
+  });
+
   Promise.all([
-    auth.fetchUser(),
     cart.fetch(),
-    wishlist.fetch(),
     categories.fetchAll(),
   ]);
 

@@ -9,17 +9,16 @@ import { useUiStore } from '@/stores/ui';
 const auth = useAuthStore();
 const ui = useUiStore();
 
-const showOverlay = computed(() => ui.navigating || auth.redirecting);
-const overlayLabel = computed(() => {
-  if (auth.redirecting && !ui.navigating) {
-    return 'Redirecting…';
-  }
-  return 'Loading…';
-});
+const showProgress = computed(() => ui.navigating && !auth.redirecting);
+const showOverlay = computed(() => auth.redirecting);
+const overlayLabel = computed(() => (auth.redirecting ? 'Redirecting...' : 'Loading...'));
 </script>
 
 <template>
-  <BrandSplashLoader v-if="ui.splashVisible" />
+  <BrandSplashLoader />
+  <div v-if="showProgress" class="app-route-progress" aria-hidden="true">
+    <span />
+  </div>
   <LoadingSpinner
     v-if="showOverlay"
     page

@@ -120,6 +120,31 @@ describe('AppHeader mobile drawer', () => {
     wrapper.unmount();
   });
 
+  test('orders header actions as cart, wishlist, account, then menu', async () => {
+    const { wrapper } = await mountHeader();
+    const actions = Array.from(wrapper.element.querySelector('.header-actions').children);
+
+    expect(actions).toHaveLength(4);
+    expect(actions[0].classList.contains('header-cart-button')).toBe(true);
+    expect(actions[1].classList.contains('header-wishlist-link')).toBe(true);
+    expect(actions[1].getAttribute('href')).toBe('/wishlist');
+    expect(actions[2].getAttribute('href')).toBe('/login');
+    expect(actions[3].classList.contains('mobile-menu-button')).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  test('keeps wishlist available in the mobile drawer', async () => {
+    const { wrapper } = await mountHeader();
+
+    await openMenu(wrapper);
+
+    expect(document.querySelector('.mobile-panel nav a[href="/wishlist"]')?.textContent).toBe(
+      'Wishlist',
+    );
+
+    wrapper.unmount();
+  });
   test('closes the mobile drawer when a navigation link is selected', async () => {
     const { wrapper } = await mountHeader();
 

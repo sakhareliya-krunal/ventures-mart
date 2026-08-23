@@ -14,6 +14,17 @@ const transitionReady = ref(false);
 
 const slides = computed(() => brandAssets.heroCarouselSlides || []);
 const currentSlide = computed(() => slides.value[activeSlide.value] || slides.value[0] || null);
+const visibleSlides = computed(() => {
+  const indexes = [activeSlide.value];
+
+  if (previousSlideIndex.value !== null && previousSlideIndex.value !== activeSlide.value) {
+    indexes.push(previousSlideIndex.value);
+  }
+
+  return indexes
+    .map((index) => ({ slide: slides.value[index], index }))
+    .filter((item) => item.slide);
+});
 
 let touchStartX = 0;
 let autoAdvanceTimer = null;
@@ -152,8 +163,8 @@ onUnmounted(() => {
   >
     <div class="hero__slides" aria-live="polite">
       <picture
-        v-for="(slide, index) in slides"
-        :key="slide.largeDesktop || slide.desktop || slide.mobile || slide.webp || slide.jpg"
+        v-for="{ slide, index } in visibleSlides"
+        :key="`${index}-${slide.largeDesktop || slide.desktop || slide.mobile || slide.webp || slide.jpg}`"
         class="hero__slide"
         :class="{
           'is-active': index === activeSlide,

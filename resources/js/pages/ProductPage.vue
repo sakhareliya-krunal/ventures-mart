@@ -91,6 +91,7 @@ const gallery = computed(() => {
   return [...new Set(images)];
 });
 
+const gallerySrcsets = computed(() => product.value?.gallery_srcsets || {});
 const displayImage = computed(() => activeImage.value || product.value?.image || '');
 const hasReviews = computed(() => Number(product.value?.reviews || 0) > 0);
 const reviewCount = computed(() => Number(product.value?.reviews || 0));
@@ -140,6 +141,16 @@ function productImageTitle(index = 0) {
   return index > 0 ? `${name} — image ${index + 1}` : name;
 }
 
+function productImageSrcset(image) {
+  if (!image) {
+    return undefined;
+  }
+
+  return gallerySrcsets.value[image]
+    || (image === product.value?.image ? product.value?.image_srcset : undefined)
+    || (image === product.value?.hover_image ? product.value?.hover_image_srcset : undefined)
+    || undefined;
+}
 async function addToCart() {
   if (!product.value || adding.value || !inStock.value) return;
   await cart.addItem(product.value.id, quantity.value);
@@ -409,10 +420,14 @@ onBeforeUnmount(() => {
                   <div class="product-detail__media-frame">
                     <img
                       :src="image"
+                      :srcset="productImageSrcset(image)"
+                      sizes="(max-width: 900px) 100vw, 720px"
                       :alt="productImageAlt(index)"
                       :title="productImageTitle(index)"
                       :loading="index === 0 ? 'eager' : 'lazy'"
                       :fetchpriority="index === 0 ? 'high' : undefined"
+                      width="1440"
+                      height="1440"
                     />
                   </div>
                 </div>
@@ -455,9 +470,13 @@ onBeforeUnmount(() => {
             >
               <img
                 :src="image"
+                :srcset="productImageSrcset(image)"
+                sizes="92px"
                 :alt="productImageAlt(index)"
                 :title="productImageTitle(index)"
                 loading="lazy"
+                width="144"
+                height="144"
               />
             </button>
           </div>
@@ -466,9 +485,13 @@ onBeforeUnmount(() => {
             <div class="product-detail__media-frame">
               <img
                 :src="displayImage"
+                :srcset="productImageSrcset(displayImage)"
+                sizes="(max-width: 1180px) 100vw, 620px"
                 :alt="productImageAlt(Math.max(0, gallery.indexOf(displayImage)))"
                 :title="productImageTitle(Math.max(0, gallery.indexOf(displayImage)))"
                 fetchpriority="high"
+                width="1440"
+                height="1440"
               />
               <ProductGalleryChrome
                 :badge="product.badge"

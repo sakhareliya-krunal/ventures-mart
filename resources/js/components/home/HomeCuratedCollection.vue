@@ -1,15 +1,19 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 import ProductCard from '@/components/product/ProductCard.vue';
 import SkeletonCard from '@/components/ui/SkeletonCard.vue';
 import { homeCurated } from '@/constants/home';
 import api from '@/services/api';
+import { useWhenVisible } from '@/composables/useWhenVisible';
 import { unwrapData } from '@/utils/format';
 
+const sectionEl = ref(null);
 const products = ref([]);
 const loading = ref(false);
+const requested = ref(false);
 
 async function fetchCurated() {
+  requested.value = true;
   loading.value = true;
 
   try {
@@ -29,14 +33,13 @@ async function fetchCurated() {
   }
 }
 
-onMounted(() => {
-  fetchCurated();
-});
+useWhenVisible(sectionEl, fetchCurated);
 </script>
 
 <template>
   <section
-    v-if="loading || products.length"
+    v-if="!requested || loading || products.length"
+    ref="sectionEl"
     class="home-curated page-section"
     aria-labelledby="home-curated-title"
   >
@@ -50,9 +53,10 @@ onMounted(() => {
 
     <div v-else class="home-curated__rail">
       <ProductCard
-        v-for="product in products"
+        v-for="(product, index) in products"
         :key="product.id"
         :product="product"
+        :eager="index < 2"
       />
     </div>
   </section>

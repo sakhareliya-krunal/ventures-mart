@@ -24,6 +24,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const loading = ref(false);
   const error = ref(null);
   const pendingIds = ref(new Set());
+  let fetchPromise = null;
 
   function isWishlisted(productId) {
     return productIds.value.includes(Number(productId));
@@ -33,18 +34,27 @@ export const useWishlistStore = defineStore('wishlist', () => {
     return pendingIds.value.has(Number(productId));
   }
 
-  async function fetch() {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const { data } = await api.get('/wishlist');
-      applyPayload({ productIds, products, count }, data);
-    } catch (err) {
-      error.value = friendlyApiError(err, 'Unable to load wishlist.');
-    } finally {
-      loading.value = false;
+  async function fetch(options = {}) {
+    if (fetchPromise && !options.force) {
+      return fetchPromise;
     }
+
+    fetchPromise = (async () => {
+      loading.value = true;
+      error.value = null;
+
+      try {
+        const { data } = await api.get('/wishlist');
+        applyPayload({ productIds, products, count }, data);
+      } catch (err) {
+        error.value = friendlyApiError(err, 'Unable to load wishlist.');
+      } finally {
+        loading.value = false;
+        fetchPromise = null;
+      }
+    })();
+
+    return fetchPromise;
   }
 
   /**

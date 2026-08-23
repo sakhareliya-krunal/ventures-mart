@@ -171,21 +171,6 @@ onUnmounted(() => {
       </nav>
 
       <div class="header-actions">
-        <RouterLink
-          class="icon-link header-action-button"
-          :to="profileTo"
-          :aria-label="auth.user ? 'Account profile' : 'Sign in'"
-        >
-          <User :size="22" aria-hidden="true" />
-        </RouterLink>
-        <RouterLink
-          class="icon-link header-wishlist-link"
-          to="/wishlist"
-          :aria-label="wishlist.count ? `Wishlist, ${wishlist.count} items` : 'Wishlist'"
-        >
-          <Heart :size="20" aria-hidden="true" />
-          <CartBadge :count="wishlist.count" />
-        </RouterLink>
         <button
           class="header-cart-button"
           type="button"
@@ -195,6 +180,21 @@ onUnmounted(() => {
           <ShoppingCart :size="18" aria-hidden="true" />
           <CartBadge :count="cart.itemCount" />
         </button>
+        <RouterLink
+          class="icon-link header-action-button header-wishlist-link"
+          to="/wishlist"
+          :aria-label="wishlist.count ? `Wishlist, ${wishlist.count} items` : 'Wishlist'"
+        >
+          <Heart :size="20" aria-hidden="true" />
+          <CartBadge :count="wishlist.count" />
+        </RouterLink>
+        <RouterLink
+          class="icon-link header-action-button"
+          :to="profileTo"
+          :aria-label="auth.user ? 'Account profile' : 'Sign in'"
+        >
+          <User :size="22" aria-hidden="true" />
+        </RouterLink>
         <button
           class="icon-button header-action-button mobile-menu-button"
           type="button"

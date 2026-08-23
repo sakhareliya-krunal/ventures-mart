@@ -11,7 +11,7 @@ class ProductQueryService
 {
     public function query(array $filters = []): Collection
     {
-        $query = Product::query()->active()->with('category');
+        $query = Product::query()->active()->with(['category', 'seoMetadata']);
 
         if (! empty($filters['q'])) {
             $term = mb_strtolower(trim($filters['q']));
@@ -85,7 +85,7 @@ class ProductQueryService
     {
         $products = Product::query()
             ->active()
-            ->with('category')
+            ->with(['category', 'seoMetadata'])
             ->where(function (Builder $query) {
                 $query->where('badge', 'Featured')
                     ->orWhereJsonContains('tags', 'featured');
@@ -101,7 +101,7 @@ class ProductQueryService
     {
         $products = Product::query()
             ->active()
-            ->with('category')
+            ->with(['category', 'seoMetadata'])
             ->whereNotNull('compare_at_price')
             ->whereColumn('compare_at_price', '>', 'price')
             ->orderByDesc('rating')
@@ -115,7 +115,7 @@ class ProductQueryService
     {
         $products = Product::query()
             ->active()
-            ->with('category')
+            ->with(['category', 'seoMetadata'])
             ->where('category_id', $product->category_id)
             ->when(
                 $product->variant_group_id,

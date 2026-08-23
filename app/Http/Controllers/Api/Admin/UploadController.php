@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ImageVariantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UploadController extends Controller
 {
+    public function __construct(private readonly ImageVariantService $images)
+    {
+    }
+
     public function images(Request $request)
     {
         $validated = $request->validate([
@@ -22,7 +27,12 @@ class UploadController extends Controller
         foreach ($validated['images'] as $file) {
             $path = $file->store($folder, 'public');
             $webp = $this->createWebpDerivative($file->getRealPath(), $path);
-            $urls[] = '/storage/'.($webp ?: $path);
+            $storedPath = $webp ?: $path;
+            $this->images->createForStoragePath(
+                $storedPath,
+                array_values(array_unique([...ImageVariantService::CARD_WIDTHS, ...ImageVariantService::DETAIL_WIDTHS])),
+            );
+            $urls[] = '/storage/'.$storedPath;
         }
 
         return response()->json([

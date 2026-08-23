@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ShoppingCart } from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { formatCurrency } from '@/utils/format';
@@ -10,9 +10,18 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  eager: {
+    type: Boolean,
+    default: false,
+  },
+  sizes: {
+    type: String,
+    default: '(max-width: 720px) 58vw, (max-width: 1100px) 31vw, 260px',
+  },
 });
 
 const cart = useCartStore();
+const hoverReady = ref(false);
 
 const imageAlt = computed(() => {
   const alt = String(props.product.image_alt || '').trim();
@@ -21,31 +30,62 @@ const imageAlt = computed(() => {
 const adding = computed(() => cart.isAdding(props.product.id));
 const inStock = computed(() => Number(props.product.stock ?? 0) > 0);
 const hasHover = computed(() => Boolean(props.product.hover_image));
+const primarySrcset = computed(() => props.product.image_srcset || undefined);
+const hoverSrcset = computed(() => props.product.hover_image_srcset || undefined);
 const categoryName = computed(() => String(props.product.category_name || '').trim());
+const imageLoading = computed(() => (props.eager ? 'eager' : 'lazy'));
+const imageFetchPriority = computed(() => (props.eager ? 'high' : undefined));
 
 async function addToCart() {
   if (adding.value || !inStock.value) return;
   await cart.addItem(props.product.id);
+}
+
+function prepareHoverImage() {
+  if (!hasHover.value || hoverReady.value) {
+    return;
+  }
+
+  const canHover = typeof window !== 'undefined'
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  hoverReady.value = canHover || document.activeElement?.closest('.product-card');
 }
 </script>
 
 <template>
   <article class="product-card">
     <div class="product-card__media">
-      <RouterLink :to="`/product/${product.slug}`" :aria-label="product.name">
+      <RouterLink
+        :to="`/product/${product.slug}`"
+        :aria-label="product.name"
+        @focusin="prepareHoverImage"
+        @pointerenter="prepareHoverImage"
+      >
         <img
           class="is-primary"
           :class="{ 'has-hover': hasHover }"
           :src="product.image"
+          :srcset="primarySrcset"
+          :sizes="sizes"
           :alt="imageAlt"
-          loading="lazy"
+          :loading="imageLoading"
+          :fetchpriority="imageFetchPriority"
+          decoding="async"
+          width="720"
+          height="720"
         />
         <img
-          v-if="hasHover"
+          v-if="hasHover && hoverReady"
           class="is-hover"
           :src="product.hover_image"
+          :srcset="hoverSrcset"
+          :sizes="sizes"
           :alt="imageAlt"
           loading="lazy"
+          decoding="async"
+          width="720"
+          height="720"
         />
       </RouterLink>
     </div>

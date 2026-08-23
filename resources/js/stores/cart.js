@@ -65,6 +65,7 @@ export const useCartStore = defineStore('cart', () => {
   const trayOpen = ref(false);
   const addingIds = ref(new Set());
   const syncingIds = ref(new Set());
+  let fetchPromise = null;
 
   /** @type {Map<number, number>} */
   const pendingQuantities = new Map();
@@ -123,21 +124,30 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   async function fetch(options = {}) {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const params = {};
-      if (options.state) {
-        params.state = options.state;
-      }
-      const { data } = await api.get('/cart', { params });
-      applyPayload({ items, itemCount, quantityCount, totals }, data);
-    } catch (err) {
-      error.value = friendlyApiError(err, 'Unable to load cart.');
-    } finally {
-      loading.value = false;
+    if (fetchPromise && !options.force) {
+      return fetchPromise;
     }
+
+    fetchPromise = (async () => {
+      loading.value = true;
+      error.value = null;
+
+      try {
+        const params = {};
+        if (options.state) {
+          params.state = options.state;
+        }
+        const { data } = await api.get('/cart', { params });
+        applyPayload({ items, itemCount, quantityCount, totals }, data);
+      } catch (err) {
+        error.value = friendlyApiError(err, 'Unable to load cart.');
+      } finally {
+        loading.value = false;
+        fetchPromise = null;
+      }
+    })();
+
+    return fetchPromise;
   }
 
   async function addItem(productId, quantity = 1) {

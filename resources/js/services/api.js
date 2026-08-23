@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
 
-const NETWORK_GET_MAX_RETRIES = 20;
+const NETWORK_GET_MAX_RETRIES = 3;
 const NETWORK_MUTATION_MAX_RETRIES = 3;
 const NETWORK_RETRY_DELAY_MS = 1500;
 

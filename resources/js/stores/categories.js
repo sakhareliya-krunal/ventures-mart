@@ -10,21 +10,38 @@ export const useCategoriesStore = defineStore('categories', () => {
   const loading = ref(false);
   const error = ref(null);
 
-  async function fetchAll() {
-    loading.value = true;
-    error.value = null;
+  let fetchAllPromise = null;
+  let hasFetchedAll = false;
 
-    try {
-      const { data } = await api.get('/categories');
-      list.value = unwrapData(data) || [];
-      return list.value;
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Unable to load categories.';
-      list.value = [];
-      return [];
-    } finally {
-      loading.value = false;
+  async function fetchAll(options = {}) {
+    if (fetchAllPromise) {
+      return fetchAllPromise;
     }
+
+    if (hasFetchedAll && !options.force) {
+      return list.value;
+    }
+
+    fetchAllPromise = (async () => {
+      loading.value = true;
+      error.value = null;
+
+      try {
+        const { data } = await api.get('/categories');
+        list.value = unwrapData(data) || [];
+        hasFetchedAll = true;
+        return list.value;
+      } catch (err) {
+        error.value = err.response?.data?.message || 'Unable to load categories.';
+        list.value = [];
+        return [];
+      } finally {
+        loading.value = false;
+        fetchAllPromise = null;
+      }
+    })();
+
+    return fetchAllPromise;
   }
 
   async function fetchBySlug(slug) {

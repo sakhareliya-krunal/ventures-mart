@@ -1,53 +1,15 @@
 <script setup>
-import { ChevronLeft, ChevronRight } from '@lucide/vue';
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { ref } from 'vue';
 import ProductCard from '@/components/product/ProductCard.vue';
 import SkeletonCard from '@/components/ui/SkeletonCard.vue';
 import api from '@/services/api';
+import { useWhenVisible } from '@/composables/useWhenVisible';
 import { unwrapData } from '@/utils/format';
 
 const products = ref([]);
 const loading = ref(false);
 const error = ref('');
-const railEl = ref(null);
-const canScrollLeft = ref(false);
-const canScrollRight = ref(false);
-
-let resizeObserver = null;
-
-function observeRail() {
-  if (!resizeObserver || !railEl.value) {
-    return;
-  }
-
-  resizeObserver.disconnect();
-  resizeObserver.observe(railEl.value);
-}
-
-function updateScrollButtons() {
-  const rail = railEl.value;
-
-  if (!rail) {
-    canScrollLeft.value = false;
-    canScrollRight.value = false;
-    return;
-  }
-
-  const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-  canScrollLeft.value = rail.scrollLeft > 4;
-  canScrollRight.value = rail.scrollLeft < maxScrollLeft - 4;
-}
-
-function scrollRail(direction) {
-  const rail = railEl.value;
-  if (!rail) return;
-
-  const distance = rail.clientWidth * 0.86;
-  rail.scrollBy({
-    left: direction === 'next' ? distance : -distance,
-    behavior: 'smooth',
-  });
-}
+const sectionEl = ref(null);
 
 async function fetchBestSellers() {
   loading.value = true;
@@ -66,63 +28,16 @@ async function fetchBestSellers() {
     error.value = 'Unable to load best sellers right now.';
   } finally {
     loading.value = false;
-    await nextTick();
-    observeRail();
-    updateScrollButtons();
   }
 }
 
-onMounted(() => {
-  fetchBestSellers();
-  window.addEventListener('resize', updateScrollButtons);
-
-  if ('ResizeObserver' in window) {
-    resizeObserver = new ResizeObserver(updateScrollButtons);
-    observeRail();
-  }
-});
-
-watch(railEl, async () => {
-  await nextTick();
-  observeRail();
-  updateScrollButtons();
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScrollButtons);
-
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
-  }
-});
+useWhenVisible(sectionEl, fetchBestSellers);
 </script>
 
 <template>
-  <section class="home-best-sellers page-section" aria-labelledby="home-best-sellers-title">
+  <section ref="sectionEl" class="home-best-sellers page-section" aria-labelledby="home-best-sellers-title">
     <div class="home-best-sellers__header">
       <h2 id="home-best-sellers-title">Best Seller</h2>
-
-      <div v-if="products.length" class="home-best-sellers__controls" aria-label="Best seller carousel controls">
-        <button
-          v-show="canScrollLeft"
-          type="button"
-          class="home-best-sellers__nav"
-          aria-label="Scroll best sellers left"
-          @click="scrollRail('previous')"
-        >
-          <ChevronLeft :size="20" aria-hidden="true" />
-        </button>
-        <button
-          v-show="canScrollRight"
-          type="button"
-          class="home-best-sellers__nav"
-          aria-label="Scroll best sellers right"
-          @click="scrollRail('next')"
-        >
-          <ChevronRight :size="20" aria-hidden="true" />
-        </button>
-      </div>
     </div>
 
     <div v-if="loading" class="home-best-sellers__rail" aria-label="Loading best sellers">
@@ -135,14 +50,13 @@ onUnmounted(() => {
 
     <div
       v-else-if="products.length"
-      ref="railEl"
       class="home-best-sellers__rail"
-      @scroll.passive="updateScrollButtons"
     >
       <ProductCard
-        v-for="product in products"
+        v-for="(product, index) in products"
         :key="product.id"
         :product="product"
+        :eager="index < 2"
       />
     </div>
 
@@ -172,49 +86,6 @@ onUnmounted(() => {
   letter-spacing: 0;
   line-height: 1.14;
   margin: 0.35rem 0 0;
-}
-
-.home-best-sellers__controls {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.45rem;
-  min-height: 2.55rem;
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.home-best-sellers__nav {
-  align-items: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-sm);
-  color: var(--color-primary-dark);
-  cursor: pointer;
-  display: inline-flex;
-  height: 2.45rem;
-  justify-content: center;
-  padding: 0;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
-  width: 2.45rem;
-}
-
-.home-best-sellers__nav:hover,
-.home-best-sellers__nav:focus-visible {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-}
-
-.home-best-sellers__nav:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-  outline-offset: 2px;
-}
-
-.home-best-sellers__nav:active {
-  transform: scale(0.96);
 }
 
 .home-best-sellers__rail {
@@ -254,21 +125,9 @@ onUnmounted(() => {
   text-align: center;
 }
 
-@media (max-width: 1024px) {
-  .home-best-sellers__controls {
-    display: none;
-  }
-}
-
 @media (max-width: 720px) {
   .home-best-sellers__rail {
     grid-auto-columns: clamp(10.5rem, 78vw, 15.5rem);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-best-sellers__nav {
-    transition: none;
   }
 }
 </style>

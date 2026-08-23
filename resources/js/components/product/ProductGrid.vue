@@ -11,6 +11,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  eagerCount: {
+    type: Number,
+    default: 0,
+  },
 });
 </script>
 
@@ -23,6 +27,11 @@ defineProps({
     <p>Try a different search term or clear the filters.</p>
   </div>
   <div v-else class="product-grid">
-    <ProductCard v-for="product in products" :key="product.id" :product="product" />
+    <ProductCard
+      v-for="(product, index) in products"
+      :key="product.id"
+      :product="product"
+      :eager="index < eagerCount"
+    />
   </div>
 </template>

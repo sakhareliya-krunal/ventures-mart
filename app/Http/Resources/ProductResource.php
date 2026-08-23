@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Product;
+use App\Services\ImageVariantService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,7 +29,9 @@ class ProductResource extends JsonResource
             'rating' => (float) $this->rating,
             'reviews' => (int) $this->reviews,
             'image' => $this->image,
+            'image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($this->image),
             'hover_image' => $this->hover_image,
+            'hover_image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($this->hover_image),
             'badge' => $this->badge,
             'tags' => $this->tags ?? [],
             'description' => $this->description,
@@ -45,6 +48,10 @@ class ProductResource extends JsonResource
             'color_name' => $this->color_name,
             'color_hex' => $this->color_hex,
             'gallery' => $this->localGallery(),
+            'gallery_srcsets' => collect($this->localGallery())
+                ->mapWithKeys(fn (string $image) => [$image => app(ImageVariantService::class)->srcsetForPublicUrl($image, ImageVariantService::DETAIL_WIDTHS)])
+                ->filter()
+                ->all(),
             'variants' => $this->variantPayload(),
             'seo' => app(SeoService::class)->serializeForResource($this->resource),
         ];
@@ -64,7 +71,9 @@ class ProductResource extends JsonResource
                 'slug' => $variant->slug,
                 'name' => $variant->name,
                 'image' => $variant->image,
+                'image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($variant->image),
                 'hover_image' => $variant->hover_image,
+                'hover_image_srcset' => app(ImageVariantService::class)->srcsetForPublicUrl($variant->hover_image),
                 'price' => (float) $variant->price,
                 'compare_at_price' => $variant->compare_at_price !== null ? (float) $variant->compare_at_price : null,
                 'rating' => (float) $variant->rating,
