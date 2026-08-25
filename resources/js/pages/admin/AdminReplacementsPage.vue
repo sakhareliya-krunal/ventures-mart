@@ -152,7 +152,7 @@ onMounted(load);
                   v-if="['requested', 'under_review'].includes(row.status)"
                   type="button"
                   size="sm"
-                  :disabled="busyId === row.id"
+                  :loading="busyId === row.id"
                   @click="approve(row)"
                 >
                   Approve
@@ -162,7 +162,7 @@ onMounted(load);
                   type="button"
                   size="sm"
                   variant="secondary"
-                  :disabled="busyId === row.id"
+                  :loading="busyId === row.id"
                   @click="reject(row)"
                 >
                   Reject

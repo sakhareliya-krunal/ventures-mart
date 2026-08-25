@@ -1,7 +1,6 @@
 <script setup>
 import { onBeforeUnmount, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({
@@ -111,11 +110,10 @@ onBeforeUnmount(() => {
             type="button"
             class="confirm-dialog__confirm auth-submit"
             :variant="danger ? 'danger' : 'primary'"
-            :disabled="busy"
+            :loading="busy"
             @click="confirm"
           >
-            <LoadingSpinner v-if="busy" size="sm" :label="busyLabel" />
-            <template v-else>{{ confirmLabel }}</template>
+            {{ confirmLabel }}
           </AppButton>
         </div>
       </div>

@@ -5,9 +5,9 @@ import { useHead } from '@unhead/vue';
 import AuthShell from '@/components/auth/AuthShell.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { useThemeStore } from '@/stores/theme';
+import { firstError, normalizeApiErrors, rules, validateFields } from '@/utils/validation';
 
 const theme = useThemeStore();
 const route = useRoute();
@@ -16,6 +16,7 @@ const router = useRouter();
 const error = ref('');
 const success = ref('');
 const loading = ref(false);
+const fieldErrors = ref({});
 const form = reactive({
   email: '',
   token: '',
@@ -36,11 +37,28 @@ onMounted(() => {
   }
 });
 
+function validateForm() {
+  const errors = validateFields(form, {
+    password: [rules.required('New password'), rules.minLength('New password', 8)],
+    password_confirmation: [
+      rules.required('Confirm password'),
+      rules.matches('Confirm password', form.password, 'new password'),
+    ],
+  });
+  fieldErrors.value = errors;
+  error.value = firstError(errors);
+  return Object.keys(errors).length === 0;
+}
+
 async function submit() {
   if (loading.value || !form.token || !form.email) return;
 
   error.value = '';
   success.value = '';
+  fieldErrors.value = {};
+
+  if (!validateForm()) return;
+
   loading.value = true;
 
   try {
@@ -51,9 +69,10 @@ async function submit() {
       query: { reset: '1' },
     });
   } catch (err) {
+    fieldErrors.value = normalizeApiErrors(err.response?.data?.errors);
     error.value =
+      firstError(fieldErrors.value) ||
       err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
       'Unable to reset password.';
   } finally {
     loading.value = false;
@@ -66,7 +85,7 @@ async function submit() {
     title="Reset password"
     :busy="loading"
   >
-    <form class="auth-form" @submit.prevent="submit">
+    <form novalidate class="auth-form" @submit.prevent="submit">
       <p v-if="form.email" class="auth-lead">Updating password for {{ form.email }}.</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <p v-if="success" class="form-success">{{ success }}</p>
@@ -77,6 +96,7 @@ async function submit() {
         required
         autocomplete="new-password"
         :disabled="loading || !form.token"
+        :error="fieldErrors.password"
       />
       <FormField
         v-model="form.password_confirmation"
@@ -85,14 +105,15 @@ async function submit() {
         required
         autocomplete="new-password"
         :disabled="loading || !form.token"
+        :error="fieldErrors.password_confirmation"
       />
       <AppButton
         class="auth-submit"
         type="submit"
-        :disabled="loading || !form.token || !form.email"
+        :disabled="!form.token || !form.email"
+        :loading="loading"
       >
-        <LoadingSpinner v-if="loading" size="sm" label="Saving…" />
-        <template v-else>Update password</template>
+        Update password
       </AppButton>
     </form>
 

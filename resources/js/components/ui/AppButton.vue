@@ -23,10 +23,21 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const classes = computed(
-  () => `button button--${props.variant} button--${props.size}`,
+  () => [
+    'button',
+    `button--${props.variant}`,
+    `button--${props.size}`,
+    {
+      'button--loading': props.loading,
+    },
+  ],
 );
 </script>
 
@@ -34,7 +45,22 @@ const classes = computed(
   <RouterLink v-if="to" :class="classes" :to="to">
     <slot />
   </RouterLink>
-  <button v-else :class="classes" :type="type" :disabled="disabled">
-    <slot />
+  <button
+    v-else
+    :class="classes"
+    :type="type"
+    :disabled="disabled || loading"
+    :aria-busy="loading ? 'true' : undefined"
+  >
+    <span class="button__content">
+      <slot />
+    </span>
+    <span v-if="loading" class="button-dots" aria-hidden="true">
+      <span class="button-dots__dot" />
+      <span class="button-dots__dot" />
+      <span class="button-dots__dot" />
+      <span class="button-dots__dot" />
+      <span class="button-dots__dot" />
+    </span>
   </button>
 </template>

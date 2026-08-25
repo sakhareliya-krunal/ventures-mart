@@ -13,7 +13,6 @@ import { brandAssets } from '@/constants/assets';
 import {
   footerBlurb,
   footerBottomLinks,
-  footerCompanyLinks,
   footerContact,
   footerFeatures,
   footerPaymentPills,
@@ -54,7 +53,7 @@ const featureIcons = {
       <div class="footer-grid">
         <div class="footer-brand">
           <RouterLink class="brand brand--footer" to="/" :aria-label="`${theme.brandName} home`">
-            <img :src="brandAssets.logoLight" :alt="theme.brandName" />
+            <img :src="brandAssets.logo" :alt="theme.brandName" />
           </RouterLink>
           <p>{{ footerBlurb }}</p>
         </div>
@@ -81,16 +80,6 @@ const featureIcons = {
           </RouterLink>
         </div>
 
-        <div class="footer-col">
-          <h3>Company</h3>
-          <RouterLink
-            v-for="link in footerCompanyLinks"
-            :key="link.label"
-            :to="link.href"
-          >
-            {{ link.label }}
-          </RouterLink>
-        </div>
 
         <aside class="footer-help" aria-labelledby="footer-help-title">
           <h3 id="footer-help-title">Need help?</h3>

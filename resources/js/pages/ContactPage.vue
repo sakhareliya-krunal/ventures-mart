@@ -9,11 +9,13 @@ import { footerContact, footerWhatsApp } from '@/constants/footer';
 import api from '@/services/api';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
+import { firstError, normalizeApiErrors, rules, validateFields } from '@/utils/validation';
 
 const theme = useThemeStore();
 const error = ref('');
 const success = ref('');
 const submitting = ref(false);
+const fieldErrors = ref({});
 let successTimer = null;
 const form = reactive({
   name: '',
@@ -66,10 +68,25 @@ useHead(() =>
   }),
 );
 
+function validateForm() {
+  const errors = validateFields(form, {
+    name: [rules.required('Name')],
+    email: [rules.required('Email'), rules.email()],
+    message: [rules.required('Message')],
+  });
+  fieldErrors.value = errors;
+  error.value = firstError(errors);
+  return Object.keys(errors).length === 0;
+}
+
 async function submit() {
   clearSuccessTimer();
   error.value = '';
   success.value = '';
+  fieldErrors.value = {};
+
+  if (!validateForm()) return;
+
   submitting.value = true;
 
   try {
@@ -83,9 +100,10 @@ async function submit() {
     form.email = '';
     form.message = '';
   } catch (err) {
+    fieldErrors.value = normalizeApiErrors(err.response?.data?.errors);
     error.value =
+      firstError(fieldErrors.value) ||
       err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
       'Unable to send your message.';
   } finally {
     submitting.value = false;
@@ -100,7 +118,7 @@ onBeforeUnmount(clearSuccessTimer);
     <PageHero
       eyebrow="Support"
       title="Contact"
-      lead="Reach the Ventures Mart team by WhatsApp, phone, or email—or send a message and we’ll get back to you."
+      lead="Reach the Ventures Mart team by WhatsApp, phone, or email - or send a message and we'll get back to you."
     >
       <template #actions>
         <a
@@ -130,7 +148,7 @@ onBeforeUnmount(clearSuccessTimer);
         <span class="eyebrow">Get in touch</span>
         <h2 id="contact-connect-title">Reach us or send a message</h2>
         <p>
-          Use a direct channel for a quick reply, or share details in the form—we’ll follow up by
+          Use a direct channel for a quick reply, or share details in the form - we'll follow up by
           email or WhatsApp.
         </p>
       </div>
@@ -158,14 +176,27 @@ onBeforeUnmount(clearSuccessTimer);
         <div class="contact-form-panel">
           <span class="eyebrow">Tell us what you need</span>
           <h3 class="contact-form-panel__title">Send a message</h3>
-          <form class="contact-form" @submit.prevent="submit">
+          <form novalidate class="contact-form" @submit.prevent="submit">
             <p v-if="error" class="form-error">{{ error }}</p>
             <p v-if="success" class="form-success">{{ success }}</p>
-            <FormField v-model="form.name" label="Name" required />
-            <FormField v-model="form.email" label="Email" type="email" required />
-            <FormField v-model="form.message" label="Message" type="textarea" :rows="5" required />
-            <AppButton type="submit" size="lg" :disabled="submitting">
-              {{ submitting ? 'Sending…' : 'Send message' }}
+            <FormField v-model="form.name" label="Name" required :error="fieldErrors.name" />
+            <FormField
+              v-model="form.email"
+              label="Email"
+              type="email"
+              required
+              :error="fieldErrors.email"
+            />
+            <FormField
+              v-model="form.message"
+              label="Message"
+              type="textarea"
+              :rows="5"
+              required
+              :error="fieldErrors.message"
+            />
+            <AppButton type="submit" size="lg" :loading="submitting">
+              Send message
             </AppButton>
           </form>
           <p class="contact-form-note">

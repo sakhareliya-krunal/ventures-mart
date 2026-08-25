@@ -52,7 +52,7 @@ async function save() {
 
     <p v-if="error" class="form-error">{{ error }}</p>
 
-    <form class="admin-form" @submit.prevent="save">
+    <form novalidate class="admin-form" @submit.prevent="save">
       <FormField v-model="form.name" label="Name" required autocomplete="name" :disabled="saving" />
       <FormField
         v-model="form.email"
@@ -79,8 +79,8 @@ async function save() {
         :disabled="saving"
       />
       <div class="admin-form__actions">
-        <AppButton type="submit" :disabled="saving">
-          {{ saving ? 'Creating…' : 'Create admin' }}
+        <AppButton type="submit" :loading="saving">
+          Create admin
         </AppButton>
         <AppButton type="button" variant="ghost" :disabled="saving" @click="goBack">
           Cancel

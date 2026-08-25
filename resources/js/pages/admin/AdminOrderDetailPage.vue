@@ -401,10 +401,10 @@ async function resendConfirmationEmail() {
         v-if="order?.invoice_available"
         type="button"
         variant="secondary"
-        :disabled="downloadingInvoice"
+        :loading="downloadingInvoice"
         @click="downloadInvoice"
       >
-        {{ downloadingInvoice ? 'Downloading…' : 'Download invoice' }}
+        Download invoice
       </AppButton>
     </div>
 
@@ -478,41 +478,35 @@ async function resendConfirmationEmail() {
             Cancellation reason
             <input v-model="cancellationReason" maxlength="500" />
           </label>
-          <AppButton type="button" :disabled="saving" @click="saveStatus">
-            {{ saving ? 'Saving…' : 'Update status' }}
+          <AppButton type="button" :loading="saving" @click="saveStatus">
+            Update status
           </AppButton>
           <AppButton
             v-if="canMarkPaid"
             type="button"
             variant="secondary"
-            :disabled="markingPaid"
+            :loading="markingPaid"
             @click="markPaymentReceived"
           >
-            {{ markingPaid ? 'Saving…' : 'Mark payment received' }}
+            Mark payment received
           </AppButton>
           <AppButton
             v-if="order.can_mark_refunded"
             type="button"
             variant="secondary"
-            :disabled="markingRefunded"
+            :loading="markingRefunded"
             @click="markRefunded"
           >
-            {{ markingRefunded ? 'Saving…' : 'Mark refunded' }}
+            Mark refunded
           </AppButton>
           <AppButton
             v-if="order.can_resend_confirmation_email"
             type="button"
             variant="ghost"
-            :disabled="resendingConfirmation"
+            :loading="resendingConfirmation"
             @click="resendConfirmationEmail"
           >
-            {{
-              resendingConfirmation
-                ? 'Sending…'
-                : order.order_confirmation_emailed_at
-                  ? 'Resend confirmation email'
-                  : 'Send confirmation email'
-            }}
+            {{ order.order_confirmation_emailed_at ? 'Resend confirmation email' : 'Send confirmation email' }}
           </AppButton>
         </div>
         <p v-if="order.order_confirmation_emailed_at" class="admin-muted">
@@ -645,19 +639,20 @@ async function resendConfirmationEmail() {
             <AppButton
               type="button"
               variant="secondary"
-              :disabled="retryingShiprocket || order.status === 'Cancelled'"
+              :disabled="order.status === 'Cancelled'"
+              :loading="retryingShiprocket"
               @click="retryShiprocket"
             >
-              {{ retryingShiprocket ? 'Queuing…' : order.shiprocket ? 'Retry fulfillment' : 'Send to Shiprocket' }}
+              {{ order.shiprocket ? 'Retry fulfillment' : 'Send to Shiprocket' }}
             </AppButton>
             <AppButton
               v-if="order.shiprocket?.awb_code"
               type="button"
               variant="ghost"
-              :disabled="syncingShiprocket"
+              :loading="syncingShiprocket"
               @click="syncShiprocket"
             >
-              {{ syncingShiprocket ? 'Queuing…' : 'Sync tracking' }}
+              Sync tracking
             </AppButton>
             <AppButton
               v-if="order.can_switch_to_manual"
@@ -805,7 +800,7 @@ async function resendConfirmationEmail() {
           Prior Shiprocket order {{ order.shiprocket.shiprocket_order_id }} · shipment
           {{ order.shiprocket.shipment_id }} can be resumed without creating a duplicate.
         </p>
-        <form class="admin-form" @submit.prevent="saveCourier">
+        <form novalidate class="admin-form" @submit.prevent="saveCourier">
           <FormField
             v-model="courierForm.courier_partner"
             label="Courier partner"
@@ -831,8 +826,8 @@ async function resendConfirmationEmail() {
             />
           </div>
           <div class="admin-form__actions">
-            <AppButton type="submit" :disabled="savingCourier">
-              {{ savingCourier ? 'Saving…' : 'Save courier' }}
+            <AppButton type="submit" :loading="savingCourier">
+              Save courier
             </AppButton>
           </div>
         </form>

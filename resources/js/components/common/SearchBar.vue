@@ -33,7 +33,7 @@ function submitSearch() {
 </script>
 
 <template>
-  <form :class="props.className" @submit.prevent="submitSearch">
+  <form novalidate :class="props.className" @submit.prevent="submitSearch">
     <Search :size="18" />
     <input v-model="term" placeholder="Search lunch boxes..." />
   </form>

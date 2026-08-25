@@ -8,6 +8,7 @@
   gap: 0.5rem;
   justify-content: center;
   line-height: 1;
+  position: relative;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
@@ -73,50 +74,89 @@
   transform: none;
 }
 
-.button--busy-sm,
-.button--busy-lg {
-  position: relative;
-}
-
-.button--busy-sm {
-  min-width: 4.5rem;
-}
-
-.button--busy-lg {
-  min-width: 9rem;
-}
-
-.button__busy-label {
+.button__content {
   align-items: center;
   display: inline-flex;
   gap: 0.5rem;
   justify-content: center;
 }
 
-.button__busy-label.is-loading {
+.button--loading .button__content {
   visibility: hidden;
 }
 
-.button-spinner {
-  animation: spin 0.6s linear infinite;
-  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
-  border-radius: 50%;
-  border-top-color: currentColor;
-  box-sizing: border-box;
-  display: inline-block;
-  flex-shrink: 0;
-  height: 16px;
-  width: 16px;
-}
-
-.button-spinner--center {
+.button-dots {
+  align-items: center;
+  display: flex;
   inset: 0;
+  justify-content: center;
   margin: auto;
   position: absolute;
 }
 
+.button-dots__dot {
+  animation: button-dot-pulse 1.5s infinite ease-in-out;
+  background-color: #fff;
+  border-radius: 999px;
+  height: 8px;
+  margin-right: 5px;
+  width: 8px;
+}
+
+.button-dots__dot:last-child {
+  margin-right: 0;
+}
+
+.button-dots__dot:nth-child(1) {
+  animation-delay: -0.3s;
+}
+
+.button-dots__dot:nth-child(2) {
+  animation-delay: -0.1s;
+}
+
+.button-dots__dot:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.button-dots__dot:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.button-dots__dot:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.product-card__cart-icon .button-dots__dot,
+.google-continue__shell .button-dots__dot,
+.admin-nav-link--button .button-dots__dot {
+  height: 6px;
+  margin-right: 4px;
+  width: 6px;
+}
+
+@keyframes button-dot-pulse {
+  0% {
+    background-color: #fff;
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    transform: scale(0.8);
+  }
+
+  50% {
+    background-color: #fff;
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    transform: scale(1.2);
+  }
+
+  100% {
+    background-color: #fff;
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    transform: scale(0.8);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .button-spinner {
-    animation-duration: 1.2s;
+  .button-dots__dot {
+    animation-duration: 2.4s;
   }
 }

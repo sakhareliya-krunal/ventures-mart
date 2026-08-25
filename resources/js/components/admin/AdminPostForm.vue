@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref } from 'vue';
 import { ImagePlus, Trash2 } from '@lucide/vue';
 import AdminRichTextEditor from '@/components/admin/AdminRichTextEditor.vue';
@@ -154,7 +154,8 @@ function addPath() {
             type="button"
             variant="secondary"
             size="sm"
-            :disabled="busy"
+            :disabled="saving"
+            :loading="uploading"
             @click="fileInputRef?.click()"
           >
             Browse
@@ -239,8 +240,8 @@ function addPath() {
         :fallback-url="form.slug ? `/blog/${form.slug}` : '/blog'"
       />
       <div class="admin-actions">
-        <AppButton type="button" :disabled="busy" @click="$emit('submit')">
-          {{ saving ? 'Saving…' : submitLabel }}
+        <AppButton type="button" :disabled="uploading" :loading="saving" @click="$emit('submit')">
+          {{ submitLabel }}
         </AppButton>
         <AppButton type="button" variant="ghost" :disabled="busy" @click="$emit('cancel')">
           Cancel

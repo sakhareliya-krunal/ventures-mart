@@ -345,13 +345,19 @@ function ensureAdminRedirectWatcher(auth) {
   );
 }
 
+function routePathWithoutHash(route) {
+  return String(route.fullPath || '').split('#')[0];
+}
+
 router.beforeEach(async (to, from) => {
   const auth = useAuthStore();
   const ui = useUiStore();
 
   ensureAdminRedirectWatcher(auth);
 
-  if (to.fullPath !== from.fullPath) {
+  const routeChanged = from !== START_LOCATION && routePathWithoutHash(to) !== routePathWithoutHash(from);
+
+  if (routeChanged) {
     ui.startNavigating();
   }
 
@@ -402,15 +408,15 @@ router.beforeEach(async (to, from) => {
   return true;
 });
 
-router.afterEach((to) => {
+router.afterEach((to, from, failure) => {
   const auth = useAuthStore();
   const ui = useUiStore();
 
   ui.stopNavigating();
 
-  // Always clear the redirect overlay after a confirmed navigation so a
-  // duplicate/same-route follow-up cannot leave redirecting stuck true.
-  if (auth.redirecting) {
+  // Always clear route transition state after success, redirect, cancellation,
+  // or duplicated navigation so the lightweight loader cannot remain active.
+  if (auth.redirecting || failure) {
     auth.endRedirect();
   }
 
@@ -422,6 +428,7 @@ router.afterEach((to) => {
 
 router.onError(() => {
   useUiStore().stopNavigating();
+  useAuthStore().endRedirect();
 });
 
 export default router;

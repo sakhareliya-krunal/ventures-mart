@@ -21,22 +21,13 @@ export const footerShopLinks = [
   { label: 'Toys', href: '/category/toys' },
   { label: 'Lunch Box', href: '/category/lunch-box' },
   { label: 'All products', href: '/shop' },
-  { label: 'Favourites', href: '/wishlist' },
 ];
 
 export const footerSupportLinks = [
   { label: 'Shipping', href: '/shipping' },
   { label: 'Replacement', href: '/replacement' },
   { label: 'Track Order', href: '/orders' },
-  { label: 'Contact', href: '/contact' },
-];
-
-export const footerCompanyLinks = [
-  { label: 'Why Ventures Mart', href: '/about' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Payments', href: '/payments' },
-  { label: 'Privacy Policy', href: '/privacy-policy' },
-  { label: 'Terms', href: '/terms' },
+  { label: 'About', href: '/about' },
 ];
 
 export const footerContact = {

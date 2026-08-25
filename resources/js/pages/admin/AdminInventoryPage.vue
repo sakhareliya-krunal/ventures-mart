@@ -355,13 +355,13 @@ onBeforeUnmount(() => {
         <p class="admin-muted">Monitor stock availability, allocations, and audit history.</p>
       </div>
       <div class="inventory-heading__actions">
-        <AppButton type="button" variant="secondary" size="sm" :disabled="refreshing" @click="load({ silent: true })">
+        <AppButton type="button" variant="secondary" size="sm" :loading="refreshing" @click="load({ silent: true })">
           <RefreshCw :size="16" :class="{ 'inventory-spin': refreshing }" />
           Refresh
         </AppButton>
-        <AppButton type="button" variant="secondary" size="sm" :disabled="exporting" @click="exportCsv">
+        <AppButton type="button" variant="secondary" size="sm" :loading="exporting" @click="exportCsv">
           <Download :size="16" />
-          {{ exporting ? 'Exporting…' : 'Export CSV' }}
+          <span>Export CSV</span>
         </AppButton>
       </div>
     </section>

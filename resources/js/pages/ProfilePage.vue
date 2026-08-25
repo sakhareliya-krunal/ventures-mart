@@ -20,6 +20,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
+import { firstError, normalizeApiErrors, rules, validateFields } from '@/utils/validation';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -76,6 +77,12 @@ const addressFieldErrors = reactive({
   postal_code: '',
 });
 
+const passwordFieldErrors = reactive({
+  current_password: '',
+  password: '',
+  password_confirmation: '',
+});
+
 const displayName = computed(() => auth.user?.name || 'Account');
 const displayEmail = computed(() => auth.user?.email || '');
 const avatarUrl = computed(() => auth.user?.avatar || '');
@@ -106,6 +113,40 @@ function clearAddressFieldErrors() {
   for (const key of ADDRESS_FIELD_KEYS) {
     addressFieldErrors[key] = '';
   }
+}
+
+function clearPasswordFieldErrors() {
+  passwordFieldErrors.current_password = '';
+  passwordFieldErrors.password = '';
+  passwordFieldErrors.password_confirmation = '';
+}
+
+function applyFieldErrors(target, errors) {
+  for (const [key, value] of Object.entries(normalizeApiErrors(errors))) {
+    if (Object.prototype.hasOwnProperty.call(target, key)) {
+      target[key] = value;
+    }
+  }
+}
+
+function validatePasswordForm() {
+  clearPasswordFieldErrors();
+  const schema = {
+    password: [rules.required(hasPassword.value ? 'New password' : 'Password'), rules.minLength('Password', 8)],
+    password_confirmation: [
+      rules.required('Confirm password'),
+      rules.matches('Confirm password', passwordForm.password, 'password'),
+    ],
+  };
+
+  if (hasPassword.value) {
+    schema.current_password = [rules.required('Current password')];
+  }
+
+  const errors = validateFields(passwordForm, schema);
+  Object.assign(passwordFieldErrors, errors);
+  passwordError.value = firstError(errors);
+  return Object.keys(errors).length === 0;
 }
 
 function validateAddressForm() {
@@ -181,6 +222,10 @@ function editAddress(item) {
 async function savePassword() {
   passwordError.value = '';
   passwordSuccess.value = '';
+  clearPasswordFieldErrors();
+
+  if (!validatePasswordForm()) return;
+
   savingPassword.value = true;
 
   try {
@@ -201,9 +246,10 @@ async function savePassword() {
       await auth.fetchUser();
     }
   } catch (err) {
+    applyFieldErrors(passwordFieldErrors, err.response?.data?.errors);
     passwordError.value =
+      firstError(passwordFieldErrors) ||
       err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
       'Unable to update password.';
   } finally {
     savingPassword.value = false;
@@ -232,9 +278,10 @@ async function saveAddress() {
     await loadAddresses();
     resetAddressForm();
   } catch (err) {
+    applyFieldErrors(addressFieldErrors, err.response?.data?.errors);
     addressError.value =
+      firstError(addressFieldErrors) ||
       err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
       'Unable to save address.';
   } finally {
     savingAddress.value = false;
@@ -275,6 +322,17 @@ watch(
     }
   },
 );
+
+for (const key of ['current_password', 'password', 'password_confirmation']) {
+  watch(
+    () => passwordForm[key],
+    () => {
+      if (passwordFieldErrors[key]) {
+        passwordFieldErrors[key] = '';
+      }
+    },
+  );
+}
 
 for (const key of ADDRESS_FIELD_KEYS) {
   watch(
@@ -336,7 +394,7 @@ async function logout() {
               <a v-if="displayEmail" :href="emailHref(displayEmail)">{{ displayEmail }}</a>
             </p>
             <p class="profile-identity__note">
-              Name and email are managed by your account and can’t be edited here.
+              Name and email are managed by your account and can't be edited here.
             </p>
           </div>
         </div>
@@ -348,7 +406,7 @@ async function logout() {
           <AppButton
             variant="secondary"
             size="lg"
-            :disabled="auth.loggingOut"
+            :loading="auth.loggingOut"
             @click="requestLogout"
           >
             <LogOut :size="18" />
@@ -372,7 +430,7 @@ async function logout() {
         </header>
         <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
         <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
-        <form class="profile-form" @submit.prevent="savePassword">
+        <form novalidate class="profile-form" @submit.prevent="savePassword">
           <FormField
             v-if="hasPassword"
             v-model="passwordForm.current_password"
@@ -380,6 +438,7 @@ async function logout() {
             type="password"
             required
             autocomplete="current-password"
+            :error="passwordFieldErrors.current_password"
           />
           <FormField
             v-model="passwordForm.password"
@@ -387,6 +446,7 @@ async function logout() {
             type="password"
             required
             autocomplete="new-password"
+            :error="passwordFieldErrors.password"
           />
           <FormField
             v-model="passwordForm.password_confirmation"
@@ -394,17 +454,10 @@ async function logout() {
             type="password"
             required
             autocomplete="new-password"
+            :error="passwordFieldErrors.password_confirmation"
           />
-          <AppButton type="submit" :disabled="savingPassword">
-            {{
-              savingPassword
-                ? hasPassword
-                  ? 'Updating…'
-                  : 'Saving…'
-                : hasPassword
-                  ? 'Update password'
-                  : 'Set password'
-            }}
+          <AppButton type="submit" :loading="savingPassword">
+            {{ hasPassword ? 'Update password' : 'Set password' }}
           </AppButton>
         </form>
       </div>
@@ -417,7 +470,7 @@ async function logout() {
         <p v-if="addressError" class="form-error">{{ addressError }}</p>
         <p v-if="addressSuccess" class="form-success">{{ addressSuccess }}</p>
 
-        <LoadingSpinner v-if="addressesLoading" size="sm" label="Loading addresses…" />
+        <LoadingSpinner v-if="addressesLoading" size="sm" label="Loading addresses..." />
         <ul v-else-if="addresses.length" class="address-list">
           <li v-for="item in addresses" :key="item.id" class="address-card">
             <div class="address-card__body">
@@ -428,7 +481,7 @@ async function logout() {
               <p>
                 {{ item.full_name }}
                 <template v-if="item.phone">
-                  · <a :href="phoneHref(item.phone)">{{ item.phone }}</a>
+                  &middot; <a :href="phoneHref(item.phone)">{{ item.phone }}</a>
                 </template><br />
                 {{ item.address }}, {{ item.city }}
                 <template v-if="item.district">, {{ item.district }}</template>,
@@ -485,7 +538,7 @@ async function logout() {
               label="State"
               :options="indiaStateOptions"
               placeholder="Select state"
-              search-placeholder="Search states…"
+              search-placeholder="Search states..."
               required
               :error="addressFieldErrors.state"
             />
@@ -494,7 +547,7 @@ async function logout() {
               label="District"
               :options="districtOptions"
               placeholder="Select district"
-              search-placeholder="Search districts…"
+              search-placeholder="Search districts..."
               :disabled="!addressForm.state"
               required
               :error="addressFieldErrors.district"
@@ -517,8 +570,8 @@ async function logout() {
             Set as default shipping address
           </label>
           <div class="profile-actions">
-            <AppButton type="submit" :disabled="savingAddress">
-              {{ savingAddress ? 'Saving…' : editingId ? 'Update address' : 'Save address' }}
+            <AppButton type="submit" :loading="savingAddress">
+              {{ editingId ? 'Update address' : 'Save address' }}
             </AppButton>
             <AppButton v-if="editingId" type="button" variant="ghost" @click="resetAddressForm">
               Cancel
@@ -533,7 +586,7 @@ async function logout() {
       title="Log out?"
       message="You will leave your account and need to sign in again."
       confirm-label="Log out"
-      busy-label="Signing out…"
+      busy-label="Signing out..."
       :busy="auth.loggingOut"
       :close-on-confirm="false"
       danger

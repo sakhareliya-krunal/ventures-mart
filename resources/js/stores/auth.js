@@ -8,6 +8,8 @@ import { useCartStore } from '@/stores/cart';
 import { useUiStore } from '@/stores/ui';
 import { useWishlistStore } from '@/stores/wishlist';
 
+const REDIRECT_MAX_MS = 5000;
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const booting = ref(false);
@@ -21,12 +23,26 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => Boolean(user.value?.is_admin));
 
   let sessionPromise = null;
+  let redirectTimer = null;
+
+  function clearRedirectTimer() {
+    if (redirectTimer != null) {
+      clearTimeout(redirectTimer);
+      redirectTimer = null;
+    }
+  }
 
   function beginRedirect() {
+    clearRedirectTimer();
     redirecting.value = true;
+    redirectTimer = setTimeout(() => {
+      redirectTimer = null;
+      redirecting.value = false;
+    }, REDIRECT_MAX_MS);
   }
 
   function endRedirect() {
+    clearRedirectTimer();
     redirecting.value = false;
   }
 

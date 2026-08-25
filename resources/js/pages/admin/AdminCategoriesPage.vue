@@ -170,7 +170,7 @@ onMounted(load);
     <div v-if="showForm" class="admin-panel">
       <h3>{{ editingId ? 'Edit category' : 'New category' }}</h3>
       <p v-if="error" class="form-error">{{ error }}</p>
-      <form class="admin-form" @submit.prevent="save">
+      <form novalidate class="admin-form" @submit.prevent="save">
         <div class="admin-form__grid">
           <label>Name <input v-model="form.name" required /></label>
           <label>Slug <input v-model="form.slug" /></label>
@@ -187,7 +187,7 @@ onMounted(load);
           :fallback-url="form.slug ? `/category/${form.slug}` : '/category'"
         />
         <div class="admin-actions">
-          <AppButton type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</AppButton>
+          <AppButton type="submit" :loading="saving">Save</AppButton>
           <AppButton type="button" variant="ghost" @click="resetForm">Cancel</AppButton>
         </div>
       </form>

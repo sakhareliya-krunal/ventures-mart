@@ -167,12 +167,13 @@ onBeforeUnmount(() => {
       <button
         v-show="ready"
         type="button"
-        class="google-continue__shell"
+        :class="['google-continue__shell', { 'is-loading': requesting }]"
         :disabled="busy"
         :aria-busy="requesting ? 'true' : undefined"
         @click="startGoogleSignIn"
       >
-        <span class="google-continue__icon">
+        <span class="google-continue__content">
+          <span class="google-continue__icon">
           <svg viewBox="0 0 48 48" width="18" height="18" focusable="false" aria-hidden="true">
             <path
               fill="#FFC107"
@@ -193,6 +194,14 @@ onBeforeUnmount(() => {
           </svg>
         </span>
         <span class="google-continue__label">{{ label }}</span>
+        </span>
+        <span v-if="requesting" class="button-dots" aria-hidden="true">
+          <span class="button-dots__dot" />
+          <span class="button-dots__dot" />
+          <span class="button-dots__dot" />
+          <span class="button-dots__dot" />
+          <span class="button-dots__dot" />
+        </span>
       </button>
     </template>
   </div>

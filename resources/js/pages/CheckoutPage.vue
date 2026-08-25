@@ -109,10 +109,7 @@ const showShippingFields = computed(
 const checkoutDistrictOptions = computed(() => districtOptionsForState(address.state));
 const savedAddressDistrictOptions = computed(() => districtOptionsForState(addForm.state));
 const addressFormTitle = computed(() => (editingAddressId.value ? 'Edit address' : 'Add address'));
-const addressFormSubmitLabel = computed(() => {
-  if (savingAddress.value) return 'Saving…';
-  return editingAddressId.value ? 'Save changes' : 'Save & use address';
-});
+const addressFormSubmitLabel = computed(() => (editingAddressId.value ? 'Save changes' : 'Save & use address'));
 
 const COD_FEE = 99;
 
@@ -149,12 +146,7 @@ const displayTotals = computed(() => {
   };
 });
 
-const submitLabel = computed(() => {
-  if (submitting.value) {
-    return paymentMethod.value === 'cod' ? 'Placing order…' : 'Processing…';
-  }
-  return paymentMethod.value === 'cod' ? 'Place order' : 'Pay Now';
-});
+const submitLabel = computed(() => (paymentMethod.value === 'cod' ? 'Place order' : 'Pay Now'));
 
 useHead(() =>
   seoHeadFromServer({
@@ -246,6 +238,21 @@ function validateAddAddressForm() {
   }
 
   return ok;
+}
+
+function applyAddApiFieldErrors(errors) {
+  clearAddFieldErrors();
+  let applied = false;
+
+  for (const key of ADD_ADDRESS_KEYS) {
+    const messages = errors?.[key];
+    if (Array.isArray(messages) && messages[0]) {
+      addFieldErrors[key] = String(messages[0]);
+      applied = true;
+    }
+  }
+
+  return applied;
 }
 
 function applySavedAddress(item) {
@@ -416,7 +423,10 @@ async function saveAddressForm() {
     editingAddressId.value = null;
     await loadAddresses({ selectId });
   } catch (err) {
-    addError.value = friendlyApiError(err, 'Unable to save address.');
+    const applied = applyAddApiFieldErrors(err.response?.data?.errors);
+    addError.value = applied
+      ? 'Review the highlighted address fields.'
+      : friendlyApiError(err, 'Unable to save address.');
   } finally {
     savingAddress.value = false;
   }
@@ -841,7 +851,7 @@ async function submit() {
                 Set as default shipping address
               </label>
               <div class="checkout-addresses__add-actions">
-                <AppButton type="button" :disabled="savingAddress" @click="saveAddressForm">
+                <AppButton type="button" :loading="savingAddress" @click="saveAddressForm">
                   {{ addressFormSubmitLabel }}
                 </AppButton>
                 <AppButton type="button" variant="ghost" :disabled="savingAddress" @click="cancelAddForm">
@@ -950,7 +960,7 @@ async function submit() {
             </label>
           </fieldset>
 
-          <AppButton size="lg" type="submit" :disabled="submitting">
+          <AppButton size="lg" type="submit" :loading="submitting">
             {{ submitLabel }}
           </AppButton>
         </form>

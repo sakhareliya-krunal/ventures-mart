@@ -220,11 +220,11 @@ onMounted(async () => {
               type="button"
               size="sm"
               variant="primary"
-              :disabled="downloadingId === order.id"
+              :loading="downloadingId === order.id"
               @click="downloadInvoice(order)"
             >
               <Download :size="16" aria-hidden="true" />
-              {{ downloadingId === order.id ? 'Downloading…' : 'Download invoice' }}
+              <span>Download invoice</span>
             </AppButton>
           </div>
         </article>

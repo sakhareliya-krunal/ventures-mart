@@ -286,7 +286,7 @@ onMounted(loadSeo);
     <p class="admin-muted">Manage site metadata, page SEO, analytics, robots, sitemap, and redirects.</p>
     <p v-if="seoError" class="form-error">{{ seoError }}</p>
     <p v-if="seoSuccess" class="form-success">{{ seoSuccess }}</p>
-    <form class="admin-form" @submit.prevent="saveSeoSettings">
+    <form novalidate class="admin-form" @submit.prevent="saveSeoSettings">
       <div class="admin-form__grid">
         <label>Brand name <input v-model="seoSettings.site.brand_name" /></label>
         <label>Tagline <input v-model="seoSettings.site.tagline" /></label>
@@ -323,8 +323,8 @@ onMounted(loadSeo);
         :fallback-description="pageSeoFallbackDescription"
         :fallback-url="selectedPage.url"
       />
-      <AppButton type="submit" :disabled="savingSeo || loadingPageSeo">
-        {{ savingSeo ? 'Saving SEO...' : 'Save SEO settings' }}
+      <AppButton type="submit" :disabled="loadingPageSeo" :loading="savingSeo">
+        Save SEO settings
       </AppButton>
     </form>
   </div>
@@ -332,7 +332,7 @@ onMounted(loadSeo);
   <div class="admin-panel">
     <h2>Redirects</h2>
     <p v-if="redirectError" class="form-error">{{ redirectError }}</p>
-    <form class="admin-form" @submit.prevent="saveRedirect">
+    <form novalidate class="admin-form" @submit.prevent="saveRedirect">
       <div class="admin-form__grid">
         <label>Old path <input v-model="redirectForm.old_path" placeholder="/old-product" required /></label>
         <label>Target path <input v-model="redirectForm.target_path" placeholder="/product/new-product" required /></label>
@@ -391,7 +391,7 @@ onMounted(loadSeo);
     <p class="admin-muted">Update your admin password.</p>
     <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
     <p v-if="passwordSuccess" class="form-success">{{ passwordSuccess }}</p>
-    <form class="admin-form" @submit.prevent="savePassword">
+    <form novalidate class="admin-form" @submit.prevent="savePassword">
       <FormField
         v-model="passwordForm.current_password"
         label="Current password"
@@ -413,8 +413,8 @@ onMounted(loadSeo);
         required
         autocomplete="new-password"
       />
-      <AppButton type="submit" :disabled="savingPassword">
-        {{ savingPassword ? 'Updating…' : 'Update password' }}
+      <AppButton type="submit" :loading="savingPassword">
+        Update password
       </AppButton>
     </form>
   </div>

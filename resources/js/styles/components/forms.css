@@ -81,7 +81,21 @@ textarea {
 input.is-invalid,
 select.is-invalid,
 textarea.is-invalid {
-  border-color: var(--color-danger-border);
+  background: color-mix(in srgb, var(--color-soft) 34%, var(--color-surface));
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 13%, transparent);
+}
+
+label.has-error {
+  color: color-mix(in srgb, var(--color-danger) 92%, var(--color-ink));
+}
+
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+  outline: none;
 }
 
 .form-grid {
@@ -95,11 +109,30 @@ textarea.is-invalid {
 }
 
 .form-field-error {
+  align-items: flex-start;
   color: var(--color-danger);
-  font-size: 0.85rem;
-  font-weight: 700;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 0.35rem;
   line-height: 1.35;
   margin: 0;
+}
+
+.form-field-error::before {
+  content: '!';
+  align-items: center;
+  background: var(--color-danger);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  height: 1rem;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 0.05rem;
+  width: 1rem;
 }
 
 .form-error {

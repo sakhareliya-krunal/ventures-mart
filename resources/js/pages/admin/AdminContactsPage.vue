@@ -200,16 +200,17 @@ onBeforeUnmount(() => {
           type="button"
           variant="secondary"
           size="sm"
-          :disabled="!meta.unread_count || markingAll"
+          :disabled="!meta.unread_count"
+          :loading="markingAll"
           @click="markAllRead"
         >
-          {{ markingAll ? 'Marking…' : 'Mark all read' }}
+          Mark all read
         </AppButton>
         <AppButton
           type="button"
           variant="secondary"
           size="sm"
-          :disabled="refreshing"
+          :loading="refreshing"
           aria-label="Refresh contact messages"
           @click="load({ silent: true })"
         >

@@ -169,7 +169,7 @@
 .auth-submit .vm-loader__label {
   color: inherit;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0;
   opacity: 1;
 }
@@ -179,44 +179,9 @@
   width: 18px;
 }
 
-.auth-submit .vm-loader__ring--outer {
-  border-color: rgba(255, 255, 255, 0.22);
-  border-top-color: #fff;
-  border-right-color: rgba(255, 255, 255, 0.55);
-}
-
-.auth-submit .vm-loader__ring--inner {
-  border-bottom-color: rgba(255, 255, 255, 0.95);
-  border-left-color: rgba(255, 255, 255, 0.45);
-}
-
-.auth-submit .vm-loader__core {
-  background: #fff;
-  box-shadow: none;
-  height: 22%;
-  width: 22%;
-}
-
 .auth-submit--ink .vm-loader__label {
   color: var(--color-ink);
 }
-
-.auth-submit--ink .vm-loader__ring--outer {
-  border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
-  border-right-color: color-mix(in srgb, var(--color-secondary) 45%, transparent);
-  border-top-color: var(--color-secondary);
-}
-
-.auth-submit--ink .vm-loader__ring--inner {
-  border-bottom-color: var(--color-primary);
-  border-left-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
-}
-
-.auth-submit--ink .vm-loader__core {
-  background: var(--color-primary);
-  box-shadow: none;
-}
-
 .auth-divider {
   align-items: center;
   color: var(--color-muted);
@@ -276,12 +241,24 @@
   line-height: 1;
   min-height: 44px;
   padding: 0.78rem 1.1rem;
+  position: relative;
   transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   width: 100%;
 }
 
 .google-continue__shell:disabled {
   cursor: not-allowed;
+}
+
+.google-continue__content {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+  justify-content: center;
+}
+
+.google-continue__shell.is-loading .google-continue__content {
+  visibility: hidden;
 }
 
 .google-continue.is-ready:not(.is-disabled) .google-continue__shell:hover {

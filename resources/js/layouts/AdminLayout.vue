@@ -259,13 +259,22 @@ onBeforeUnmount(() => {
           </RouterLink>
           <button
             type="button"
-            class="admin-nav-link admin-nav-link--button"
+            :class="['admin-nav-link', 'admin-nav-link--button', { 'is-loading': auth.loggingOut }]"
             role="menuitem"
             :disabled="auth.loggingOut"
             @click="requestLogout"
           >
-            <LogOut :size="18" />
-            <span>Logout</span>
+            <span class="admin-nav-link__content">
+              <LogOut :size="18" />
+              <span>Logout</span>
+            </span>
+            <span v-if="auth.loggingOut" class="button-dots" aria-hidden="true">
+              <span class="button-dots__dot" />
+              <span class="button-dots__dot" />
+              <span class="button-dots__dot" />
+              <span class="button-dots__dot" />
+              <span class="button-dots__dot" />
+            </span>
           </button>
         </div>
 

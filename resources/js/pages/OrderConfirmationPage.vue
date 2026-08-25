@@ -178,10 +178,10 @@ onMounted(async () => {
             <AppButton
               v-if="order.invoice_available"
               type="button"
-              :disabled="downloadingInvoice"
+              :loading="downloadingInvoice"
               @click="downloadInvoice"
             >
-              {{ downloadingInvoice ? 'Downloading…' : 'Download invoice' }}
+              Download invoice
             </AppButton>
             <AppButton to="/orders" :variant="order.invoice_available ? 'secondary' : 'primary'">
               View all orders

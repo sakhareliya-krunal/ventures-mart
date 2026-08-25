@@ -84,7 +84,7 @@ function submit() {
         </button>
       </header>
 
-      <form class="admin-product-form inventory-return-form" @submit.prevent="submit">
+      <form novalidate class="admin-product-form inventory-return-form" @submit.prevent="submit">
         <div v-if="item" class="inventory-return-form__item">
           <strong>{{ item.name }}</strong>
           <span>{{ item.sku || 'No SKU' }}</span>
@@ -127,8 +127,8 @@ function submit() {
 
         <footer class="admin-modal__footer">
           <AppButton type="button" variant="ghost" :disabled="busy" @click="close">Cancel</AppButton>
-          <AppButton type="submit" :disabled="busy || !valid">
-            {{ busy ? 'Processing…' : 'Process return' }}
+          <AppButton type="submit" :disabled="!valid" :loading="busy">
+            Process return
           </AppButton>
         </footer>
       </form>

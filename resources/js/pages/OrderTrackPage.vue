@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
@@ -271,7 +271,7 @@ onMounted(loadTrack);
               {{ showCancelForm ? 'Hide cancel form' : 'Cancel order' }}
             </AppButton>
           </div>
-          <form
+          <form novalidate
             v-if="showCancelForm && track.can_cancel"
             class="order-track__form"
             @submit.prevent="cancelOrder"
@@ -281,8 +281,8 @@ onMounted(loadTrack);
               <textarea v-model="cancelReason" rows="3" required maxlength="500" />
             </label>
             <p v-if="cancelError" class="form-error">{{ cancelError }}</p>
-            <AppButton type="submit" :disabled="cancelling">
-              {{ cancelling ? 'Cancelling…' : 'Confirm cancellation' }}
+            <AppButton type="submit" :loading="cancelling">
+              Confirm cancellation
             </AppButton>
           </form>
 
@@ -309,7 +309,7 @@ onMounted(loadTrack);
               {{ showReplacementForm ? 'Hide replacement form' : 'Request replacement' }}
             </AppButton>
           </div>
-          <form
+          <form novalidate
             v-if="showReplacementForm && track.can_request_replacement"
             class="order-track__form"
             @submit.prevent="submitReplacement"
@@ -331,8 +331,8 @@ onMounted(loadTrack);
               <input type="file" accept="image/*" multiple @change="onReplacementPhotos" />
             </label>
             <p v-if="replacementError" class="form-error">{{ replacementError }}</p>
-            <AppButton type="submit" :disabled="submittingReplacement">
-              {{ submittingReplacement ? 'Submitting…' : 'Submit replacement request' }}
+            <AppButton type="submit" :loading="submittingReplacement">
+              Submit replacement request
             </AppButton>
           </form>
         </div>
@@ -562,11 +562,11 @@ onMounted(loadTrack);
           <AppButton
             v-if="track.invoice_available"
             type="button"
-            :disabled="downloadingInvoice"
+            :loading="downloadingInvoice"
             @click="downloadInvoice"
           >
             <Download :size="16" aria-hidden="true" />
-            {{ downloadingInvoice ? 'Downloading…' : 'Download invoice' }}
+            <span>Download invoice</span>
           </AppButton>
           <AppButton
             :to="track.support?.contact_path || '/contact'"

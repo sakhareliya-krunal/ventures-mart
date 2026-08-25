@@ -225,11 +225,11 @@ async function uploadSeoImage(event) {
             type="button"
             variant="secondary"
             size="sm"
-            :disabled="uploadingSeoImage"
+            :loading="uploadingSeoImage"
             @click="seoImageInput?.click()"
           >
             <ImagePlus :size="16" />
-            {{ uploadingSeoImage ? 'Uploading…' : 'Upload image' }}
+            <span>Upload image</span>
           </AppButton>
           <small class="admin-muted">JPEG, PNG, or WebP up to 4MB.</small>
         </div>

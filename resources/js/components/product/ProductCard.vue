@@ -113,11 +113,13 @@ function prepareHoverImage() {
           <span class="product-card__cart-icon-label" :class="{ 'is-loading': adding }">
             <ShoppingCart :size="18" />
           </span>
-          <span
-            v-if="adding"
-            class="button-spinner button-spinner--center"
-            aria-hidden="true"
-          />
+          <span v-if="adding" class="button-dots" aria-hidden="true">
+            <span class="button-dots__dot" />
+            <span class="button-dots__dot" />
+            <span class="button-dots__dot" />
+            <span class="button-dots__dot" />
+            <span class="button-dots__dot" />
+          </span>
         </button>
       </div>
     </div>

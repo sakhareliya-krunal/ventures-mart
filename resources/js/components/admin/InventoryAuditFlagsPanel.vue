@@ -118,10 +118,10 @@ onMounted(() => load());
             type="button"
             variant="secondary"
             size="sm"
-            :disabled="resolvingId === flag.id"
+            :loading="resolvingId === flag.id"
             @click="resolve(flag)"
           >
-            {{ resolvingId === flag.id ? 'Resolving…' : 'Mark resolved' }}
+            Mark resolved
           </AppButton>
         </article>
       </div>

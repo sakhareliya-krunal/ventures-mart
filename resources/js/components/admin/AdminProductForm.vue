@@ -45,9 +45,7 @@ const dragOver = ref(false);
 
 const images = computed(() => (Array.isArray(props.form.images) ? props.form.images : []));
 const busy = computed(() => props.saving || uploading.value);
-const submitLabel = computed(() =>
-  props.saving ? 'Saving…' : props.editing ? 'Save changes' : 'Create product',
-);
+const submitLabel = computed(() => (props.editing ? 'Save changes' : 'Create product'));
 
 function fieldError(name) {
   const value = props.fieldErrors?.[name];
@@ -248,7 +246,8 @@ function addPath() {
             type="button"
             variant="secondary"
             size="sm"
-            :disabled="busy"
+            :disabled="props.saving"
+            :loading="uploading"
             @click="fileInputRef?.click()"
           >
             Browse
@@ -457,7 +456,7 @@ function addPath() {
         <AppButton type="button" variant="ghost" :disabled="busy" @click="emit('cancel')">
           Cancel
         </AppButton>
-        <AppButton type="submit" :disabled="busy">
+        <AppButton type="submit" :disabled="uploading" :loading="props.saving">
           {{ submitLabel }}
         </AppButton>
       </div>

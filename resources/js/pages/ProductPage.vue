@@ -579,23 +579,16 @@ onBeforeUnmount(() => {
             <div ref="actionsEl" class="product-detail__actions">
               <AppButton
                 size="lg"
-                class="button--busy-lg product-detail__add-btn"
-                :disabled="adding || !inStock"
-                :aria-busy="adding"
+                class="product-detail__add-btn"
+                :disabled="!inStock"
+                :loading="adding"
                 :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
                 @click="addToCart"
               >
                 <template v-if="!inStock">Out of Stock</template>
                 <template v-else>
-                  <span class="button__busy-label" :class="{ 'is-loading': adding }">
-                    <ShoppingBag :size="18" />
+                  <ShoppingBag :size="18" />
                     Add into Bag · {{ formatCurrency(product.price) }}
-                  </span>
-                  <span
-                    v-if="adding"
-                    class="button-spinner button-spinner--center"
-                    aria-hidden="true"
-                  />
                 </template>
               </AppButton>
             </div>
@@ -723,7 +716,7 @@ onBeforeUnmount(() => {
         <aside class="product-reviews__aside">
           <div class="product-review-form">
             <h3>Share Your Experience</h3>
-            <form class="product-review-form__body" @submit.prevent="onSubmitReview">
+            <form novalidate class="product-review-form__body" @submit.prevent="onSubmitReview">
               <fieldset class="product-reviews__rating-field">
                 <legend>Overall Rating</legend>
                 <div class="product-reviews__rating-picker" role="radiogroup" aria-label="Rating">
@@ -762,8 +755,8 @@ onBeforeUnmount(() => {
               <p v-if="reviewSuccess" class="product-reviews__success">
                 Thanks — your review is live.
               </p>
-              <AppButton type="submit" :disabled="products.reviewSubmitting || reviewSuccess">
-                {{ products.reviewSubmitting ? 'Submitting…' : 'Submit Review' }}
+              <AppButton type="submit" :disabled="reviewSuccess" :loading="products.reviewSubmitting">
+                Submit Review
               </AppButton>
             </form>
           </div>
@@ -801,24 +794,17 @@ onBeforeUnmount(() => {
         </div>
         <AppButton
           size="sm"
-          class="button--busy-sm product-detail__sticky-add"
-          :disabled="adding || !inStock"
-          :aria-busy="adding"
+          class="product-detail__sticky-add"
+          :disabled="!inStock"
+          :loading="adding"
           :aria-label="inStock ? 'Add to cart' : 'Out of Stock'"
           :tabindex="stickyVisible ? 0 : -1"
           @click="addToCart"
         >
           <template v-if="!inStock">Out of Stock</template>
           <template v-else>
-            <span class="button__busy-label" :class="{ 'is-loading': adding }">
-              <ShoppingBag :size="16" />
+            <ShoppingBag :size="16" />
               Add · {{ formatCurrency(product.price) }}
-            </span>
-            <span
-              v-if="adding"
-              class="button-spinner button-spinner--center"
-              aria-hidden="true"
-            />
           </template>
         </AppButton>
       </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { Eye, EyeOff } from '@lucide/vue';
 
 const props = defineProps({
@@ -43,6 +43,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+const fieldId = useId();
+const errorId = computed(() => `${fieldId}-error`);
+const describedBy = computed(() => (props.error ? errorId.value : undefined));
 const revealed = ref(false);
 const isPassword = computed(() => props.type === 'password');
 const inputType = computed(() => {
@@ -56,28 +59,32 @@ function toggleReveal() {
 </script>
 
 <template>
-  <label :class="{ 'has-error': Boolean(error) }">
+  <label :for="fieldId" :class="{ 'has-error': Boolean(error) }">
     {{ label }}
     <textarea
       v-if="type === 'textarea'"
+      :id="fieldId"
       :value="modelValue"
-      :required="required"
       :disabled="disabled"
       :rows="rows"
       :placeholder="placeholder"
+      :aria-required="required ? 'true' : undefined"
       :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :class="{ 'is-invalid': Boolean(error) }"
       @input="emit('update:modelValue', $event.target.value)"
     />
     <span v-else class="form-field__control" :class="{ 'has-toggle': isPassword }">
       <input
+        :id="fieldId"
         :type="inputType"
         :value="modelValue"
-        :required="required"
         :disabled="disabled"
         :placeholder="placeholder"
         :autocomplete="autocomplete"
-        :aria-invalid="error ? 'true' : undefined"
+        :aria-required="required ? 'true' : undefined"
+      :aria-invalid="error ? 'true' : undefined"
+        :aria-describedby="describedBy"
         :class="{ 'is-invalid': Boolean(error) }"
         @input="emit('update:modelValue', $event.target.value)"
       />
@@ -95,6 +102,6 @@ function toggleReveal() {
         <Eye v-else :size="20" :stroke-width="1.75" aria-hidden="true" />
       </button>
     </span>
-    <small v-if="error" class="form-field-error">{{ error }}</small>
+    <small v-if="error" :id="errorId" class="form-field-error">{{ error }}</small>
   </label>
 </template>

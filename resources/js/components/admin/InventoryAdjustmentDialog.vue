@@ -140,8 +140,8 @@ function submit() {
 
         <footer class="admin-modal__footer">
           <AppButton type="button" variant="ghost" :disabled="busy" @click="close">Cancel</AppButton>
-          <AppButton type="submit" :disabled="busy || !valid">
-            {{ busy ? 'Saving…' : isOutOfStock ? 'Mark Out of Stock' : 'Apply adjustment' }}
+          <AppButton type="submit" :disabled="!valid" :loading="busy">
+            {{ isOutOfStock ? 'Mark Out of Stock' : 'Apply adjustment' }}
           </AppButton>
         </footer>
       </form>

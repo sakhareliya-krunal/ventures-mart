@@ -108,11 +108,11 @@ function openCreateAdmin() {
       <h2>Profile</h2>
       <p v-if="accountError" class="form-error">{{ accountError }}</p>
       <p v-if="accountSuccess" class="form-success">{{ accountSuccess }}</p>
-      <form class="admin-form" @submit.prevent="saveAccount">
+      <form novalidate class="admin-form" @submit.prevent="saveAccount">
         <FormField v-model="account.name" label="Name" required />
         <FormField v-model="account.email" label="Email" type="email" required />
-        <AppButton type="submit" :disabled="savingAccount">
-          {{ savingAccount ? 'Saving…' : 'Save profile' }}
+        <AppButton type="submit" :loading="savingAccount">
+          Save profile
         </AppButton>
       </form>
     </div>

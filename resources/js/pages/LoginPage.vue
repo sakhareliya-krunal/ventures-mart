@@ -6,11 +6,11 @@ import AuthShell from '@/components/auth/AuthShell.vue';
 import GoogleContinueButton from '@/components/auth/GoogleContinueButton.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { useAuthStore } from '@/stores/auth';
 import { resolvePostAuthPath } from '@/utils/authRedirect';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
+import { firstError, normalizeApiErrors, rules, validateFields } from '@/utils/validation';
 
 const theme = useThemeStore();
 const auth = useAuthStore();
@@ -18,6 +18,7 @@ const router = useRouter();
 const route = useRoute();
 
 const error = ref('');
+const fieldErrors = ref({});
 const form = reactive({
   email: '',
   password: '',
@@ -73,7 +74,6 @@ onMounted(() => {
     return;
   }
 
-  // Session restore may still be in flight when landing on /login already signed in.
   if (auth.booting) {
     const stop = watch(
       () => auth.booting,
@@ -87,10 +87,23 @@ onMounted(() => {
   }
 });
 
+function validateForm() {
+  const errors = validateFields(form, {
+    email: [rules.required('Email'), rules.email()],
+    password: [rules.required('Password')],
+  });
+  fieldErrors.value = errors;
+  error.value = firstError(errors);
+  return Object.keys(errors).length === 0;
+}
+
 async function submit() {
   if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
+  fieldErrors.value = {};
+
+  if (!validateForm()) return;
 
   try {
     await auth.login({ ...form });
@@ -98,9 +111,10 @@ async function submit() {
   } catch (err) {
     auth.endRedirect();
     leaving = false;
+    fieldErrors.value = normalizeApiErrors(err.response?.data?.errors);
     error.value =
+      firstError(fieldErrors.value) ||
       err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
       'Unable to log in.';
   }
 }
@@ -109,6 +123,7 @@ async function continueWithGoogle(accessToken) {
   if (auth.loading || auth.redirecting || leaving) return;
 
   error.value = '';
+  fieldErrors.value = {};
 
   try {
     await auth.loginWithGoogle({ accessToken, intent: 'login' });
@@ -131,7 +146,7 @@ function onGoogleError(message) {
     title="Welcome back"
     :busy="auth.loading || auth.redirecting"
   >
-    <form class="auth-form" @submit.prevent="submit">
+    <form class="auth-form" novalidate @submit.prevent="submit">
       <p v-if="resetNotice" class="form-success">{{ resetNotice }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <FormField
@@ -141,6 +156,7 @@ function onGoogleError(message) {
         required
         autocomplete="email"
         :disabled="auth.loading || auth.redirecting"
+        :error="fieldErrors.email"
       />
       <FormField
         v-model="form.password"
@@ -149,6 +165,7 @@ function onGoogleError(message) {
         required
         autocomplete="current-password"
         :disabled="auth.loading || auth.redirecting"
+        :error="fieldErrors.password"
       />
       <p class="auth-forgot">
         <RouterLink to="/forgot-password">Forgot password?</RouterLink>
@@ -156,14 +173,9 @@ function onGoogleError(message) {
       <AppButton
         class="auth-submit"
         type="submit"
-        :disabled="auth.loading || auth.redirecting"
+        :loading="auth.loading || auth.redirecting"
       >
-        <LoadingSpinner
-          v-if="auth.loading || auth.redirecting"
-          size="sm"
-          :label="auth.redirecting && !auth.loading ? 'Redirecting…' : 'Signing in…'"
-        />
-        <template v-else>Sign in</template>
+        Sign in
       </AppButton>
 
       <div class="auth-divider" role="separator"><span>or</span></div>

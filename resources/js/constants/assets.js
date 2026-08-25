@@ -1,6 +1,7 @@
 export const brandAssets = {
   logo: '/images/ventures-mart-logo.png',
   logoLight: '/images/ventures-mart-logo-light.png',
+  loaderMark: '/favicon-192x192.png',
   heroHome: '/products/lunch-box/delicious-steel-lunch-box/13.jpg',
   heroCarouselSlides: [
     {
