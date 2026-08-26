@@ -5,6 +5,7 @@ import HomeBestSellers from '@/components/home/HomeBestSellers.vue';
 import HomeBenefits from '@/components/home/HomeBenefits.vue';
 import HomeCategoryProducts from '@/components/home/HomeCategoryProducts.vue';
 import HomeCuratedCollection from '@/components/home/HomeCuratedCollection.vue';
+import HomeVideoSection from '@/components/home/HomeVideoSection.vue';
 import { useThemeStore } from '@/stores/theme';
 import { seoHeadFromServer } from '@/utils/seoHead';
 
@@ -25,5 +26,6 @@ useHead(() =>
   <HomeCategoryProducts />
   <HomeBestSellers />
   <HomeCuratedCollection />
+  <HomeVideoSection />
   <HomeBenefits />
 </template>

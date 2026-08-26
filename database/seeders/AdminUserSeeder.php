@@ -10,10 +10,10 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         $user = User::query()->updateOrCreate(
-            ['email' => 'sakhareliyakrunal33@gmail.com'],
+            ['email' => env('LOCAL_ADMIN_EMAIL', 'sakhareliyakrunal33@gmail.com')],
             [
                 'name' => 'Admin',
-                'password' => 'password',
+                'password' => env('LOCAL_ADMIN_PASSWORD', 'password'),
             ]
         );
 

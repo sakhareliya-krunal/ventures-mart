@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { brandAssets } from '@/constants/assets';
 
+const LOADER_SRC = '/images/venturesmart-kinetic-frame-loader.svg';
 const EXIT_MS = 220;
 const VISIBLE_MAX_MS = 1800;
 
@@ -12,7 +12,7 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'Loading page...',
+    default: 'Loading page',
   },
 });
 
@@ -24,7 +24,7 @@ let previousBodyOverflow = '';
 let previousHtmlOverflow = '';
 let scrollLocked = false;
 
-const statusLabel = computed(() => props.label || 'Loading page...');
+const statusLabel = computed(() => props.label || 'Loading page');
 
 function clearExitTimer() {
   if (exitTimer != null) {
@@ -119,19 +119,7 @@ onBeforeUnmount(() => {
       aria-live="polite"
       :aria-label="statusLabel"
     >
-      <div class="route-loader__panel">
-        <div class="route-loader__medallion" aria-hidden="true">
-          <span class="route-loader__halo" />
-          <svg class="route-loader__orbit" viewBox="0 0 82 82" focusable="false">
-            <circle cx="41" cy="41" r="35" pathLength="100" />
-          </svg>
-          <img :src="brandAssets.loaderMark" alt="" width="58" height="58" />
-        </div>
-        <div class="route-loader__progress" aria-hidden="true">
-          <span />
-        </div>
-        <p class="route-loader__label">{{ statusLabel }}</p>
-      </div>
+      <img class="route-loader__frame" :src="LOADER_SRC" alt="" width="360" height="220" />
     </div>
   </Teleport>
 </template>

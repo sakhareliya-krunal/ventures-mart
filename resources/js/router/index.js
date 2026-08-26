@@ -348,7 +348,6 @@ function ensureAdminRedirectWatcher(auth) {
 function routePathWithoutHash(route) {
   return String(route.fullPath || '').split('#')[0];
 }
-
 router.beforeEach(async (to, from) => {
   const auth = useAuthStore();
   const ui = useUiStore();
@@ -414,8 +413,6 @@ router.afterEach((to, from, failure) => {
 
   ui.stopNavigating();
 
-  // Always clear route transition state after success, redirect, cancellation,
-  // or duplicated navigation so the lightweight loader cannot remain active.
   if (auth.redirecting || failure) {
     auth.endRedirect();
   }

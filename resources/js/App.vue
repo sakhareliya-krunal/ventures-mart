@@ -10,7 +10,7 @@ const auth = useAuthStore();
 const ui = useUiStore();
 
 const showRouteLoader = computed(() => ui.navigating || auth.redirecting);
-const routeLoaderLabel = computed(() => (auth.redirecting ? 'Redirecting...' : 'Loading page...'));
+const routeLoaderLabel = computed(() => (auth.redirecting ? 'Redirecting' : 'Loading page'));
 </script>
 
 <template>

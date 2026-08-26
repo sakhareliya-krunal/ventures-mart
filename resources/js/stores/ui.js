@@ -3,16 +3,13 @@ import { ref } from 'vue';
 
 const SHOW_DELAY_MS = 120;
 const NAVIGATION_MAX_MS = 5000;
-const SPLASH_DELAY_MS = 250;
 const TOAST_MS = 3500;
 
 export const useUiStore = defineStore('ui', () => {
   const navigating = ref(false);
-  const splashVisible = ref(false);
   const toast = ref(null);
   let showTimer = null;
   let navigationSafetyTimer = null;
-  let splashTimer = null;
   let toastTimer = null;
 
   function clearShowTimer() {
@@ -36,13 +33,6 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  function clearSplashTimer() {
-    if (splashTimer != null) {
-      clearTimeout(splashTimer);
-      splashTimer = null;
-    }
-  }
-
   function startNavigating() {
     clearShowTimer();
     clearNavigationSafetyTimer();
@@ -62,24 +52,6 @@ export const useUiStore = defineStore('ui', () => {
     clearShowTimer();
     clearNavigationSafetyTimer();
     navigating.value = false;
-  }
-
-  function dismissSplash() {
-    clearSplashTimer();
-    splashVisible.value = false;
-  }
-
-  function showSplash() {
-    clearSplashTimer();
-    splashVisible.value = true;
-  }
-
-  function scheduleSplash(delayMs = SPLASH_DELAY_MS) {
-    clearSplashTimer();
-    splashTimer = setTimeout(() => {
-      splashTimer = null;
-      splashVisible.value = true;
-    }, delayMs);
   }
 
   function dismissToast() {
@@ -110,13 +82,9 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     navigating,
-    splashVisible,
     toast,
     startNavigating,
     stopNavigating,
-    showSplash,
-    scheduleSplash,
-    dismissSplash,
     showToast,
     dismissToast,
   };
