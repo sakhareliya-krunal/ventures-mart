@@ -40,15 +40,15 @@
 
 .reveal {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(18px);
   transition:
-    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }
 
 .reveal.reveal--soft {
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(20px) scale(0.985);
 }
 
 .reveal.is-revealed {
@@ -57,34 +57,14 @@
   will-change: auto;
 }
 
-.reveal.reveal--soft:nth-child(2) {
-  transition-delay: 40ms;
-}
-
-.reveal.reveal--soft:nth-child(3) {
-  transition-delay: 80ms;
-}
-
-.reveal.reveal--soft:nth-child(4) {
-  transition-delay: 120ms;
-}
-
-.reveal.reveal--soft:nth-child(5),
-.reveal.reveal--soft:nth-child(6) {
-  transition-delay: 0ms;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .reveal.reveal--soft {
     opacity: 1;
     transform: none;
     transition: none;
-    will-change: auto;
-  }
-
-  .reveal.reveal--soft:nth-child(n) {
     transition-delay: 0ms;
+    will-change: auto;
   }
 
   *,

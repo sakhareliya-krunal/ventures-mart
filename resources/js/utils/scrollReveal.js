@@ -1,16 +1,55 @@
 const REVEAL_SELECTORS = [
+  '.page-section',
+  '.page-section--soft',
+  '.section-header',
+  '.page-title-row',
+  '.page-hero',
   '.promo-band',
   '.service-strip',
+  '.service-item',
   '.product-card',
+  '.product-grid',
   '.category-card',
   '.category-pillar',
+  '.category-tabbar',
+  '.home-curated',
+  '.home-curated__header',
+  '.home-best-sellers',
+  '.home-best-sellers__header',
+  '.home-category-products',
+  '.home-category-products__header',
+  '.home-video',
+  '.home-video__header',
+  '.home-video__card',
+  '.home-why__intro',
   '.home-why__item',
+  '.home-benefits__header',
   '.home-benefits__card',
   '.about-commitment__stat',
+  '.home-trust__intro',
   '.home-trust__quote',
+  '.shop-toolbar',
   '.product-detail__gallery',
   '.product-detail__copy',
-  '.page-hero',
+  '.product-detail-tabs',
+  '.product-detail__related',
+  '.summary-panel',
+  '.form-panel',
+  '.auth-panel',
+  '.cart-page',
+  '.checkout-page',
+  '.checkout-panel',
+  '.profile-card',
+  '.profile-actions',
+  '.orders-list',
+  '.order-card',
+  '.order-confirm-card',
+  '.order-track-hero',
+  '.order-track-card',
+  '.blog-card',
+  '.blog-article__header',
+  '.blog-article__cover',
+  '.blog-prose',
   '.article-premium__section',
   '.article-premium__close',
   '.article-premium__intro',
@@ -18,9 +57,44 @@ const REVEAL_SELECTORS = [
   '.empty-state',
 ].join(', ');
 
-const SOFT_SELECTORS =
-  '.product-card, .category-card, .category-pillar, .about-commitment__stat, .home-why__item, .home-benefits__card, .home-trust__quote, .article-premium__section';
+const SOFT_SELECTORS = [
+  '.product-card',
+  '.category-card',
+  '.category-pillar',
+  '.service-item',
+  '.home-video__card',
+  '.about-commitment__stat',
+  '.home-why__item',
+  '.home-benefits__card',
+  '.home-trust__quote',
+  '.summary-panel',
+  '.form-panel',
+  '.profile-card',
+  '.order-card',
+  '.order-confirm-card',
+  '.order-track-card',
+  '.blog-card',
+  '.article-premium__section',
+].join(', ');
+
+const EXCLUDED_SELECTORS = [
+  '[hidden]',
+  '[aria-hidden="true"]',
+  '.admin-layout',
+  '.admin-panel',
+  '.admin-modal',
+  '.mobile-drawer',
+  '.cart-tray',
+  '.filters-dialog',
+  '.confirm-dialog',
+  '.review-dialog',
+  '.inventory-history',
+  '.skeleton-card',
+  '.button-dots',
+].join(', ');
+
 const VIEWPORT_MARGIN = 100;
+const MAX_STAGGER_INDEX = 5;
 
 let observer = null;
 let mutationObserver = null;
@@ -48,8 +122,12 @@ function isElementInViewport(el) {
   );
 }
 
+function isExcluded(el) {
+  return el.matches(EXCLUDED_SELECTORS) || Boolean(el.closest(EXCLUDED_SELECTORS));
+}
+
 function prepareElement(el) {
-  if (!(el instanceof HTMLElement)) {
+  if (!(el instanceof HTMLElement) || isExcluded(el)) {
     return false;
   }
 
@@ -72,6 +150,27 @@ function prepareElement(el) {
   return true;
 }
 
+function assignRevealDelays(nodes) {
+  const groups = new Map();
+
+  nodes.forEach((el) => {
+    if (!(el instanceof HTMLElement) || !el.parentElement || isExcluded(el)) {
+      return;
+    }
+
+    const group = groups.get(el.parentElement) || [];
+    group.push(el);
+    groups.set(el.parentElement, group);
+  });
+
+  groups.forEach((group) => {
+    group.forEach((el, index) => {
+      const delay = Math.min(index, MAX_STAGGER_INDEX) * 55;
+      el.style.setProperty('--reveal-delay', `${delay}ms`);
+    });
+  });
+}
+
 function ensureObserver() {
   if (observer || prefersReducedMotion() || !('IntersectionObserver' in window)) {
     return observer;
@@ -90,7 +189,7 @@ function ensureObserver() {
     },
     {
       threshold: 0.01,
-      rootMargin: '80px 0px 80px 0px',
+      rootMargin: '90px 0px 110px 0px',
     },
   );
 
@@ -100,6 +199,7 @@ function ensureObserver() {
 export function refreshScrollReveal(root = document) {
   const scope = root instanceof Element || root instanceof Document ? root : document;
   const nodes = scope.querySelectorAll(REVEAL_SELECTORS);
+  assignRevealDelays(nodes);
 
   if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
     nodes.forEach((el) => {
