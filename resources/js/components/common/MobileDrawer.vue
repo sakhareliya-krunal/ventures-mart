@@ -1,7 +1,18 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown, X } from '@lucide/vue';
+import {
+  ChevronDown,
+  Heart,
+  Home,
+  Info,
+  Newspaper,
+  Phone,
+  Shield,
+  ShoppingBag,
+  ShoppingCart,
+  X,
+} from '@lucide/vue';
 import { RouterLink } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import { primaryNav, shopNavChildren } from '@/constants/navigation';
@@ -24,6 +35,13 @@ const auth = useAuthStore();
 const cart = useCartStore();
 const theme = useThemeStore();
 const shopExpanded = ref(false);
+const navIconMap = {
+  '/': Home,
+  '/shop': ShoppingBag,
+  '/about': Info,
+  '/blog': Newspaper,
+  '/contact': Phone,
+};
 
 function close() {
   emit('close');
@@ -92,29 +110,36 @@ onBeforeUnmount(() => {
         />
         <div class="mobile-panel" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1">
           <div class="mobile-panel__top">
-            <RouterLink class="mobile-panel__brand" to="/" :aria-label="`${theme.brandName} home`" @click="close">
-              <img :src="brandAssets.logo" :alt="theme.brandName" />
-            </RouterLink>
+            <div class="mobile-panel__brand-wrap">
+              <RouterLink class="mobile-panel__brand" to="/" :aria-label="`${theme.brandName} home`" @click="close">
+                <img :src="brandAssets.logo" :alt="theme.brandName" />
+              </RouterLink>
+            </div>
             <button
               class="icon-button mobile-panel__close"
               type="button"
               aria-label="Close menu"
               @click="close"
             >
-              <X :size="20" />
+              <X :size="20" aria-hidden="true" />
             </button>
           </div>
           <nav aria-label="Mobile navigation">
             <template v-for="item in primaryNav" :key="item.href">
               <div v-if="item.href === '/shop'" class="mobile-shop">
                 <button
-                  class="mobile-shop__toggle"
+                  class="mobile-shop__toggle mobile-panel__nav-row"
                   type="button"
                   :aria-expanded="shopExpanded"
                   aria-label="Shop categories"
                   @click="shopExpanded = !shopExpanded"
                 >
-                  <span>Shop</span>
+                  <span class="mobile-panel__nav-main">
+                    <span class="mobile-panel__nav-icon" aria-hidden="true">
+                      <ShoppingBag :size="18" />
+                    </span>
+                    <span>Shop</span>
+                  </span>
                   <ChevronDown
                     class="mobile-shop__chevron"
                     :class="{ 'is-open': shopExpanded }"
@@ -133,26 +158,46 @@ onBeforeUnmount(() => {
                       active-class="active"
                       @click="closeShopAndDrawer"
                     >
-                      {{ child.label }}
+                      <span class="mobile-panel__nav-icon" aria-hidden="true">
+                        <ShoppingBag :size="16" />
+                      </span>
+                      <span>{{ child.label }}</span>
                     </RouterLink>
                   </div>
                 </Transition>
               </div>
               <RouterLink
                 v-else
+                class="mobile-panel__nav-row"
                 :to="item.href"
                 :active-class="item.href === '/' ? '' : 'active'"
                 exact-active-class="active"
                 @click="close"
               >
-                {{ item.label }}
+                <span class="mobile-panel__nav-icon" aria-hidden="true">
+                  <component :is="navIconMap[item.href]" :size="18" />
+                </span>
+                <span>{{ item.label }}</span>
               </RouterLink>
             </template>
-            <RouterLink to="/wishlist" active-class="active" @click="close">Wishlist</RouterLink>
-            <RouterLink v-if="auth.isAdmin" to="/admin" active-class="active" @click="close">
-              Admin
+            <RouterLink class="mobile-panel__nav-row" to="/wishlist" active-class="active" @click="close">
+              <span class="mobile-panel__nav-icon" aria-hidden="true">
+                <Heart :size="18" />
+              </span>
+              <span>Wishlist</span>
             </RouterLink>
-            <button class="mobile-panel__cart" type="button" @click="openCart">Cart</button>
+            <RouterLink v-if="auth.isAdmin" class="mobile-panel__nav-row" to="/admin" active-class="active" @click="close">
+              <span class="mobile-panel__nav-icon" aria-hidden="true">
+                <Shield :size="18" />
+              </span>
+              <span>Admin</span>
+            </RouterLink>
+            <button class="mobile-panel__cart mobile-panel__nav-row" type="button" @click="openCart">
+              <span class="mobile-panel__nav-icon" aria-hidden="true">
+                <ShoppingCart :size="18" />
+              </span>
+              <span>Cart</span>
+            </button>
           </nav>
         </div>
       </div>

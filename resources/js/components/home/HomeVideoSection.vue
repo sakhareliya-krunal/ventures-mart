@@ -132,19 +132,21 @@ onUnmounted(() => {
   display: block;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   width: 100%;
 }
 
 @media (max-width: 1024px) {
   .home-video__rail {
-    grid-auto-columns: min(44vw, 18rem);
+    grid-auto-columns: clamp(15rem, 42vw, 18rem);
     grid-auto-flow: column;
     grid-template-columns: none;
-    margin-inline: calc(clamp(1rem, 4vw, 1.25rem) * -1);
+    justify-content: start;
+    margin-inline: auto;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    padding: 0.15rem clamp(1rem, 4vw, 1.25rem) 0.8rem;
-    scroll-padding-inline: clamp(1rem, 4vw, 1.25rem);
+    padding: 0.15rem 0 0.8rem;
+    scroll-padding-inline: 0;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
   }
@@ -160,7 +162,7 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .home-video__rail {
-    grid-auto-columns: min(68vw, 17rem);
+    grid-auto-columns: min(82vw, 20rem);
   }
 }
 </style>

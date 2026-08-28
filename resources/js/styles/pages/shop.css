@@ -521,3 +521,32 @@
     width: 100%;
   }
 }
+/* Mobile/tablet search and filter row. */
+@media (max-width: 1039px) {
+  .shop-toolbar {
+    align-items: stretch;
+    display: grid;
+    gap: clamp(0.55rem, 2.5vw, 0.8rem);
+    grid-template-columns: minmax(0, 4fr) minmax(56px, 1fr);
+  }
+
+  .shop-toolbar__search {
+    flex: initial;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .shop-toolbar__filters {
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 0.85rem 0.7rem;
+    width: 100%;
+  }
+
+  .shop-toolbar__filters-label {
+    display: none;
+  }
+}
+
