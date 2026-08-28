@@ -138,7 +138,7 @@ onUnmounted(() => {
 
 @media (max-width: 1024px) {
   .home-video__rail {
-    grid-auto-columns: clamp(15rem, 42vw, 18rem);
+    grid-auto-columns: clamp(11.25rem, 31.5vw, 13.5rem);
     grid-auto-flow: column;
     grid-template-columns: none;
     justify-content: start;
@@ -162,7 +162,7 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .home-video__rail {
-    grid-auto-columns: min(82vw, 20rem);
+    grid-auto-columns: min(41vw, 10rem);
   }
 }
 </style>
