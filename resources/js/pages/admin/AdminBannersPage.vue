@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ChevronDown, ChevronUp, ImagePlus, Trash2 } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
@@ -18,6 +18,8 @@ const showForm = ref(false);
 const editingId = ref(null);
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
+const formPanelRef = ref(null);
+const altTextInputRef = ref(null);
 const mobileInputRef = ref(null);
 const webInputRef = ref(null);
 
@@ -72,12 +74,19 @@ async function load({ silent = false } = {}) {
   }
 }
 
-function addBanner() {
-  resetForm();
-  showForm.value = true;
+async function revealForm() {
+  await nextTick();
+  formPanelRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  altTextInputRef.value?.focus({ preventScroll: true });
 }
 
-function editBanner(banner) {
+async function addBanner() {
+  resetForm();
+  showForm.value = true;
+  await revealForm();
+}
+
+async function editBanner(banner) {
   editingId.value = banner.id;
   showForm.value = true;
   error.value = '';
@@ -87,6 +96,7 @@ function editBanner(banner) {
     alt_text: banner.alt_text || 'Homepage banner',
     is_active: banner.is_active !== false,
   });
+  await revealForm();
 }
 
 function payload() {
@@ -218,6 +228,109 @@ onMounted(load);
 
       <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
+
+      <div v-if="showForm" ref="formPanelRef" class="admin-panel admin-banner-form-panel">
+      <h3>{{ editingId ? 'Edit banner' : 'New banner' }}</h3>
+      <form novalidate class="admin-form" @submit.prevent="save">
+        <div class="admin-form__grid">
+          <label class="admin-field">
+            <span>Alt text</span>
+            <input ref="altTextInputRef" v-model="form.alt_text" autocomplete="off" />
+          </label>
+          <label class="checkbox-row">
+            <input v-model="form.is_active" type="checkbox" />
+            Active
+          </label>
+        </div>
+
+        <div class="admin-banner-fields">
+          <section
+            v-for="field in ['mobile_image', 'web_image']"
+            :key="field"
+            class="admin-banner-field"
+            :class="{ 'is-uploading': uploadingField === field }"
+          >
+            <div class="admin-toolbar">
+              <h4>{{ fieldLabel(field) }} <em>*</em></h4>
+              <div class="admin-actions">
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  :disabled="saving || !!uploadingField"
+                  @click="field === 'mobile_image' ? mobileInputRef?.click() : webInputRef?.click()"
+                >
+                  <span v-if="uploadingField === field" class="admin-banner-uploading-label">
+                    <span class="admin-banner-uploading-label__spinner" aria-hidden="true" />
+                    Uploading...
+                  </span>
+                  <template v-else>
+                    <ImagePlus :size="16" />
+                    Upload
+                  </template>
+                </AppButton>
+                <AppButton
+                  v-if="form[field]"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="saving || !!uploadingField"
+                  @click="removeImage(field)"
+                >
+                  <Trash2 :size="16" />
+                  Remove
+                </AppButton>
+              </div>
+            </div>
+
+            <div class="admin-banner-field__preview-wrap">
+              <img v-if="form[field]" class="admin-banner-field__preview" :src="form[field]" :alt="`${fieldLabel(field)} preview`" />
+              <div v-else class="admin-image-dropzone admin-banner-field__empty">
+                <ImagePlus :size="22" aria-hidden="true" />
+                <div>
+                  <strong>Add image</strong>
+                  <p>Upload JPEG, PNG, or WebP up to 4MB.</p>
+                </div>
+              </div>
+              <div v-if="uploadingField === field" class="admin-banner-field__overlay" aria-live="polite">
+                <span class="admin-banner-field__spinner" aria-hidden="true" />
+                <span>Uploading...</span>
+              </div>
+            </div>
+
+            <label class="admin-field">
+              <span>{{ fieldLabel(field) }} path / URL</span>
+              <input v-model="form[field]" autocomplete="off" placeholder="/storage/banners/..." />
+            </label>
+          </section>
+        </div>
+
+        <input
+          ref="mobileInputRef"
+          class="admin-image-dropzone__input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          @change="uploadImage($event, 'mobile_image')"
+        />
+        <input
+          ref="webInputRef"
+          class="admin-image-dropzone__input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          @change="uploadImage($event, 'web_image')"
+        />
+
+        <div class="admin-actions">
+          <AppButton type="submit" :loading="saving" :disabled="!!uploadingField">
+            Save
+          </AppButton>
+          <AppButton type="button" variant="ghost" :disabled="saving" @click="resetForm">
+            Cancel
+          </AppButton>
+        </div>
+      </form>
+    </div>
+
       <LoadingSpinner v-if="loading" page label="Loading banners" />
 
       <div v-else class="admin-banner-index">
@@ -279,95 +392,6 @@ onMounted(load);
       </div>
     </div>
 
-    <div v-if="showForm" class="admin-panel">
-      <h3>{{ editingId ? 'Edit banner' : 'New banner' }}</h3>
-      <form novalidate class="admin-form" @submit.prevent="save">
-        <div class="admin-form__grid">
-          <label class="admin-field">
-            <span>Alt text</span>
-            <input v-model="form.alt_text" autocomplete="off" />
-          </label>
-          <label class="checkbox-row">
-            <input v-model="form.is_active" type="checkbox" />
-            Active
-          </label>
-        </div>
-
-        <div class="admin-banner-fields">
-          <section
-            v-for="field in ['mobile_image', 'web_image']"
-            :key="field"
-            class="admin-banner-field"
-          >
-            <div class="admin-toolbar">
-              <h4>{{ fieldLabel(field) }} <em>*</em></h4>
-              <div class="admin-actions">
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  :loading="uploadingField === field"
-                  :disabled="saving || !!uploadingField"
-                  @click="field === 'mobile_image' ? mobileInputRef?.click() : webInputRef?.click()"
-                >
-                  <ImagePlus :size="16" />
-                  Upload
-                </AppButton>
-                <AppButton
-                  v-if="form[field]"
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  :disabled="saving || !!uploadingField"
-                  @click="removeImage(field)"
-                >
-                  <Trash2 :size="16" />
-                  Remove
-                </AppButton>
-              </div>
-            </div>
-
-            <img v-if="form[field]" class="admin-banner-field__preview" :src="form[field]" :alt="`${fieldLabel(field)} preview`" />
-            <div v-else class="admin-image-dropzone admin-banner-field__empty">
-              <ImagePlus :size="22" aria-hidden="true" />
-              <div>
-                <strong>Add image</strong>
-                <p>Upload JPEG, PNG, or WebP up to 4MB.</p>
-              </div>
-            </div>
-
-            <label class="admin-field">
-              <span>{{ fieldLabel(field) }} path / URL</span>
-              <input v-model="form[field]" autocomplete="off" placeholder="/storage/banners/..." />
-            </label>
-          </section>
-        </div>
-
-        <input
-          ref="mobileInputRef"
-          class="admin-image-dropzone__input"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          @change="uploadImage($event, 'mobile_image')"
-        />
-        <input
-          ref="webInputRef"
-          class="admin-image-dropzone__input"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          @change="uploadImage($event, 'web_image')"
-        />
-
-        <div class="admin-actions">
-          <AppButton type="submit" :loading="saving" :disabled="!!uploadingField">
-            Save
-          </AppButton>
-          <AppButton type="button" variant="ghost" :disabled="saving" @click="resetForm">
-            Cancel
-          </AppButton>
-        </div>
-      </form>
-    </div>
 
     <ConfirmDialog
       v-model:open="confirmOpen"

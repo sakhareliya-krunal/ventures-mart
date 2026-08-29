@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminBannersPage from './AdminBannersPage.vue';
 
@@ -36,7 +37,10 @@ function mountPage() {
   return mount(AdminBannersPage, {
     global: {
       stubs: {
-        AppButton: { template: '<button type="button"><slot /></button>' },
+        AppButton: {
+          props: ['type', 'disabled'],
+          template: '<button :type="type || \'button\'" :disabled="disabled"><slot /></button>',
+        },
         ConfirmDialog: true,
         LoadingSpinner: { template: '<div />' },
       },
@@ -50,6 +54,8 @@ describe('AdminBannersPage', () => {
     post.mockReset();
     put.mockReset();
     remove.mockReset();
+    Element.prototype.scrollIntoView = vi.fn();
+    HTMLInputElement.prototype.focus = vi.fn();
     get.mockResolvedValue(
       bannersResponse([
         {
@@ -77,8 +83,26 @@ describe('AdminBannersPage', () => {
     wrapper.unmount();
   });
 
-  it('uploads mobile images with the banner purpose', async () => {
-    post.mockResolvedValue({ data: { urls: ['/storage/banners/uploaded-mobile.webp'] } });
+  it('opens the create form in view when Add banner is clicked', async () => {
+    const wrapper = mountPage();
+    await flushPromises();
+
+    await wrapper.findAll('button').find((button) => button.text().includes('Add banner')).trigger('click');
+    await nextTick();
+
+    expect(wrapper.find('.admin-banner-form-panel').exists()).toBe(true);
+    expect(wrapper.find('form').exists()).toBe(true);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(HTMLInputElement.prototype.focus).toHaveBeenCalledWith({ preventScroll: true });
+
+    wrapper.unmount();
+  });
+
+  it('shows an uploading loader while mobile images upload', async () => {
+    let resolveUpload;
+    post.mockImplementation(() => new Promise((resolve) => {
+      resolveUpload = resolve;
+    }));
     const wrapper = mountPage();
     await flushPromises();
 
@@ -90,6 +114,13 @@ describe('AdminBannersPage', () => {
     });
 
     await input.trigger('change');
+    await nextTick();
+
+    expect(wrapper.text()).toContain('Uploading...');
+    expect(wrapper.find('.admin-banner-field.is-uploading').exists()).toBe(true);
+    expect(wrapper.find('.admin-banner-field__overlay').exists()).toBe(true);
+
+    resolveUpload({ data: { urls: ['/storage/banners/uploaded-mobile.webp'] } });
     await flushPromises();
 
     expect(post).toHaveBeenCalledWith('/admin/uploads/images', expect.any(FormData));
