@@ -1,7 +1,9 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
 import { brandAssets } from '@/constants/assets';
+import api from '@/services/api';
+import { unwrapData } from '@/utils/format';
 
 const AUTO_ADVANCE_MS = 4000;
 const SLIDE_TRANSITION_MS = 700;
@@ -11,8 +13,10 @@ const activeSlide = ref(0);
 const previousSlideIndex = ref(null);
 const slideDirection = ref('next');
 const transitionReady = ref(false);
+const adminSlides = ref([]);
 
-const slides = computed(() => brandAssets.heroCarouselSlides || []);
+const fallbackSlides = computed(() => brandAssets.heroCarouselSlides || []);
+const slides = computed(() => (adminSlides.value.length ? adminSlides.value : fallbackSlides.value));
 const currentSlide = computed(() => slides.value[activeSlide.value] || slides.value[0] || null);
 const visibleSlides = computed(() => {
   const indexes = [activeSlide.value];
@@ -34,6 +38,33 @@ let transitionStartFrame = null;
 
 function slideCount() {
   return slides.value.length;
+}
+
+function mapBannerSlide(banner) {
+  const mobile = banner.mobile_image || banner.web_image;
+  const desktop = banner.web_image || banner.mobile_image;
+
+  if (!mobile || !desktop) {
+    return null;
+  }
+
+  return {
+    mobile,
+    desktop,
+    largeDesktop: desktop,
+    alt: banner.alt_text || 'Homepage banner',
+  };
+}
+
+async function loadAdminSlides() {
+  try {
+    const { data } = await api.get('/banners', { skipErrorToast: true });
+    adminSlides.value = (unwrapData(data) || [])
+      .map(mapBannerSlide)
+      .filter(Boolean);
+  } catch {
+    adminSlides.value = [];
+  }
 }
 
 function clearPreviousSlideTimer() {
@@ -144,8 +175,16 @@ function onTouchEnd(event) {
   }
 }
 
+watch(slides, () => {
+  if (activeSlide.value >= slideCount()) {
+    activeSlide.value = 0;
+  }
+  startAutoAdvanceTimer();
+});
+
 onMounted(() => {
   startAutoAdvanceTimer();
+  loadAdminSlides();
 });
 
 onUnmounted(() => {

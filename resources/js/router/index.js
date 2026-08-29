@@ -278,6 +278,12 @@ const router = createRouter({
           meta: { title: 'Addresses' },
         },
         {
+          path: 'banners',
+          name: 'admin-banners',
+          component: () => import('@/pages/admin/AdminBannersPage.vue'),
+          meta: { title: 'Banners' },
+        },
+        {
           path: 'account/create-admin',
           name: 'admin-create-admin',
           component: () => import('@/pages/admin/AdminUserCreatePage.vue'),

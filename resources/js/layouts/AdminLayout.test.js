@@ -56,6 +56,11 @@ describe('AdminLayout navigation counts', () => {
     expect(contactsLink.find('.admin-nav-link__count').text()).toBe('99+');
     expect(get).toHaveBeenCalledWith('/admin/navigation-counts', { skipErrorToast: true });
 
+    const mainLinks = wrapper.findAll('aside nav > a');
+    const lastMainLink = mainLinks[mainLinks.length - 1];
+    expect(lastMainLink.attributes('href')).toBe('/admin/banners');
+    expect(lastMainLink.text()).toContain('Banners');
+
     wrapper.unmount();
   });
 });

@@ -19,9 +19,11 @@ class UploadController extends Controller
         $validated = $request->validate([
             'images' => ['required', 'array', 'min:1', 'max:12'],
             'images.*' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+            'purpose' => ['sometimes', 'string', 'in:products,banners'],
         ]);
 
-        $folder = 'products/'.Str::uuid()->toString();
+        $purpose = $validated['purpose'] ?? 'products';
+        $folder = $purpose.'/'.Str::uuid()->toString();
         $urls = [];
 
         foreach ($validated['images'] as $file) {

@@ -11,6 +11,7 @@ import {
   Mail,
   Users,
   MapPin,
+  Images,
   User,
   Settings,
   LogOut,
@@ -56,6 +57,7 @@ const nav = [
   { to: '/admin/contacts', label: 'Contact messages', icon: Mail },
   { to: '/admin/customers', label: 'Customers', icon: Users },
   { to: '/admin/addresses', label: 'Addresses', icon: MapPin },
+  { to: '/admin/banners', label: 'Banners', icon: Images },
 ];
 
 const pageTitle = computed(() => route.meta.title || 'Admin');

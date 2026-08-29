@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\Admin\AddressController as AdminAddressController;
 use App\Http\Controllers\Api\Admin\ApplicationErrorController as AdminApplicationErrorController;
+use App\Http\Controllers\Api\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Api\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Api\Admin\SeoController as AdminSeoController;
 use App\Http\Controllers\Api\Admin\UploadController as AdminUploadController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BannerController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
@@ -51,6 +53,7 @@ Route::get('/categories/{slug}', [CategoryController::class, 'show']);
 Route::get('/posts', [PostController::class, 'index']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/seo', SeoResolveController::class);
+Route::get('/banners', [BannerController::class, 'index']);
 
 Route::get('/cart', [CartController::class, 'show']);
 Route::post('/cart', [CartController::class, 'store']);
@@ -140,6 +143,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     Route::apiResource('products', AdminProductController::class);
     Route::post('/uploads/images', [AdminUploadController::class, 'images']);
+    Route::apiResource('banners', AdminBannerController::class);
     Route::apiResource('categories', AdminCategoryController::class);
     Route::apiResource('posts', AdminPostController::class);
     Route::get('/seo/settings', [AdminSeoController::class, 'settings']);
