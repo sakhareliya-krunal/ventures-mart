@@ -43,13 +43,15 @@ function dashboardResponse() {
       {
         id: 41,
         number: 'VM-MORNING-1',
-        created_at: '2026-08-09T09:15:05+05:30',
+        created_at: '2026-08-09T03:45:05+00:00',
+        created_at_display: '9:15:05 AM',
         total: 150,
       },
       {
         id: 42,
         number: 'VM-MORNING-2',
-        created_at: '2026-08-09T09:47:30+05:30',
+        created_at: '2026-08-09T04:17:30+00:00',
+        created_at_display: '9:47:30 AM',
         total: 200,
       },
     ],
@@ -60,7 +62,8 @@ function dashboardResponse() {
     orders: [{
       id: 43,
       number: 'VM-AFTERNOON-1',
-      created_at: '2026-08-09T15:08:12+05:30',
+      created_at: '2026-08-09T09:38:12+00:00',
+      created_at_display: '3:08:12 PM',
       total: 500,
     }],
   };
@@ -119,15 +122,10 @@ describe('AdminDashboardPage day sales chart', () => {
     expect(tooltip.text()).toContain('VM-MORNING-1');
     expect(tooltip.text()).toContain('VM-MORNING-2');
     expect(tooltip.findAll('.admin-dash-hour-tooltip__order')).toHaveLength(2);
-    expect(tooltip.find('time').attributes('datetime')).toBe('2026-08-09T09:15:05+05:30');
+    expect(tooltip.find('time').attributes('datetime')).toBe('2026-08-09T03:45:05+00:00');
 
-    const expectedTime = new Intl.DateTimeFormat('en-IN', {
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    }).format(new Date('2026-08-09T09:15:05+05:30'));
-    expect(tooltip.text()).toContain(expectedTime);
+    expect(tooltip.text()).toContain('9:15:05 AM');
+    expect(tooltip.text()).toContain('9:47:30 AM');
     expect(tooltip.findComponent(RouterLinkStub).props('to')).toBe('/admin/orders/41');
   });
 });

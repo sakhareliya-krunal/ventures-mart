@@ -49,6 +49,11 @@ const nextStepCopy = computed(() => {
   return 'We’re processing your order.';
 });
 
+const trackOrderPath = computed(() => {
+  if (!order.value) return '/orders';
+  return '/orders/' + encodeURIComponent(order.value.number || order.value.id);
+});
+
 function itemInitials(name) {
   const parts = String(name || '')
     .trim()
@@ -175,15 +180,19 @@ onMounted(async () => {
           </div>
 
           <div class="order-confirm-actions">
+            <AppButton :to="trackOrderPath" variant="primary">
+              Track order
+            </AppButton>
             <AppButton
               v-if="order.invoice_available"
               type="button"
+              variant="secondary"
               :loading="downloadingInvoice"
               @click="downloadInvoice"
             >
               Download invoice
             </AppButton>
-            <AppButton to="/orders" :variant="order.invoice_available ? 'secondary' : 'primary'">
+            <AppButton to="/orders" variant="secondary">
               View all orders
             </AppButton>
             <AppButton to="/shop" variant="secondary">Continue shopping</AppButton>
@@ -193,3 +202,4 @@ onMounted(async () => {
     </div>
   </section>
 </template>
+

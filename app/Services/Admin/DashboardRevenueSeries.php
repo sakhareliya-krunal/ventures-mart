@@ -9,6 +9,8 @@ use Illuminate\Validation\ValidationException;
 
 class DashboardRevenueSeries
 {
+    private const STORE_TIMEZONE = 'Asia/Kolkata';
+
     public const RANGES = ['day', 'week', 'month', 'year'];
 
     /**
@@ -17,7 +19,7 @@ class DashboardRevenueSeries
      *   revenue_period_label: string,
      *   revenue_period_total: float,
      *   revenue_period_orders: int,
-     *   revenue_series: list<array{key: string, label: string, total: float, orders?: list<array{id: int, number: string, created_at: string, total: float}>}>,
+     *   revenue_series: list<array{key: string, label: string, total: float, orders?: list<array{id: int, number: string, created_at: string, created_at_display: string, total: float}>}>,
      *   revenue_last_7_days: list<array{date: string, label: string, total: float}>
      * }
      */
@@ -66,17 +68,20 @@ class DashboardRevenueSeries
     }
 
     /**
-     * @return list<array{key: string, label: string, total: float, orders: list<array{id: int, number: string, created_at: string, total: float}>}>
+     * @return list<array{key: string, label: string, total: float, orders: list<array{id: int, number: string, created_at: string, created_at_display: string, total: float}>}>
      */
     private function daySeries(): array
     {
-        $start = Carbon::today()->startOfDay();
+        $start = Carbon::now(self::STORE_TIMEZONE)->startOfDay();
+        $queryStart = $start->copy()->setTimezone(config('app.timezone', 'UTC'));
+        $queryEnd = $start->copy()->endOfDay()->setTimezone(config('app.timezone', 'UTC'));
+
         $ordersByHour = Order::query()
             ->where('status', '!=', 'Cancelled')
-            ->whereBetween('created_at', [$start, $start->copy()->endOfDay()])
+            ->whereBetween('created_at', [$queryStart, $queryEnd])
             ->orderBy('created_at')
             ->get(['id', 'number', 'created_at', 'total'])
-            ->groupBy(fn (Order $order) => $order->created_at->format('H'));
+            ->groupBy(fn (Order $order) => $order->created_at->copy()->timezone(self::STORE_TIMEZONE)->format('H'));
         $series = [];
 
         for ($hour = 0; $hour < 24; $hour++) {
@@ -90,6 +95,7 @@ class DashboardRevenueSeries
                     'id' => (int) $order->id,
                     'number' => (string) $order->number,
                     'created_at' => $order->created_at->toIso8601String(),
+                    'created_at_display' => $order->created_at->copy()->timezone(self::STORE_TIMEZONE)->format('g:i:s A'),
                     'total' => (float) $order->total,
                 ])->values()->all(),
             ];
@@ -207,7 +213,7 @@ class DashboardRevenueSeries
     {
         return [
             'start' => match ($range) {
-                'day' => Carbon::now()->startOfDay(),
+                'day' => Carbon::now(self::STORE_TIMEZONE)->startOfDay()->setTimezone(config('app.timezone', 'UTC')),
                 'month' => Carbon::now()->startOfMonth(),
                 'year' => Carbon::now()->startOfYear(),
                 default => Carbon::now()->startOfWeek(Carbon::MONDAY),

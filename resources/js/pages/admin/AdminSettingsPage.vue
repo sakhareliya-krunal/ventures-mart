@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
+import AppSelect from '@/components/ui/AppSelect.vue';
 import FormField from '@/components/ui/FormField.vue';
 import api from '@/services/api';
 import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
@@ -83,6 +84,13 @@ const redirectForm = reactive({
   status_code: 301,
   is_active: true,
 });
+
+const pageOptions = computed(() =>
+  STATIC_SEO_PAGES.map((page) => ({
+    value: page.key,
+    label: page.label,
+  })),
+);
 
 const selectedPage = computed(
   () => STATIC_SEO_PAGES.find((page) => page.key === selectedPageKey.value) || STATIC_SEO_PAGES[0],
@@ -307,14 +315,12 @@ onMounted(loadSeo);
           <h3>Page SEO</h3>
           <p class="admin-muted">{{ loadingPageSeo ? 'Loading page SEO…' : selectedPage.url }}</p>
         </div>
-        <label>
-          Page
-          <select v-model="selectedPageKey">
-            <option v-for="page in STATIC_SEO_PAGES" :key="page.key" :value="page.key">
-              {{ page.label }}
-            </option>
-          </select>
-        </label>
+        <AppSelect
+          v-model="selectedPageKey"
+          label="Page"
+          :options="pageOptions"
+          aria-label="Page SEO selector"
+        />
       </div>
 
       <AdminSeoTab
@@ -419,3 +425,4 @@ onMounted(loadSeo);
     </form>
   </div>
 </template>
+

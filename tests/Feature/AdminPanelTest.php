@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -112,54 +113,63 @@ class AdminPanelTest extends TestCase
 
     public function test_day_revenue_points_include_exact_orders_in_morning_and_afternoon(): void
     {
-        $admin = User::factory()->admin()->create();
-        Sanctum::actingAs($admin);
+        Carbon::setTestNow(Carbon::parse('2026-08-09 12:00:00', 'Asia/Kolkata'));
 
-        $morningFirst = $this->makeDashboardOrder(
-            'VM-DAY-AM-1',
-            100,
-            now()->startOfDay()->setTime(9, 15, 5),
-        );
-        $morningSecond = $this->makeDashboardOrder(
-            'VM-DAY-AM-2',
-            150,
-            now()->startOfDay()->setTime(9, 45, 30),
-        );
-        $afternoon = $this->makeDashboardOrder(
-            'VM-DAY-PM-1',
-            200,
-            now()->startOfDay()->setTime(15, 7, 12),
-        );
-        $this->makeDashboardOrder(
-            'VM-DAY-CANCELLED',
-            999,
-            now()->startOfDay()->setTime(9, 30),
-            'Cancelled',
-        );
+        try {
+            $admin = User::factory()->admin()->create();
+            Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/admin/stats?range=day')
-            ->assertOk()
-            ->assertJsonPath('revenue_period_total', 450)
-            ->assertJsonPath('revenue_period_orders', 3)
-            ->assertJsonPath('revenue_series.9.key', '09')
-            ->assertJsonPath('revenue_series.9.label', '9 AM')
-            ->assertJsonPath('revenue_series.9.total', 250)
-            ->assertJsonCount(2, 'revenue_series.9.orders')
-            ->assertJsonPath('revenue_series.9.orders.0.id', $morningFirst->id)
-            ->assertJsonPath('revenue_series.9.orders.0.number', 'VM-DAY-AM-1')
-            ->assertJsonPath(
-                'revenue_series.9.orders.0.created_at',
-                $morningFirst->created_at->toIso8601String(),
-            )
-            ->assertJsonPath('revenue_series.9.orders.1.id', $morningSecond->id)
-            ->assertJsonPath('revenue_series.15.key', '15')
-            ->assertJsonPath('revenue_series.15.label', '3 PM')
-            ->assertJsonPath('revenue_series.15.total', 200)
-            ->assertJsonPath('revenue_series.15.orders.0.id', $afternoon->id);
+            $morningFirst = $this->makeDashboardOrder(
+                'VM-DAY-AM-1',
+                100,
+                Carbon::parse('2026-08-09 09:15:05', 'Asia/Kolkata')->utc(),
+            );
+            $morningSecond = $this->makeDashboardOrder(
+                'VM-DAY-AM-2',
+                150,
+                Carbon::parse('2026-08-09 09:45:30', 'Asia/Kolkata')->utc(),
+            );
+            $afternoon = $this->makeDashboardOrder(
+                'VM-DAY-PM-1',
+                200,
+                Carbon::parse('2026-08-09 15:07:12', 'Asia/Kolkata')->utc(),
+            );
+            $this->makeDashboardOrder(
+                'VM-DAY-CANCELLED',
+                999,
+                Carbon::parse('2026-08-09 09:30:00', 'Asia/Kolkata')->utc(),
+                'Cancelled',
+            );
 
-        $seriesOrders = collect($response->json('revenue_series'))
-            ->flatMap(fn (array $point) => $point['orders'] ?? []);
-        $this->assertFalse($seriesOrders->contains('number', 'VM-DAY-CANCELLED'));
+            $response = $this->getJson('/api/admin/stats?range=day')
+                ->assertOk()
+                ->assertJsonPath('revenue_period_total', 450)
+                ->assertJsonPath('revenue_period_orders', 3)
+                ->assertJsonPath('revenue_series.9.key', '09')
+                ->assertJsonPath('revenue_series.9.label', '9 AM')
+                ->assertJsonPath('revenue_series.9.total', 250)
+                ->assertJsonCount(2, 'revenue_series.9.orders')
+                ->assertJsonPath('revenue_series.9.orders.0.id', $morningFirst->id)
+                ->assertJsonPath('revenue_series.9.orders.0.number', 'VM-DAY-AM-1')
+                ->assertJsonPath(
+                    'revenue_series.9.orders.0.created_at',
+                    $morningFirst->created_at->toIso8601String(),
+                )
+                ->assertJsonPath('revenue_series.9.orders.0.created_at_display', '9:15:05 AM')
+                ->assertJsonPath('revenue_series.9.orders.1.id', $morningSecond->id)
+                ->assertJsonPath('revenue_series.9.orders.1.created_at_display', '9:45:30 AM')
+                ->assertJsonPath('revenue_series.15.key', '15')
+                ->assertJsonPath('revenue_series.15.label', '3 PM')
+                ->assertJsonPath('revenue_series.15.total', 200)
+                ->assertJsonPath('revenue_series.15.orders.0.id', $afternoon->id)
+                ->assertJsonPath('revenue_series.15.orders.0.created_at_display', '3:07:12 PM');
+
+            $seriesOrders = collect($response->json('revenue_series'))
+                ->flatMap(fn (array $point) => $point['orders'] ?? []);
+            $this->assertFalse($seriesOrders->contains('number', 'VM-DAY-CANCELLED'));
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_admin_cannot_mutate_address_or_delete_audited_order(): void

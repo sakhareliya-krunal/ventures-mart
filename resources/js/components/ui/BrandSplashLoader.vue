@@ -2,7 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-const LOADER_SRC = '/images/venturesmart-loader-fixed-3-new-icons.svg';
+const LOADER_SRC = '/images/venturesmart-compact-loader.svg';
 const MIN_VISIBLE_MS = 1400;
 const READY_MAX_MS = 5200;
 const EXIT_MS = 360;
@@ -90,7 +90,7 @@ onUnmounted(() => {
       aria-live="polite"
       aria-label="Loading Ventures Mart"
     >
-      <img class="brand-splash__loader" :src="LOADER_SRC" alt="" width="320" height="320" />
+      <img class="brand-splash__loader" :src="LOADER_SRC" alt="" width="160" height="160" />
     </div>
   </Teleport>
 </template>

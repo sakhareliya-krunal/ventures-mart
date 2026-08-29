@@ -2,10 +2,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrderTrackPage from './OrderTrackPage.vue';
 
-const { get, post, push } = vi.hoisted(() => ({
+const { get, post, push, downloadTrackedOrderInvoice } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   push: vi.fn(),
+  downloadTrackedOrderInvoice: vi.fn(),
 }));
 
 vi.mock('@/services/api', () => ({
@@ -34,7 +35,7 @@ vi.mock('@/stores/ui', () => ({
 }));
 
 vi.mock('@/utils/downloadInvoice', () => ({
-  downloadTrackedOrderInvoice: vi.fn(),
+  downloadTrackedOrderInvoice,
 }));
 
 function trackPayload(overrides = {}) {
@@ -45,6 +46,8 @@ function trackPayload(overrides = {}) {
     status_label: 'Confirmed',
     payment_method: 'cod',
     payment_status: 'pending',
+    expected_delivery_at: '2026-08-16T12:00:00+05:30',
+    invoice_available: true,
     can_cancel: true,
     can_request_replacement: false,
     replacement_requests: [],
@@ -54,6 +57,23 @@ function trackPayload(overrides = {}) {
       shipped: false,
       delivered: false,
     },
+    courier: {
+      has_details: true,
+      partner: 'Shiprocket',
+      awb_number: 'AWB123',
+      expected_delivery_at: '2026-08-16T12:00:00+05:30',
+    },
+    shipment: {
+      tracking_url: 'https://track.example.test/AWB123',
+      shipment_status: 'In transit',
+      pickup_status: 'Picked up',
+      last_synced_at: '2026-08-10T12:00:00+05:30',
+    },
+    location: {
+      city: 'Rajkot',
+      district: 'Rajkot',
+      state: 'Gujarat',
+    },
     customer: {
       full_name: 'Track Buyer',
       email: 'track@example.com',
@@ -62,6 +82,7 @@ function trackPayload(overrides = {}) {
     address: {
       address: '1 Street',
       city: 'Rajkot',
+      district: 'Rajkot',
       state: 'Gujarat',
       postal_code: '360001',
     },
@@ -96,9 +117,12 @@ function mountPage() {
     global: {
       stubs: {
         AppButton: {
-          props: ['disabled', 'type', 'variant'],
+          props: ['disabled', 'type', 'variant', 'to', 'loading'],
           emits: ['click'],
-          template: '<button :disabled="disabled" :type="type || \'button\'" @click="$emit(\'click\')"><slot /></button>',
+          template: `
+            <a v-if="to" class="button" :data-variant="variant" :href="to"><slot /></a>
+            <button v-else class="button" :disabled="disabled" :data-variant="variant" :type="type || 'button'" @click="$emit('click')"><slot /></button>
+          `,
         },
         LoadingSpinner: { template: '<div>Loading</div>' },
       },
@@ -110,6 +134,40 @@ describe('OrderTrackPage cancel and replacement', () => {
   beforeEach(() => {
     get.mockReset();
     post.mockReset();
+    push.mockReset();
+    downloadTrackedOrderInvoice.mockReset();
+  });
+
+  it('shows the premium tracking summary and shipment link', async () => {
+    get.mockResolvedValueOnce({ data: { data: trackPayload() } });
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    const summary = wrapper.find('.order-track-summary');
+    expect(summary.exists()).toBe(true);
+    expect(summary.text()).toContain('VM-TRACK-1');
+    expect(summary.text()).toContain('Confirmed');
+    expect(summary.text()).toContain('Estimated delivery');
+    expect(summary.text()).toContain('Rajkot, Rajkot, Gujarat');
+
+    const shipmentLink = summary.find('a.order-track__summary-link');
+    expect(shipmentLink.attributes('href')).toBe('https://track.example.test/AWB123');
+    expect(shipmentLink.text()).toContain('Track shipment');
+    expect(wrapper.find('.order-track-timeline__step.is-current').text()).toContain('Packed');
+  });
+
+  it('downloads the tracked order invoice from the actions card', async () => {
+    get.mockResolvedValueOnce({ data: { data: trackPayload() } });
+    downloadTrackedOrderInvoice.mockResolvedValue(undefined);
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    const invoiceButton = wrapper.findAll('button').find((button) => button.text().includes('Download invoice'));
+    await invoiceButton.trigger('click');
+
+    expect(downloadTrackedOrderInvoice).toHaveBeenCalledWith('VM-TRACK-1');
   });
 
   it('cancels an eligible order from the track page', async () => {
@@ -136,8 +194,7 @@ describe('OrderTrackPage cancel and replacement', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    const cancelToggle = wrapper.findAll('button').find((button) =>
-      button.text().includes('Cancel order'));
+    const cancelToggle = wrapper.findAll('button').find((button) => button.text().includes('Cancel order'));
     expect(cancelToggle).toBeTruthy();
     await cancelToggle.trigger('click');
 
@@ -206,8 +263,7 @@ describe('OrderTrackPage cancel and replacement', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    const requestToggle = wrapper.findAll('button').find((button) =>
-      button.text().includes('Request replacement'));
+    const requestToggle = wrapper.findAll('button').find((button) => button.text().includes('Request replacement'));
     await requestToggle.trigger('click');
 
     await wrapper.find('select').setValue('defective');

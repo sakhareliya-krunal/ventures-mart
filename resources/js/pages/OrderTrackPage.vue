@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
@@ -53,12 +53,18 @@ useHead({
 
 const timelineSteps = computed(() => {
   const t = track.value?.timeline || {};
-  return [
+  const steps = [
     { key: 'confirmed', label: 'Confirmed', done: !!t.confirmed },
     { key: 'packed', label: 'Packed', done: !!t.packed },
     { key: 'shipped', label: 'Shipped', done: !!t.shipped },
     { key: 'delivered', label: 'Delivered', done: !!t.delivered },
   ];
+  const activeIndex = steps.findIndex((step) => !step.done);
+  const currentIndex = track.value?.status === 'Cancelled' ? -1 : activeIndex >= 0 ? activeIndex : steps.length - 1;
+  return steps.map((step, index) => ({
+    ...step,
+    current: index === currentIndex,
+  }));
 });
 
 const paymentMethodLabel = computed(() => {
@@ -80,6 +86,27 @@ const paymentStatusLabel = computed(() => {
   const status = track.value?.payment_status;
   if (!status) return '—';
   return String(status).replaceAll('_', ' ').replace(/^\w/, (c) => c.toUpperCase());
+});
+
+const statusToneClass = computed(() => {
+  const status = String(track.value?.status || '').toLowerCase();
+  if (status === 'cancelled') return 'order-track__status-pill--danger';
+  if (status === 'delivered') return 'order-track__status-pill--success';
+  if (status === 'awaitingpayment' || status === 'inventoryhold') return 'order-track__status-pill--warning';
+  return 'order-track__status-pill--progress';
+});
+
+const expectedDeliveryLabel = computed(() => {
+  const value = track.value?.courier?.expected_delivery_at || track.value?.expected_delivery_at;
+  return value ? formatDate(value) : 'Pending';
+});
+
+const destinationLabel = computed(() => {
+  const location = track.value?.location || {};
+  const address = track.value?.address || {};
+  return [location.city || address.city, location.district || address.district, location.state || address.state]
+    .filter(Boolean)
+    .join(', ') || 'Address added';
 });
 
 function formatDate(value) {
@@ -222,16 +249,55 @@ onMounted(loadTrack);
 
   <section v-else-if="track" class="order-track-page">
     <div class="page-section">
-      <div class="order-track-hero">
-        <p class="order-track-hero__eyebrow">Order tracking</p>
-        <h1>{{ track.number }}</h1>
-        <p class="order-track-hero__status">
-          Status: <strong>{{ track.status_label }}</strong>
-        </p>
-      </div>
+      <section class="order-track-summary" aria-label="Order summary">
+        <div class="order-track-summary__main">
+          <p class="order-track-hero__eyebrow">Order tracking</p>
+          <h1>{{ track.number }}</h1>
+          <p class="order-track-hero__status">
+            Current status
+            <span class="order-track__status-pill" :class="statusToneClass">
+              {{ track.status_label }}
+            </span>
+          </p>
+        </div>
+
+        <dl class="order-track-summary__facts">
+          <div>
+            <dt>Estimated delivery</dt>
+            <dd>{{ expectedDeliveryLabel }}</dd>
+          </div>
+          <div>
+            <dt>Payment</dt>
+            <dd>
+              {{ paymentMethodLabel }}
+              <span class="order-track__badge" :class="paymentBadgeClass">
+                {{ paymentStatusLabel }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Ship to</dt>
+            <dd>{{ destinationLabel }}</dd>
+          </div>
+        </dl>
+
+        <div class="order-track-summary__actions">
+          <a
+            v-if="track.shipment?.tracking_url"
+            class="button button--primary order-track__summary-link"
+            :href="track.shipment.tracking_url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink :size="16" aria-hidden="true" />
+            Track shipment
+          </a>
+          <AppButton to="/orders" variant="secondary">View all orders</AppButton>
+        </div>
+      </section>
 
       <div class="order-track-grid">
-        <div class="order-track-card">
+        <div class="order-track-card order-track-card--status">
           <h2>
             <Package :size="18" aria-hidden="true" />
             Order status
@@ -241,7 +307,7 @@ onMounted(loadTrack);
               v-for="step in timelineSteps"
               :key="step.key"
               class="order-track-timeline__step"
-              :class="{ 'is-done': step.done }"
+              :class="{ 'is-done': step.done, 'is-current': step.current }"
             >
               <span class="order-track-timeline__dot" aria-hidden="true" />
               <span>{{ step.label }}</span>
@@ -487,7 +553,7 @@ onMounted(loadTrack);
           </dl>
         </div>
 
-        <div class="order-track-card">
+        <div class="order-track-card order-track-card--products">
           <h2>
             <ReceiptText :size="18" aria-hidden="true" />
             Ordered products

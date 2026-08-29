@@ -187,14 +187,15 @@ function compactValue(total) {
   return `₹${compactValueFormatter.format(Number(total) || 0)}`;
 }
 
-function exactOrderTime(value) {
-  if (!value) return '—';
+function exactOrderTime(order) {
+  if (order?.created_at_display) return order.created_at_display;
+  if (!order?.created_at) return '---';
   return new Intl.DateTimeFormat('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
-  }).format(new Date(value));
+  }).format(new Date(order.created_at));
 }
 
 function showDayPoint(point) {
@@ -391,7 +392,7 @@ onMounted(() => loadStats());
                 :to="`/admin/orders/${order.id}`"
                 class="admin-dash-hour-tooltip__order"
               >
-                <time :datetime="order.created_at">{{ exactOrderTime(order.created_at) }}</time>
+                <time :datetime="order.created_at">{{ exactOrderTime(order) }}</time>
                 <strong>{{ order.number }}</strong>
                 <span>{{ formatCurrency(order.total) }}</span>
               </RouterLink>

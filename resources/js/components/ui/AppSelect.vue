@@ -2,7 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Check, ChevronDown } from '@lucide/vue';
 
+let selectId = 0;
+
 const props = defineProps({
+  id: {
+    type: String,
+    default: '',
+  },
   modelValue: {
     type: [String, Number],
     default: '',
@@ -13,20 +19,44 @@ const props = defineProps({
   },
   ariaLabel: {
     type: String,
-    default: 'Select',
+    default: '',
   },
   placeholder: {
     type: String,
     default: 'Select',
   },
+  label: {
+    type: String,
+    default: '',
+  },
+  error: {
+    type: String,
+    default: '',
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  required: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
+const generatedId = `app-select-${++selectId}`;
+const triggerId = computed(() => props.id || generatedId);
+const listId = computed(() => `${triggerId.value}-listbox`);
+const errorId = computed(() => `${triggerId.value}-error`);
+const accessibleLabel = computed(() => props.ariaLabel || props.label || props.placeholder);
 const open = ref(false);
 const rootRef = ref(null);
+const triggerRef = ref(null);
 const listRef = ref(null);
 const highlightIndex = ref(-1);
+
+const enabledOptions = computed(() => props.options.filter((option) => !option.disabled));
 
 const selectedOption = computed(
   () => props.options.find((option) => String(option.value) === String(props.modelValue)) || null,
@@ -34,25 +64,57 @@ const selectedOption = computed(
 
 const displayLabel = computed(() => selectedOption.value?.label || props.placeholder);
 
-function close() {
-  open.value = false;
-  highlightIndex.value = -1;
+function selectedIndex() {
+  return props.options.findIndex((option) => String(option.value) === String(props.modelValue));
 }
 
-function toggle() {
-  open.value = !open.value;
-  if (open.value) {
-    const index = props.options.findIndex(
-      (option) => String(option.value) === String(props.modelValue),
-    );
-    highlightIndex.value = index >= 0 ? index : 0;
-    nextTick(() => listRef.value?.focus());
+function firstEnabledIndex() {
+  return props.options.findIndex((option) => !option.disabled);
+}
+
+function focusTrigger() {
+  nextTick(() => triggerRef.value?.focus());
+}
+
+function close({ restoreFocus = false } = {}) {
+  open.value = false;
+  highlightIndex.value = -1;
+  if (restoreFocus) {
+    focusTrigger();
   }
 }
 
+function openMenu() {
+  if (props.disabled || !props.options.length) {
+    return;
+  }
+
+  open.value = true;
+  const currentIndex = selectedIndex();
+  highlightIndex.value = currentIndex >= 0 ? currentIndex : firstEnabledIndex();
+  nextTick(() => listRef.value?.focus());
+}
+
+function toggle() {
+  if (props.disabled) {
+    return;
+  }
+
+  if (open.value) {
+    close();
+    return;
+  }
+
+  openMenu();
+}
+
 function selectOption(option) {
+  if (props.disabled || option.disabled) {
+    return;
+  }
+
   emit('update:modelValue', option.value);
-  close();
+  close({ restoreFocus: true });
 }
 
 function onDocumentClick(event) {
@@ -62,17 +124,37 @@ function onDocumentClick(event) {
 }
 
 function onTriggerKeydown(event) {
+  if (props.disabled) {
+    return;
+  }
+
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
     toggle();
   } else if (event.key === 'ArrowDown') {
     event.preventDefault();
-    if (!open.value) {
-      toggle();
-    }
+    openMenu();
   } else if (event.key === 'Escape') {
-    close();
+    close({ restoreFocus: true });
   }
+}
+
+function moveHighlight(direction) {
+  if (!enabledOptions.value.length) {
+    return;
+  }
+
+  let nextIndex = highlightIndex.value;
+  do {
+    nextIndex += direction;
+    if (nextIndex < 0) {
+      nextIndex = props.options.length - 1;
+    } else if (nextIndex >= props.options.length) {
+      nextIndex = 0;
+    }
+  } while (props.options[nextIndex]?.disabled);
+
+  highlightIndex.value = nextIndex;
 }
 
 function onListKeydown(event) {
@@ -82,20 +164,19 @@ function onListKeydown(event) {
 
   if (event.key === 'Escape') {
     event.preventDefault();
-    close();
+    close({ restoreFocus: true });
     return;
   }
 
   if (event.key === 'ArrowDown') {
     event.preventDefault();
-    highlightIndex.value = (highlightIndex.value + 1) % props.options.length;
+    moveHighlight(1);
     return;
   }
 
   if (event.key === 'ArrowUp') {
     event.preventDefault();
-    highlightIndex.value =
-      highlightIndex.value <= 0 ? props.options.length - 1 : highlightIndex.value - 1;
+    moveHighlight(-1);
     return;
   }
 
@@ -112,9 +193,7 @@ watch(
   () => props.modelValue,
   () => {
     if (open.value) {
-      const index = props.options.findIndex(
-        (option) => String(option.value) === String(props.modelValue),
-      );
+      const index = selectedIndex();
       if (index >= 0) {
         highlightIndex.value = index;
       }
@@ -132,12 +211,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="app-select" :class="{ 'is-open': open }">
+  <div
+    ref="rootRef"
+    class="app-select"
+    :class="{ 'is-open': open, 'is-disabled': disabled, 'has-error': error }"
+  >
+    <label v-if="label" class="app-select__label" :for="triggerId">
+      {{ label }}<span v-if="required" aria-hidden="true"> *</span>
+    </label>
     <button
+      :id="triggerId"
+      ref="triggerRef"
       type="button"
       class="app-select__trigger"
-      :aria-label="ariaLabel"
+      :aria-label="label ? undefined : accessibleLabel"
+      :aria-controls="listId"
+      :aria-describedby="error ? errorId : undefined"
       :aria-expanded="open"
+      :aria-invalid="error ? 'true' : undefined"
+      :disabled="disabled"
       aria-haspopup="listbox"
       @click="toggle"
       @keydown="onTriggerKeydown"
@@ -148,11 +240,12 @@ onBeforeUnmount(() => {
 
     <ul
       v-show="open"
+      :id="listId"
       ref="listRef"
       class="app-select__menu"
       role="listbox"
       tabindex="-1"
-      :aria-label="ariaLabel"
+      :aria-label="accessibleLabel"
       @keydown="onListKeydown"
     >
       <li
@@ -163,9 +256,11 @@ onBeforeUnmount(() => {
         :class="{
           'is-selected': String(option.value) === String(modelValue),
           'is-highlighted': index === highlightIndex,
+          'is-disabled': option.disabled,
         }"
+        :aria-disabled="option.disabled ? 'true' : undefined"
         :aria-selected="String(option.value) === String(modelValue)"
-        @mouseenter="highlightIndex = index"
+        @mouseenter="!option.disabled && (highlightIndex = index)"
         @click="selectOption(option)"
       >
         <span>{{ option.label }}</span>
@@ -177,5 +272,6 @@ onBeforeUnmount(() => {
         />
       </li>
     </ul>
+    <small v-if="error" :id="errorId" class="app-select__error">{{ error }}</small>
   </div>
 </template>

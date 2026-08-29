@@ -212,6 +212,10 @@ function fieldLabel(field) {
   return field === 'mobile_image' ? 'Mobile Banner' : 'Web Banner';
 }
 
+function rowNumber(index) {
+  return `#${String(index + 1).padStart(2, '0')}`;
+}
+
 onMounted(load);
 </script>
 
@@ -237,9 +241,15 @@ onMounted(load);
             <span>Alt text</span>
             <input ref="altTextInputRef" v-model="form.alt_text" autocomplete="off" />
           </label>
-          <label class="checkbox-row">
+          <label class="admin-banner-active-switch">
+            <span class="admin-banner-active-switch__label">Banner status</span>
             <input v-model="form.is_active" type="checkbox" />
-            Active
+            <span class="admin-banner-active-switch__track" aria-hidden="true">
+              <span class="admin-banner-active-switch__thumb" />
+            </span>
+            <span class="admin-banner-active-switch__text">
+              {{ form.is_active ? 'Active' : 'Hidden' }}
+            </span>
           </label>
         </div>
 
@@ -329,6 +339,11 @@ onMounted(load);
 
       <div v-else class="admin-banner-index">
         <article v-for="(banner, index) in orderedBanners" :key="banner.id" class="admin-banner-card">
+          <div class="admin-banner-card__order" aria-label="Banner order">
+            <strong>{{ rowNumber(index) }}</strong>
+            <span>Sort {{ Number(banner.sort_order || 0) }}</span>
+          </div>
+
           <div class="admin-banner-card__media" aria-label="Banner previews">
             <figure class="admin-banner-card__preview admin-banner-card__preview--mobile">
               <img :src="banner.mobile_image" :alt="`${banner.alt_text} mobile`" />
@@ -344,26 +359,19 @@ onMounted(load);
             <div class="admin-banner-card__heading">
               <div>
                 <h3>{{ banner.alt_text }}</h3>
-                <p>{{ banner.mobile_image }}</p>
+                <p>
+                  <span>Mobile: {{ banner.mobile_image }}</span>
+                  <span>Web: {{ banner.web_image }}</span>
+                </p>
               </div>
-              <span :class="['admin-banner-status', banner.is_active ? 'is-active' : 'is-hidden']">
-                {{ banner.is_active ? 'Active' : 'Hidden' }}
-              </span>
-            </div>
 
-            <dl class="admin-banner-card__paths">
-              <div>
-                <dt>Mobile Banner</dt>
-                <dd>{{ banner.mobile_image }}</dd>
-              </div>
-              <div>
-                <dt>Web Banner</dt>
-                <dd>{{ banner.web_image }}</dd>
-              </div>
-            </dl>
+            </div>
           </div>
 
           <div class="admin-banner-card__controls">
+            <span :class="['admin-banner-status', banner.is_active ? 'is-active' : 'is-hidden']">
+              {{ banner.is_active ? 'Active' : 'Hidden' }}
+            </span>
             <div class="admin-banner-sort" aria-label="Banner sort controls">
               <button type="button" class="icon-button" :disabled="index === 0" aria-label="Move up" @click="moveBanner(index, -1)">
                 <ChevronUp :size="16" />

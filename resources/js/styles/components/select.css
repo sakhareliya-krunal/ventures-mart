@@ -1,6 +1,15 @@
 .app-select {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
   position: relative;
   width: 100%;
+}
+
+.app-select__label {
+  color: var(--color-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .app-select__trigger {
@@ -32,6 +41,16 @@
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
   outline: none;
+}
+
+.app-select.has-error .app-select__trigger {
+  border-color: var(--color-danger, #dc2626);
+}
+
+.app-select.is-disabled .app-select__trigger,
+.app-select__trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .app-select__value {
@@ -69,7 +88,8 @@
   position: absolute;
   right: 0;
   top: 100%;
-  z-index: 5;
+  overscroll-behavior: contain;
+  z-index: 40;
 }
 
 .app-select__option {
@@ -90,6 +110,15 @@
   background: var(--color-soft-2);
 }
 
+.app-select__option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.app-select__option.is-disabled:hover {
+  background: transparent;
+}
+
 .app-select__option.is-selected {
   background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   color: var(--color-primary-dark);
@@ -98,6 +127,12 @@
 .app-select__check {
   color: var(--color-primary);
   flex-shrink: 0;
+}
+
+.app-select__error {
+  color: var(--color-danger, #dc2626);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .searchable-select {
@@ -236,3 +271,5 @@
     transition: none;
   }
 }
+
+
