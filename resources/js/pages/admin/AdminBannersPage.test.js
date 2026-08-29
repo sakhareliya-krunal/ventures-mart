@@ -116,9 +116,9 @@ describe('AdminBannersPage', () => {
     await input.trigger('change');
     await nextTick();
 
-    expect(wrapper.text()).toContain('Uploading...');
     expect(wrapper.find('.admin-banner-field.is-uploading').exists()).toBe(true);
-    expect(wrapper.find('.admin-banner-field__overlay').exists()).toBe(true);
+    expect(wrapper.find('.admin-banner-field__overlay').text()).toContain('Uploading...');
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Uploading...'))).toBe(false);
 
     resolveUpload({ data: { urls: ['/storage/banners/uploaded-mobile.webp'] } });
     await flushPromises();

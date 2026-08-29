@@ -4762,13 +4762,6 @@
   box-shadow: 0 0 0 3px rgba(11, 46, 138, 0.08);
 }
 
-.admin-banner-uploading-label {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.45rem;
-}
-
-.admin-banner-uploading-label__spinner,
 .admin-banner-field__spinner {
   animation: admin-banner-spin 0.8s linear infinite;
   border: 2px solid currentColor;

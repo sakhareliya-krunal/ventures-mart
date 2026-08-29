@@ -260,14 +260,8 @@ onMounted(load);
                   :disabled="saving || !!uploadingField"
                   @click="field === 'mobile_image' ? mobileInputRef?.click() : webInputRef?.click()"
                 >
-                  <span v-if="uploadingField === field" class="admin-banner-uploading-label">
-                    <span class="admin-banner-uploading-label__spinner" aria-hidden="true" />
-                    Uploading...
-                  </span>
-                  <template v-else>
-                    <ImagePlus :size="16" />
-                    Upload
-                  </template>
+                  <ImagePlus :size="16" />
+                  Upload
                 </AppButton>
                 <AppButton
                   v-if="form[field]"
