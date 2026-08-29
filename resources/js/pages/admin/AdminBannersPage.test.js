@@ -70,7 +70,9 @@ describe('AdminBannersPage', () => {
 
     expect(get).toHaveBeenCalledWith('/admin/banners');
     expect(wrapper.text()).toContain('Homepage banner');
-    expect(wrapper.find('img[src="/storage/banners/mobile.webp"]').exists()).toBe(true);
+    expect(wrapper.find('.admin-banner-card').exists()).toBe(true);
+    expect(wrapper.find('.admin-banner-card__preview--mobile img[src="/storage/banners/mobile.webp"]').exists()).toBe(true);
+    expect(wrapper.find('.admin-banner-card__preview--web img[src="/storage/banners/web.webp"]').exists()).toBe(true);
 
     wrapper.unmount();
   });

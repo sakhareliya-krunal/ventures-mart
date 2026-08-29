@@ -220,53 +220,61 @@ onMounted(load);
       <p v-if="error" class="form-error">{{ error }}</p>
       <LoadingSpinner v-if="loading" page label="Loading banners" />
 
-      <div v-else class="admin-table-wrap">
-        <table class="admin-table admin-banners-table">
-          <thead>
-            <tr>
-              <th>Preview</th>
-              <th>Alt text</th>
-              <th>Status</th>
-              <th>Sort</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(banner, index) in orderedBanners" :key="banner.id">
-              <td data-label="Preview">
-                <div class="admin-banner-preview">
-                  <img :src="banner.mobile_image" :alt="`${banner.alt_text} mobile`" />
-                  <img :src="banner.web_image" :alt="`${banner.alt_text} web`" />
-                </div>
-              </td>
-              <td data-label="Alt text">
-                <strong>{{ banner.alt_text }}</strong>
-                <div class="admin-muted">{{ banner.mobile_image }}</div>
-              </td>
-              <td data-label="Status">{{ banner.is_active ? 'Active' : 'Hidden' }}</td>
-              <td data-label="Sort">
-                <div class="admin-actions">
-                  <button type="button" class="icon-button" :disabled="index === 0" aria-label="Move up" @click="moveBanner(index, -1)">
-                    <ChevronUp :size="16" />
-                  </button>
-                  <button type="button" class="icon-button" :disabled="index === orderedBanners.length - 1" aria-label="Move down" @click="moveBanner(index, 1)">
-                    <ChevronDown :size="16" />
-                  </button>
-                </div>
-              </td>
-              <td data-label="Actions">
-                <div class="admin-actions">
-                  <AppButton type="button" variant="secondary" size="sm" @click="editBanner(banner)">
-                    Edit
-                  </AppButton>
-                  <AppButton type="button" variant="danger" size="sm" @click="requestRemove(banner.id)">
-                    Delete
-                  </AppButton>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="admin-banner-index">
+        <article v-for="(banner, index) in orderedBanners" :key="banner.id" class="admin-banner-card">
+          <div class="admin-banner-card__media" aria-label="Banner previews">
+            <figure class="admin-banner-card__preview admin-banner-card__preview--mobile">
+              <img :src="banner.mobile_image" :alt="`${banner.alt_text} mobile`" />
+              <figcaption>Mobile</figcaption>
+            </figure>
+            <figure class="admin-banner-card__preview admin-banner-card__preview--web">
+              <img :src="banner.web_image" :alt="`${banner.alt_text} web`" />
+              <figcaption>Web</figcaption>
+            </figure>
+          </div>
+
+          <div class="admin-banner-card__body">
+            <div class="admin-banner-card__heading">
+              <div>
+                <h3>{{ banner.alt_text }}</h3>
+                <p>{{ banner.mobile_image }}</p>
+              </div>
+              <span :class="['admin-banner-status', banner.is_active ? 'is-active' : 'is-hidden']">
+                {{ banner.is_active ? 'Active' : 'Hidden' }}
+              </span>
+            </div>
+
+            <dl class="admin-banner-card__paths">
+              <div>
+                <dt>Mobile Banner</dt>
+                <dd>{{ banner.mobile_image }}</dd>
+              </div>
+              <div>
+                <dt>Web Banner</dt>
+                <dd>{{ banner.web_image }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="admin-banner-card__controls">
+            <div class="admin-banner-sort" aria-label="Banner sort controls">
+              <button type="button" class="icon-button" :disabled="index === 0" aria-label="Move up" @click="moveBanner(index, -1)">
+                <ChevronUp :size="16" />
+              </button>
+              <button type="button" class="icon-button" :disabled="index === orderedBanners.length - 1" aria-label="Move down" @click="moveBanner(index, 1)">
+                <ChevronDown :size="16" />
+              </button>
+            </div>
+            <div class="admin-actions admin-banner-card__actions">
+              <AppButton type="button" variant="secondary" size="sm" @click="editBanner(banner)">
+                Edit
+              </AppButton>
+              <AppButton type="button" variant="danger" size="sm" @click="requestRemove(banner.id)">
+                Delete
+              </AppButton>
+            </div>
+          </div>
+        </article>
         <p v-if="!orderedBanners.length" class="admin-empty">No banners found.</p>
       </div>
     </div>
