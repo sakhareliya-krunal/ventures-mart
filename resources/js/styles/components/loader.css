@@ -62,14 +62,6 @@
   width: 22%;
 }
 
-.button .vm-loader__label,
-.auth-submit .vm-loader__label,
-.confirm-dialog__confirm .vm-loader__label {
-  color: inherit;
-  font-size: 0.9em;
-  font-weight: 800;
-  opacity: 1;
-}
 
 .vm-loader--page {
   align-items: center;
@@ -92,24 +84,25 @@
 }
 
 .vm-loader__mark {
+  display: block;
   filter: drop-shadow(0 12px 24px color-mix(in srgb, var(--color-primary) 18%, transparent));
-  isolation: isolate;
-  position: relative;
+  height: auto;
+  object-fit: contain;
 }
 
 .vm-loader--sm .vm-loader__mark {
-  height: 20px;
-  width: 20px;
+  height: 30px;
+  width: 30px;
 }
 
 .vm-loader--md .vm-loader__mark {
-  height: 46px;
-  width: 46px;
+  height: 69px;
+  width: 69px;
 }
 
 .vm-loader--lg .vm-loader__mark {
-  height: 64px;
-  width: 64px;
+  height: 96px;
+  width: 96px;
 }
 
 .vm-loader__ring {
@@ -161,18 +154,6 @@
   width: 30%;
 }
 
-.vm-loader__label {
-  animation: vm-loader-label 1.8s ease-in-out infinite;
-  color: var(--color-ink);
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  opacity: 0.78;
-}
-
-.vm-loader--sm .vm-loader__label {
-  font-size: 0.78rem;
-}
 
 .route-loader {
   align-items: center;
@@ -195,9 +176,9 @@
   animation: route-loader-frame-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
   display: block;
   height: auto;
-  max-height: min(58vh, 17rem);
-  max-width: min(82vw, 28rem);
-  width: clamp(16rem, 42vw, 28rem);
+  max-height: min(50vh, 15rem);
+  max-width: min(50vw, 15rem);
+  width: clamp(10.5rem, 24vw, 15rem);
 }
 
 @keyframes route-loader-enter {
@@ -235,36 +216,22 @@
   }
 }
 
-@keyframes vm-loader-label {
-  0%, 100% { opacity: 0.62; }
-  50% { opacity: 0.92; }
-}
-
 @media (max-width: 520px) {
   .route-loader__frame {
-    max-width: min(90vw, 24rem);
-    width: clamp(15rem, 84vw, 24rem);
+    max-width: min(55vw, 12.75rem);
+    width: clamp(9.75rem, 54vw, 12.75rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .route-loader,
   .route-loader.is-completing,
-  .route-loader__frame,
-  .vm-loader__ring--outer,
-  .vm-loader__ring--inner,
-  .vm-loader__core,
-  .vm-loader__label {
+  .route-loader__frame {
     animation: none;
   }
 
   .route-loader,
   .route-loader.is-completing {
     transform: none;
-  }
-
-  .vm-loader__core {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
   }
 }

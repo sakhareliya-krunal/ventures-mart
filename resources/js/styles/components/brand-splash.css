@@ -30,9 +30,9 @@ body:has(.brand-splash) {
   animation: brand-splash-loader-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   display: block;
   height: auto;
-  max-height: min(38.4vh, 9.6rem);
-  max-width: min(38.4vw, 9.6rem);
-  width: clamp(6.9rem, 14.4vw, 9.6rem);
+  max-height: min(46vh, 14.4rem);
+  max-width: min(46vw, 14.4rem);
+  width: clamp(10.4rem, 21.6vw, 14.4rem);
 }
 
 @keyframes brand-splash-loader-in {
@@ -49,8 +49,8 @@ body:has(.brand-splash) {
 
 @media (max-width: 520px) {
   .brand-splash__loader {
-    max-width: min(45.6vw, 8.4rem);
-    width: clamp(6.3rem, 36vw, 8.4rem);
+    max-width: min(55vw, 12.6rem);
+    width: clamp(9.5rem, 54vw, 12.6rem);
   }
 }
 

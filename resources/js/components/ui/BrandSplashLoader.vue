@@ -90,7 +90,7 @@ onUnmounted(() => {
       aria-live="polite"
       aria-label="Loading Ventures Mart"
     >
-      <img class="brand-splash__loader" :src="LOADER_SRC" alt="" width="192" height="192" />
+      <img class="brand-splash__loader" :src="LOADER_SRC" alt="" width="320" height="320" />
     </div>
   </Teleport>
 </template>

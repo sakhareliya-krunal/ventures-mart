@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 
+const LOADER_SRC = '/images/venturesmart-compact-loader.svg';
+
 const props = defineProps({
   label: {
     type: String,
@@ -34,11 +36,6 @@ const rootClass = computed(() => [
 
 <template>
   <div :class="rootClass" role="status" :aria-label="label || 'Loading'">
-    <div class="vm-loader__mark" aria-hidden="true">
-      <span class="vm-loader__ring vm-loader__ring--outer" />
-      <span class="vm-loader__ring vm-loader__ring--inner" />
-      <span class="vm-loader__core" />
-    </div>
-    <span v-if="label" class="vm-loader__label">{{ label }}</span>
+    <img class="vm-loader__mark" :src="LOADER_SRC" alt="" aria-hidden="true" />
   </div>
 </template>

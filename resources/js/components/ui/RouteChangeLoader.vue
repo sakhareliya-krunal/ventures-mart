@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-const LOADER_SRC = '/images/venturesmart-kinetic-frame-loader.svg';
+const LOADER_SRC = '/images/venturesmart-compact-loader.svg';
 const EXIT_MS = 220;
 const VISIBLE_MAX_MS = 1800;
 
@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
       aria-live="polite"
       :aria-label="statusLabel"
     >
-      <img class="route-loader__frame" :src="LOADER_SRC" alt="" width="360" height="220" />
+      <img class="route-loader__frame" :src="LOADER_SRC" alt="" width="160" height="160" />
     </div>
   </Teleport>
 </template>

@@ -1,1 +1,0 @@
-import{M as e}from"./app-CMMo6g43.js";var t=e(`chevron-up`,[[`path`,{d:`m18 15-6-6-6 6`,key:`153udz`}]]);export{t};

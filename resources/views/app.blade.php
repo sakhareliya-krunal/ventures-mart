@@ -68,15 +68,15 @@
         .brand-splash__loader {
             display: block;
             height: auto;
-            max-height: min(38.4vh, 9.6rem);
-            max-width: min(38.4vw, 9.6rem);
-            width: clamp(6.9rem, 14.4vw, 9.6rem);
+            max-height: min(46vh, 14.4rem);
+            max-width: min(46vw, 14.4rem);
+            width: clamp(10.4rem, 21.6vw, 14.4rem);
         }
 
         @media (max-width: 520px) {
             .brand-splash__loader {
-                max-width: min(45.6vw, 8.4rem);
-                width: clamp(6.3rem, 36vw, 8.4rem);
+                max-width: min(55vw, 12.6rem);
+                width: clamp(9.5rem, 54vw, 12.6rem);
             }
         }
     </style>
@@ -124,7 +124,7 @@
     </noscript>
     @endif
     <div id="brand-splash" class="brand-splash" role="status" aria-live="polite" aria-label="Loading Ventures Mart">
-        <img class="brand-splash__loader" src="/images/venturesmart-loader-fixed-3-new-icons.svg" alt="" width="192" height="192">
+        <img class="brand-splash__loader" src="/images/venturesmart-loader-fixed-3-new-icons.svg" alt="" width="320" height="320">
     </div>
     <div id="app"></div>
 </body>
