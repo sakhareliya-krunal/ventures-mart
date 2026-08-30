@@ -122,7 +122,7 @@ function requestLogout() {
 async function logout() {
   await auth.logout();
   confirmLogoutOpen.value = false;
-  await router.push('/login');
+  await router.replace('/');
 }
 
 watch(

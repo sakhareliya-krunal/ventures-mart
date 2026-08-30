@@ -116,6 +116,31 @@
   visibility: hidden;
 }
 
+.product-card__cart-loader {
+  animation: product-cart-loader-spin 0.72s linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  border-top-color: var(--color-surface);
+  display: block;
+  height: 1.15rem;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  width: 1.15rem;
+}
+
+@keyframes product-cart-loader-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
 .product-card__footer {
   align-items: center;
   border-top: 1px solid var(--color-border);

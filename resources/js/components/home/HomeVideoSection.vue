@@ -141,7 +141,7 @@ onUnmounted(() => {
     grid-auto-columns: clamp(11.25rem, 31.5vw, 13.5rem);
     grid-auto-flow: column;
     grid-template-columns: none;
-    justify-content: start;
+    justify-content: center;
     margin-inline: auto;
     overflow-x: auto;
     overscroll-behavior-x: contain;

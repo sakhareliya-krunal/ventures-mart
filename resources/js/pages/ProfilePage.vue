@@ -367,7 +367,7 @@ async function logout() {
   if (auth.loggingOut) return;
   await auth.logout();
   confirmLogoutOpen.value = false;
-  await router.push('/');
+  await router.replace('/');
 }
 </script>
 
