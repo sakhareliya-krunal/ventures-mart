@@ -4,6 +4,9 @@ const REVEAL_SELECTORS = [
   '.section-header',
   '.page-title-row',
   '.page-hero',
+  '.static-shell__breadcrumb',
+  '.static-shell__nav',
+  '.static-shell__content',
   '.promo-band',
   '.service-strip',
   '.service-item',
@@ -26,27 +29,60 @@ const REVEAL_SELECTORS = [
   '.home-benefits__header',
   '.home-benefits__card',
   '.about-commitment__stat',
+  '.about-heritage__media',
+  '.about-heritage__copy',
+  '.about-commitment__header',
+  '.about-gift-cta__inner',
   '.home-trust__intro',
   '.home-trust__quote',
+  '.shop-layout',
   '.shop-toolbar',
+  '.shop-page__explore',
   '.product-detail__gallery',
   '.product-detail__copy',
+  '.product-detail__back',
+  '.product-detail__faqs',
+  '.product-detail__reviews',
+  '.product-detail__links',
   '.product-detail-tabs',
+  '.product-detail__full-description',
   '.product-detail__related',
+  '.product-review-card',
+  '.product-review-form',
   '.summary-panel',
   '.form-panel',
   '.auth-panel',
   '.cart-page',
   '.checkout-page',
   '.checkout-panel',
+  '.checkout-layout',
+  '.checkout-addresses__option',
+  '.checkout-payment__option',
+  '.contact-section-intro',
+  '.contact-channel',
+  '.contact-form-panel',
+  '.wishlist-page',
+  '.profile-identity__main',
+  '.profile-identity__actions',
+  '.profile-block',
+  '.address-card',
   '.profile-card',
   '.profile-actions',
   '.orders-list',
   '.order-card',
   '.order-confirm-card',
+  '.order-confirm-facts',
+  '.order-confirm-items',
+  '.order-confirm-actions',
+  '.order-track-summary',
   '.order-track-hero',
   '.order-track-card',
+  '.order-track-timeline__step',
+  '.order-line',
   '.blog-card',
+  '.blog-index__section-heading',
+  '.article-premium__hero-copy',
+  '.article-premium__toc',
   '.blog-article__header',
   '.blog-article__cover',
   '.blog-prose',
@@ -54,6 +90,7 @@ const REVEAL_SELECTORS = [
   '.article-premium__close',
   '.article-premium__intro',
   '.static-page',
+  '.error-status__card',
   '.empty-state',
 ].join(', ');
 
@@ -64,17 +101,29 @@ const SOFT_SELECTORS = [
   '.service-item',
   '.home-video__card',
   '.about-commitment__stat',
+  '.about-heritage__media',
+  '.about-heritage__copy',
+  '.about-commitment__header',
+  '.about-gift-cta__inner',
+  '.contact-channel',
+  '.contact-form-panel',
   '.home-why__item',
   '.home-benefits__card',
   '.home-trust__quote',
   '.summary-panel',
   '.form-panel',
+  '.checkout-addresses__option',
+  '.checkout-payment__option',
   '.profile-card',
+  '.profile-block',
+  '.address-card',
   '.order-card',
   '.order-confirm-card',
   '.order-track-card',
+  '.order-line',
   '.blog-card',
   '.article-premium__section',
+  '.error-status__card',
 ].join(', ');
 
 const EXCLUDED_SELECTORS = [
@@ -95,6 +144,8 @@ const EXCLUDED_SELECTORS = [
 
 const VIEWPORT_MARGIN = 100;
 const MAX_STAGGER_INDEX = 5;
+const REFRESH_DELAY = 50;
+const POST_MUTATION_REFRESH_DELAY = 220;
 
 let observer = null;
 let mutationObserver = null;
@@ -228,7 +279,10 @@ function scheduleRefresh() {
   window.clearTimeout(refreshTimer);
   refreshTimer = window.setTimeout(() => {
     refreshScrollReveal(mainEl || document);
-  }, 50);
+    refreshTimer = window.setTimeout(() => {
+      refreshScrollReveal(mainEl || document);
+    }, POST_MUTATION_REFRESH_DELAY);
+  }, REFRESH_DELAY);
 }
 
 export function initScrollReveal(root) {

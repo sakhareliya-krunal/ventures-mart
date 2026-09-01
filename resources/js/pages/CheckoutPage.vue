@@ -493,6 +493,33 @@ function openRazorpayCheckout(razorpay) {
   });
 }
 
+function paymentMethodLabel(method) {
+  if (method === 'cod') return 'Cash on Delivery';
+  if (method === 'razorpay') return 'Pay online';
+  return method || '';
+}
+
+function showCheckoutOrderToast(order, title, message) {
+  const orderNumber = order?.number || order?.id || '';
+  const actionHref = orderNumber ? `/orders/${encodeURIComponent(orderNumber)}` : '/orders';
+
+  if (typeof ui.showOrderToast === 'function') {
+    ui.showOrderToast({
+      title,
+      message,
+      orderNumber,
+      orderId: order?.id,
+      paymentMethod: order?.payment_method || paymentMethod.value,
+      paymentStatus: order?.payment_status,
+      total: order?.total,
+      actionHref,
+    });
+    return;
+  }
+
+  ui.showToast(message || title, { type: 'success' });
+}
+
 async function goToConfirmation(orderId) {
   await cart.fetch();
   await router.push({ name: 'order-confirmed', params: { id: orderId } });
@@ -643,7 +670,11 @@ async function submit() {
         throw new Error('Unable to place COD order. Please try again.');
       }
 
-      ui.showToast('Order placed. Pay cash on delivery.', { type: 'success' });
+      showCheckoutOrderToast(
+        order,
+        'Order placed',
+        `Pay by ${paymentMethodLabel(order.payment_method || 'cod')} when your order arrives.`,
+      );
       await goToConfirmation(order.id);
       return;
     }
@@ -669,13 +700,23 @@ async function submit() {
 
     const payment = await openRazorpayCheckout(razorpay);
 
-    await api.post(`/orders/${order.id}/payment/verify`, {
+    const verifyResponse = await api.post(`/orders/${order.id}/payment/verify`, {
       razorpay_order_id: payment.razorpay_order_id,
       razorpay_payment_id: payment.razorpay_payment_id,
       razorpay_signature: payment.razorpay_signature,
     });
+    const verifiedOrder = unwrapData(verifyResponse.data) || {};
+    const confirmedOrder = {
+      ...order,
+      ...verifiedOrder,
+      payment_status: verifiedOrder.payment_status || 'paid',
+    };
 
-    ui.showToast('Payment successful. Your order is confirmed.', { type: 'success' });
+    showCheckoutOrderToast(
+      confirmedOrder,
+      'Payment successful',
+      'Your order is confirmed and ready for processing.',
+    );
     await goToConfirmation(order.id);
   } catch (err) {
     if (err?.response) {

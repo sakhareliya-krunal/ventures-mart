@@ -206,6 +206,7 @@ class OrderPaymentTest extends TestCase
             'phone' => '9999999999',
             'address' => '12 Test Street',
             'city' => 'Ahmedabad',
+            'district' => 'Ahmedabad',
             'state' => 'Gujarat',
             'postal_code' => '380001',
             'payment_method' => 'razorpay',

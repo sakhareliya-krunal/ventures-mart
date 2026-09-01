@@ -40,8 +40,10 @@ class OrderConfirmation extends Mailable
                     'unit_price' => (float) $item->unit_price,
                     'line_total' => (float) $item->line_total,
                     'image_url' => $this->publicUrl($item->product_image, 'images/ventures-mart-logo.png'),
+                    'image_path' => $this->publicPath($item->product_image),
                 ])->all(),
-                'logoUrl' => $this->publicUrl(config('invoice.logo'), 'images/ventures-mart-logo.png'),
+                'logoUrl' => $this->publicUrl(config('mail.logo'), 'images/ventures-mart-logo-light.png'),
+                'logoPath' => $this->publicPath(config('mail.logo')),
                 'orderUrl' => str_replace(
                     '{number}',
                     (string) $this->order->number,
@@ -75,5 +77,18 @@ class OrderConfirmation extends Mailable
         $path = $path !== '' ? $path : $fallback;
 
         return rtrim((string) config('app.url'), '/').'/'.ltrim($path, '/');
+    }
+
+    private function publicPath(?string $path): ?string
+    {
+        $path = trim((string) $path);
+
+        if ($path === '' || filter_var($path, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        $absolutePath = public_path(ltrim($path, '/'));
+
+        return is_file($absolutePath) && is_readable($absolutePath) ? $absolutePath : null;
     }
 }

@@ -115,6 +115,8 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'logo' => env('MAIL_LOGO', 'images/ventures-mart-logo-light.png'),
+
     /*
     |--------------------------------------------------------------------------
     | Contact Form Recipient

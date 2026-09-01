@@ -2,12 +2,13 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CheckoutPage from './CheckoutPage.vue';
 
-const { get, post, patch, push, showToast, trackMetaEvent } = vi.hoisted(() => ({
+const { get, post, patch, push, showToast, showOrderToast, trackMetaEvent } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
   push: vi.fn(),
   showToast: vi.fn(),
+  showOrderToast: vi.fn(),
   trackMetaEvent: vi.fn(),
 }));
 
@@ -37,7 +38,7 @@ vi.mock('@/stores/theme', () => ({
 }));
 
 vi.mock('@/stores/ui', () => ({
-  useUiStore: () => ({ showToast }),
+  useUiStore: () => ({ showToast, showOrderToast }),
 }));
 
 vi.mock('@/stores/auth', () => ({
@@ -98,6 +99,7 @@ describe('CheckoutPage address and payment cards', () => {
     post.mockReset();
     patch.mockReset();
     showToast.mockReset();
+    showOrderToast.mockReset();
     trackMetaEvent.mockReset();
     push.mockReset();
     delete window.Razorpay;
@@ -153,7 +155,7 @@ describe('CheckoutPage address and payment cards', () => {
     const wrapper = mountPage();
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Loading addresses…');
+    expect(wrapper.find('.checkout-addresses__loading [aria-label]').attributes('aria-label')).toContain('Loading addresses');
     expect(wrapper.findAll('label').some((label) => label.text().includes('Email'))).toBe(false);
     expect(wrapper.find('.checkout-addresses__list').exists()).toBe(false);
 
@@ -175,7 +177,7 @@ describe('CheckoutPage address and payment cards', () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).not.toContain('Loading addresses…');
+    expect(wrapper.find('.checkout-addresses__loading [aria-label]').exists()).toBe(false);
     expect(wrapper.text()).toContain('Home');
     expect(wrapper.findAll('label').some((label) => label.text().includes('Email'))).toBe(false);
   });
@@ -243,5 +245,49 @@ describe('CheckoutPage address and payment cards', () => {
       razorpay_payment_id: 'pay_meta_55',
       razorpay_signature: 'sig_meta_55',
     });
+    expect(showOrderToast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Payment successful',
+      orderNumber: 'VM-TEST55',
+      paymentMethod: 'razorpay',
+      total: 210,
+      actionHref: '/orders/VM-TEST55',
+    }));
+  });
+
+  it('shows a rich text-only notification after COD checkout', async () => {
+    post.mockImplementation((url) => {
+      if (url === '/orders') {
+        return Promise.resolve({
+          data: {
+            data: {
+              id: 56,
+              number: 'VM-COD56',
+              payment_method: 'cod',
+              payment_status: 'pending',
+              total: 309,
+            },
+          },
+        });
+      }
+
+      return Promise.resolve({ data: {} });
+    });
+
+    const wrapper = mountPage();
+    await flushPromises();
+
+    await wrapper.find('input[value="cod"]').setValue();
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(showOrderToast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Order placed',
+      orderNumber: 'VM-COD56',
+      paymentMethod: 'cod',
+      paymentStatus: 'pending',
+      total: 309,
+      actionHref: '/orders/VM-COD56',
+    }));
+    expect(showToast).not.toHaveBeenCalledWith('Order placed. Pay cash on delivery.', expect.anything());
   });
 });
