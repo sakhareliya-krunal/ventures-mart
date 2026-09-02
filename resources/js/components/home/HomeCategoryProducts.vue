@@ -224,6 +224,7 @@ watch(selectedProducts, syncRailState);
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y pinch-zoom;
   padding: 0.1rem clamp(1rem, 4vw, 1.25rem) 0.6rem;
   scroll-padding-inline: clamp(1rem, 4vw, 1.25rem);
   scroll-snap-type: x proximity;

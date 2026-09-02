@@ -145,9 +145,10 @@ onUnmounted(() => {
     margin-inline: auto;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y pinch-zoom;
     padding: 0.15rem 0 0.8rem;
     scroll-padding-inline: 0;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
   }
 

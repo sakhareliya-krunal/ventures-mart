@@ -1,47 +1,26 @@
 <script setup>
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { lockScroll, unlockScroll } from '@/utils/scrollLock';
 
 const LOADER_SRC = '/images/venturesmart-loader-fixed-3-new-icons.svg';
 const MIN_VISIBLE_MS = 1400;
 const READY_MAX_MS = 5200;
 const EXIT_MS = 360;
+const SCROLL_LOCK_ID = 'brand-splash';
 
 const router = useRouter();
 const visible = ref(true);
 const exiting = ref(false);
 let mounted = false;
 let exitTimer = null;
-let previousBodyOverflow = '';
-let previousHtmlOverflow = '';
-
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function lockScroll() {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  previousBodyOverflow = document.body.style.overflow;
-  previousHtmlOverflow = document.documentElement.style.overflow;
-  document.body.style.overflow = 'hidden';
-  document.documentElement.style.overflow = 'hidden';
-}
-
-function unlockScroll() {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  document.body.style.overflow = previousBodyOverflow;
-  document.documentElement.style.overflow = previousHtmlOverflow;
-}
-
 onMounted(async () => {
   mounted = true;
-  lockScroll();
+  lockScroll(SCROLL_LOCK_ID);
 
   const premount = document.getElementById('brand-splash');
   requestAnimationFrame(() => premount?.remove());
@@ -67,7 +46,7 @@ onMounted(async () => {
 
   exitTimer = setTimeout(() => {
     visible.value = false;
-    unlockScroll();
+    unlockScroll(SCROLL_LOCK_ID);
   }, EXIT_MS);
 });
 
@@ -76,7 +55,7 @@ onUnmounted(() => {
   if (exitTimer != null) {
     clearTimeout(exitTimer);
   }
-  unlockScroll();
+  unlockScroll(SCROLL_LOCK_ID);
 });
 </script>
 

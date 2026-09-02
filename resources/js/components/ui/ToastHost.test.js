@@ -10,6 +10,34 @@ describe('ToastHost', () => {
     setActivePinia(createPinia());
   });
 
+  it('renders standard success notifications with the success treatment', async () => {
+    const ui = useUiStore();
+    mount(ToastHost, { attachTo: document.body });
+
+    ui.showToast('Address saved.', { type: 'success' });
+    await Promise.resolve();
+
+    const toast = document.body.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.classList.contains('app-toast--success')).toBe(true);
+    expect(toast?.classList.contains('app-toast--error')).toBe(false);
+    expect(document.body.textContent).toContain('Address saved.');
+  });
+
+  it('renders standard error notifications with the error treatment', async () => {
+    const ui = useUiStore();
+    mount(ToastHost, { attachTo: document.body });
+
+    ui.showToast('Unable to save address.', { type: 'error' });
+    await Promise.resolve();
+
+    const toast = document.body.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.classList.contains('app-toast--error')).toBe(true);
+    expect(toast?.classList.contains('app-toast--success')).toBe(false);
+    expect(document.body.textContent).toContain('Unable to save address.');
+  });
+
   it('renders rich order notifications without images', async () => {
     const ui = useUiStore();
     mount(ToastHost, { attachTo: document.body });

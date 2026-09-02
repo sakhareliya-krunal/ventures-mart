@@ -1,9 +1,10 @@
 .app-toast {
   align-items: flex-start;
-  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-brand-wash));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
   border-radius: var(--radius-sm);
-  bottom: 1.15rem;
-  box-shadow: var(--shadow-md, 0 10px 30px rgba(15, 23, 42, 0.12));
+  box-shadow: var(--shadow-lg, 0 28px 70px rgba(7, 31, 99, 0.16));
+  color: var(--color-ink);
   display: flex;
   gap: 0.65rem;
   left: 50%;
@@ -11,30 +12,46 @@
     28rem,
     calc(100dvw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right))
   );
-  padding: 0.85rem 0.95rem;
+  overflow: hidden;
+  padding: 0.9rem 1rem 0.9rem 1.15rem;
   position: fixed;
+  top: calc(0.85rem + env(safe-area-inset-top));
   transform: translateX(-50%);
   width: calc(100dvw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
   z-index: 80;
 }
 
+.app-toast::before {
+  background: var(--toast-accent-bg, var(--toast-accent-color, var(--color-primary)));
+  bottom: 0;
+  content: "";
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
 .app-toast--success {
-  background: var(--color-success-soft);
-  border-color: var(--color-success-border);
-  color: var(--color-success);
+  --toast-accent-bg: var(--color-success);
+  --toast-accent-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 24%, var(--color-border));
 }
 
 .app-toast--error {
-  background: var(--color-danger-soft, #fde8e8);
-  border-color: var(--color-danger-border, #f5c2c2);
-  color: var(--color-danger, #b42318);
+  --toast-accent-bg: var(--color-secondary);
+  --toast-accent-color: var(--color-secondary);
+  border-color: color-mix(in srgb, var(--color-secondary) 28%, var(--color-border));
 }
 
 .app-toast--order {
+  --toast-accent-bg: linear-gradient(
+    180deg,
+    var(--color-primary) 0%,
+    var(--color-secondary) 62%,
+    var(--color-accent) 100%
+  );
   align-items: flex-start;
-  background: #ffffff;
   border-color: color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
-  color: var(--color-ink);
   max-width: min(
     26rem,
     calc(100dvw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right))
@@ -43,13 +60,13 @@
 }
 
 .app-toast__icon {
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 26px 26px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
   border-radius: 999px;
-  box-shadow: 0 6px 16px rgba(15, 40, 90, 0.1);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 14%, transparent);
   flex: 0 0 auto;
   height: 40px;
   width: 40px;
@@ -71,6 +88,7 @@
 }
 
 .app-toast__message {
+  color: color-mix(in srgb, var(--color-ink) 88%, var(--toast-accent-color, var(--color-primary)));
   flex: 1 1 auto;
   font-weight: 700;
   line-height: 1.4;
@@ -95,7 +113,7 @@
 
 .app-toast__order-details > div {
   align-items: baseline;
-  background: #fbfdff;
+  background: var(--color-surface-soft);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   gap: 0.75rem;
@@ -129,6 +147,7 @@
   align-self: start;
   background: var(--color-primary);
   border-radius: 8px;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 18%, transparent);
   color: #ffffff;
   display: inline-flex;
   font-size: 0.86rem;
@@ -141,22 +160,27 @@
 .app-toast__action:hover,
 .app-toast__action:focus-visible {
   background: var(--color-primary-dark, var(--color-primary));
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--color-primary-dark) 22%, transparent);
 }
 
 .app-toast__close {
   background: transparent;
   border: 0;
+  border-radius: 999px;
   color: inherit;
   cursor: pointer;
   flex: 0 0 auto;
   font-size: 1.25rem;
+  height: 1.75rem;
   line-height: 1;
   opacity: 0.75;
   padding: 0;
+  width: 1.75rem;
 }
 
 .app-toast__close:hover,
 .app-toast__close:focus-visible {
+  background: color-mix(in srgb, var(--toast-accent-color, var(--color-primary)) 10%, transparent);
   opacity: 1;
 }
 
@@ -168,20 +192,20 @@
 .app-toast-enter-from,
 .app-toast-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(0.5rem);
+  transform: translateX(-50%) translateY(-0.55rem);
 }
 
 @media (min-width: 721px) {
   .app-toast {
-    bottom: 1.5rem;
     left: auto;
-    right: 1.5rem;
+    right: calc(1.25rem + env(safe-area-inset-right));
+    top: calc(1rem + env(safe-area-inset-top));
     transform: none;
     width: auto;
   }
 
   .app-toast-enter-from,
   .app-toast-leave-to {
-    transform: translateY(0.5rem);
+    transform: translateY(-0.55rem);
   }
 }

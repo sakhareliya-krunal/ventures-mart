@@ -156,6 +156,14 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function isCoarsePointer() {
+  return window.matchMedia('(hover: none), (pointer: coarse)').matches;
+}
+
+function shouldRevealImmediately() {
+  return prefersReducedMotion() || isCoarsePointer();
+}
+
 function markRevealed(el) {
   el.classList.add('is-revealed');
 }
@@ -193,7 +201,7 @@ function prepareElement(el) {
     el.classList.add('reveal--soft');
   }
 
-  if (prefersReducedMotion()) {
+  if (shouldRevealImmediately()) {
     markRevealed(el);
     return false;
   }
@@ -202,6 +210,10 @@ function prepareElement(el) {
 }
 
 function assignRevealDelays(nodes) {
+  if (shouldRevealImmediately()) {
+    return;
+  }
+
   const groups = new Map();
 
   nodes.forEach((el) => {
@@ -223,7 +235,7 @@ function assignRevealDelays(nodes) {
 }
 
 function ensureObserver() {
-  if (observer || prefersReducedMotion() || !('IntersectionObserver' in window)) {
+  if (observer || shouldRevealImmediately() || !('IntersectionObserver' in window)) {
     return observer;
   }
 
@@ -252,7 +264,7 @@ export function refreshScrollReveal(root = document) {
   const nodes = scope.querySelectorAll(REVEAL_SELECTORS);
   assignRevealDelays(nodes);
 
-  if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
+  if (shouldRevealImmediately() || !('IntersectionObserver' in window)) {
     nodes.forEach((el) => {
       prepareElement(el);
       markRevealed(el);
@@ -289,7 +301,7 @@ export function initScrollReveal(root) {
   mainEl = root instanceof Element ? root : document.querySelector('main');
   refreshScrollReveal(mainEl || document);
 
-  if (mutationObserver || !mainEl || prefersReducedMotion()) {
+  if (mutationObserver || !mainEl || shouldRevealImmediately()) {
     return;
   }
 

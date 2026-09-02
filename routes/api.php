@@ -45,7 +45,7 @@ Route::get('/products/sale', [ProductController::class, 'sale']);
 Route::get('/products/price-bounds', [ProductController::class, 'priceBounds']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
 Route::get('/products/{slug}/reviews', [ProductReviewController::class, 'index']);
-Route::post('/products/{slug}/reviews', [ProductReviewController::class, 'store']);
+Route::post('/products/{slug}/reviews', [ProductReviewController::class, 'store'])->middleware('throttle:10,1');
 
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{slug}', [CategoryController::class, 'show']);
@@ -56,16 +56,16 @@ Route::get('/seo', SeoResolveController::class);
 Route::get('/banners', [BannerController::class, 'index']);
 
 Route::get('/cart', [CartController::class, 'show']);
-Route::post('/cart', [CartController::class, 'store']);
-Route::patch('/cart/items/{product}', [CartController::class, 'update']);
-Route::delete('/cart/items/{product}', [CartController::class, 'destroy']);
-Route::delete('/cart', [CartController::class, 'clear']);
+Route::post('/cart', [CartController::class, 'store'])->middleware('throttle:60,1');
+Route::patch('/cart/items/{product}', [CartController::class, 'update'])->middleware('throttle:60,1');
+Route::delete('/cart/items/{product}', [CartController::class, 'destroy'])->middleware('throttle:60,1');
+Route::delete('/cart', [CartController::class, 'clear'])->middleware('throttle:60,1');
 Route::post('/meta/events', [MetaEventController::class, 'store'])->middleware('throttle:60,1');
 
 Route::get('/wishlist', [WishlistController::class, 'index']);
-Route::post('/wishlist/toggle', [WishlistController::class, 'toggle']);
-Route::post('/wishlist/add', [WishlistController::class, 'add']);
-Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy']);
+Route::post('/wishlist/toggle', [WishlistController::class, 'toggle'])->middleware('throttle:60,1');
+Route::post('/wishlist/add', [WishlistController::class, 'add'])->middleware('throttle:60,1');
+Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy'])->middleware('throttle:60,1');
 
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle']);
 Route::post('/fulfillment/provider-update', [ShiprocketWebhookController::class, 'handle']);
@@ -82,13 +82,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice']);
 });
 
-Route::post('/contact', [ContactController::class, 'store']);
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/auth/google', GoogleAuthController::class);
-Route::post('/forgot-password', [PasswordResetController::class, 'forgot']);
-Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/auth/google', GoogleAuthController::class)->middleware('throttle:10,1');
+Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
 

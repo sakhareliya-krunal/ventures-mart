@@ -57,6 +57,18 @@
   will-change: auto;
 }
 
+@media (hover: none), (pointer: coarse) {
+  .reveal,
+  .reveal.reveal--soft,
+  .reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    transition-delay: 0ms;
+    will-change: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .reveal.reveal--soft {

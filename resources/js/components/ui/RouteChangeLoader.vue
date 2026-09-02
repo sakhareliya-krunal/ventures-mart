@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { lockScroll as lockPageScroll, unlockScroll as unlockPageScroll } from '@/utils/scrollLock';
 
 const LOADER_SRC = '/images/venturesmart-compact-loader.svg';
 const EXIT_MS = 220;
 const VISIBLE_MAX_MS = 1800;
+const SCROLL_LOCK_ID = 'route-loader';
 
 const props = defineProps({
   active: {
@@ -20,8 +22,6 @@ const visible = ref(false);
 const completing = ref(false);
 let exitTimer = null;
 let safetyTimer = null;
-let previousBodyOverflow = '';
-let previousHtmlOverflow = '';
 let scrollLocked = false;
 
 const statusLabel = computed(() => props.label || 'Loading page');
@@ -44,11 +44,7 @@ function lockScroll() {
   if (scrollLocked || typeof document === 'undefined') {
     return;
   }
-
-  previousBodyOverflow = document.body.style.overflow;
-  previousHtmlOverflow = document.documentElement.style.overflow;
-  document.body.style.overflow = 'hidden';
-  document.documentElement.style.overflow = 'hidden';
+  lockPageScroll(SCROLL_LOCK_ID);
   scrollLocked = true;
 }
 
@@ -56,9 +52,7 @@ function unlockScroll() {
   if (!scrollLocked || typeof document === 'undefined') {
     return;
   }
-
-  document.body.style.overflow = previousBodyOverflow;
-  document.documentElement.style.overflow = previousHtmlOverflow;
+  unlockPageScroll(SCROLL_LOCK_ID);
   scrollLocked = false;
 }
 

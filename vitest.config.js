@@ -11,6 +11,7 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
+        setupFiles: ['./resources/js/test/setup.js'],
         include: ['resources/js/**/*.test.js'],
         pool: 'threads',
         clearMocks: true,

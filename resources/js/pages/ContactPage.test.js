@@ -32,6 +32,10 @@ describe('ContactPage success message', () => {
       global: { plugins: [createPinia()] },
     });
 
+    await wrapper.find('input[type="text"]').setValue('Test User');
+    await wrapper.find('input[type="email"]').setValue('customer@example.com');
+    await wrapper.find('textarea').setValue('Please confirm contact mail works.');
+
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 

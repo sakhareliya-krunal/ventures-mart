@@ -6,6 +6,7 @@ import {
 } from './scrollReveal';
 
 let reducedMotion = false;
+let coarsePointer = false;
 let observerInstances = [];
 
 class MockIntersectionObserver {
@@ -33,7 +34,11 @@ class MockIntersectionObserver {
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn((query) => ({
-    matches: query === '(prefers-reduced-motion: reduce)' ? reducedMotion : false,
+    matches: query === '(prefers-reduced-motion: reduce)'
+      ? reducedMotion
+      : query === '(hover: none), (pointer: coarse)'
+        ? coarsePointer
+        : false,
     media: query,
     onchange: null,
     addEventListener: vi.fn(),
@@ -57,6 +62,7 @@ function placeBelowViewport(el) {
 
 beforeEach(() => {
   reducedMotion = false;
+  coarsePointer = false;
   observerInstances = [];
   document.body.innerHTML = '';
   mockMatchMedia();
@@ -136,6 +142,22 @@ describe('scrollReveal', () => {
     expect(option.classList.contains('reveal')).toBe(true);
     expect(option.classList.contains('reveal--soft')).toBe(true);
     expect(option.classList.contains('is-revealed')).toBe(true);
+    expect(observerInstances).toHaveLength(0);
+  });
+
+  test('reveals touch-device card content immediately without staggered observation', () => {
+    coarsePointer = true;
+    mockMatchMedia();
+    document.body.innerHTML = '<main><article class="product-card"></article></main>';
+    const card = document.querySelector('.product-card');
+    placeBelowViewport(card);
+
+    refreshScrollReveal(document.querySelector('main'));
+
+    expect(card.classList.contains('reveal')).toBe(true);
+    expect(card.classList.contains('reveal--soft')).toBe(true);
+    expect(card.classList.contains('is-revealed')).toBe(true);
+    expect(card.style.getPropertyValue('--reveal-delay')).toBe('');
     expect(observerInstances).toHaveLength(0);
   });
 
