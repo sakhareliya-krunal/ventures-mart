@@ -23,11 +23,6 @@
   }
 }
 
-@supports (height: 100dvh) {
-  .admin-shell {
-    --admin-viewport-height: 100dvh;
-  }
-}
 
 .admin-sidebar {
   background:
