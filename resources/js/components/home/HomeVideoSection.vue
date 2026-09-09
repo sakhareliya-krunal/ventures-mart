@@ -3,12 +3,20 @@ import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 
 const videos = [
   {
+    id: 'home-video-4',
+    src: '/videos/home/home-video-4.mp4',
+  },
+  {
     id: 'home-video-2',
     src: '/videos/home/home-video-2.mp4',
   },
   {
     id: 'home-video-3',
     src: '/videos/home/home-video-3.mp4',
+  },
+  {
+    id: 'home-video-5',
+    src: '/videos/home/home-video-5.mp4',
   },
 ];
 
@@ -111,11 +119,11 @@ onUnmounted(() => {
 
 .home-video__rail {
   display: grid;
-  gap: clamp(1rem, 2vw, 1.5rem);
-  grid-template-columns: repeat(2, clamp(13rem, 18vw, 18rem));
+  gap: clamp(0.85rem, 1.8vw, 1.25rem);
+  grid-template-columns: repeat(4, minmax(0, clamp(10.75rem, 17vw, 15.5rem)));
   justify-content: center;
   margin-inline: auto;
-  max-width: 42rem;
+  max-width: 74rem;
 }
 
 .home-video__card {
@@ -141,13 +149,14 @@ onUnmounted(() => {
     grid-auto-columns: clamp(11.25rem, 31.5vw, 13.5rem);
     grid-auto-flow: column;
     grid-template-columns: none;
-    justify-content: center;
+    justify-content: start;
     margin-inline: auto;
+    max-width: min(100%, 42rem);
     overflow-x: auto;
     overscroll-behavior-x: contain;
     touch-action: pan-x pan-y pinch-zoom;
-    padding: 0.15rem 0 0.8rem;
-    scroll-padding-inline: 0;
+    padding: 0.15rem max(1rem, calc((100vw - 42rem) / 2)) 0.8rem;
+    scroll-padding-inline: max(1rem, calc((100vw - 42rem) / 2));
     scroll-snap-type: x proximity;
     scrollbar-width: none;
   }

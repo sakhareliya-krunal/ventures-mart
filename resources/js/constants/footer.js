@@ -1,7 +1,8 @@
 export const footerFeatures = [
-  { icon: 'truck', label: 'Delivery across India' },
-  { icon: 'shield', label: '7-day replacement support' },
-  { icon: 'package', label: 'Curated toys & lunch boxes' },
+  { icon: 'truck', label: 'Free & Fast Delivery', tone: 'blue' },
+  { icon: 'refresh', label: 'Easy Returns', tone: 'green' },
+  { icon: 'card', label: 'Secure Payments', tone: 'pink' },
+  { icon: 'award', label: 'Quality Assured', tone: 'yellow' },
 ];
 
 export const footerBlurb =
@@ -23,11 +24,22 @@ export const footerShopLinks = [
   { label: 'All products', href: '/shop' },
 ];
 
-export const footerSupportLinks = [
+export const footerCustomerCareLinks = [
   { label: 'Shipping', href: '/shipping' },
   { label: 'Replacement', href: '/replacement' },
   { label: 'Track Order', href: '/orders' },
+  { label: 'Payments', href: '/payments' },
+];
+
+export const footerSupportLinks = [
+  ...footerCustomerCareLinks,
   { label: 'About', href: '/about' },
+];
+
+export const footerCompanyLinks = [
+  { label: 'About', href: '/about' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Contact', href: '/contact' },
 ];
 
 export const footerContact = {
