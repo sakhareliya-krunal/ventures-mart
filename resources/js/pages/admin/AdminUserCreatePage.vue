@@ -1,9 +1,14 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import AdminFormGuard from '@/components/admin/AdminFormGuard.vue';
+import AdminFormActions from '@/components/admin/AdminFormActions.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import FormField from '@/components/ui/FormField.vue';
 import api from '@/services/api';
+
+const FORM_ID = 'admin-user-create-form';
 
 const router = useRouter();
 const saving = ref(false);
@@ -41,51 +46,55 @@ async function save() {
 </script>
 
 <template>
-  <div class="admin-panel">
-    <div class="admin-toolbar">
-      <div>
-        <h2>Create admin</h2>
+  <AdminFormGuard>
+    <AdminPanel variant="form">
+      <div class="admin-form-intro">
         <p class="admin-muted">Add a new administrator who can access the admin panel.</p>
+        <AppButton type="button" variant="secondary" @click="goBack">Back</AppButton>
       </div>
-      <AppButton type="button" variant="secondary" @click="goBack">Back</AppButton>
-    </div>
 
-    <p v-if="error" class="form-error">{{ error }}</p>
+      <p v-if="error" class="form-error">{{ error }}</p>
 
-    <form novalidate class="admin-form" @submit.prevent="save">
-      <FormField v-model="form.name" label="Name" required autocomplete="name" :disabled="saving" />
-      <FormField
-        v-model="form.email"
-        label="Email"
-        type="email"
-        required
-        autocomplete="email"
-        :disabled="saving"
-      />
-      <FormField
-        v-model="form.password"
-        label="Password"
-        type="password"
-        required
-        autocomplete="new-password"
-        :disabled="saving"
-      />
-      <FormField
-        v-model="form.password_confirmation"
-        label="Confirm password"
-        type="password"
-        required
-        autocomplete="new-password"
-        :disabled="saving"
-      />
-      <div class="admin-form__actions">
-        <AppButton type="submit" :loading="saving">
-          Create admin
-        </AppButton>
-        <AppButton type="button" variant="ghost" :disabled="saving" @click="goBack">
-          Cancel
-        </AppButton>
-      </div>
-    </form>
-  </div>
+      <form :id="FORM_ID" novalidate class="admin-form" @submit.prevent="save">
+        <div class="admin-form__fields">
+          <FormField v-model="form.name" label="Name" required autocomplete="name" :disabled="saving" />
+          <FormField
+            v-model="form.email"
+            label="Email"
+            type="email"
+            required
+            autocomplete="email"
+            :disabled="saving"
+          />
+          <FormField
+            v-model="form.password"
+            label="Password"
+            type="password"
+            required
+            autocomplete="new-password"
+            :disabled="saving"
+          />
+          <FormField
+            v-model="form.password_confirmation"
+            label="Confirm password"
+            type="password"
+            required
+            autocomplete="new-password"
+            :disabled="saving"
+          />
+        </div>
+      </form>
+
+      <template #footer>
+        <AdminFormActions layout="footer" :busy="saving">
+          <AppButton type="button" variant="ghost" :disabled="saving" @click="goBack">
+            Cancel
+          </AppButton>
+          <AppButton type="submit" :form="FORM_ID" :loading="saving" :disabled="saving">
+            Create admin
+          </AppButton>
+        </AdminFormActions>
+      </template>
+    </AdminPanel>
+  </AdminFormGuard>
 </template>

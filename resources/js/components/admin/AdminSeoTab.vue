@@ -109,7 +109,7 @@ async function uploadSeoImage(event) {
 </script>
 
 <template>
-  <section class="admin-product-form__section">
+  <section class="admin-product-form__section admin-seo-tab">
     <div class="admin-toolbar">
       <div>
         <h3>SEO</h3>
@@ -191,10 +191,6 @@ async function uploadSeoImage(event) {
         <input v-model="form.seo.canonical_url" placeholder="Auto-generated if empty" autocomplete="off" />
         <small v-if="fieldError('canonical_url')" class="admin-field__error">{{ fieldError('canonical_url') }}</small>
       </label>
-      <label class="admin-field checkbox-row admin-field--robots">
-        <input v-model="robotsIndex" type="checkbox" />
-        <span>Allow search engines to index this page</span>
-      </label>
       <label class="admin-field">
         <span>Meta robots</span>
         <input v-model="form.seo.meta_robots" placeholder="index,follow" autocomplete="off" />
@@ -203,6 +199,13 @@ async function uploadSeoImage(event) {
         <span>Image alt text</span>
         <input v-model="form.seo.image_alt_text" autocomplete="off" />
       </label>
+      <div class="admin-field admin-field--full admin-field--indexing">
+        <span>Search indexing</span>
+        <label class="checkbox-row">
+          <input v-model="robotsIndex" type="checkbox" />
+          <span>Allow search engines to index this page</span>
+        </label>
+      </div>
     </div>
 
     <div class="admin-product-form__grid">
@@ -210,7 +213,7 @@ async function uploadSeoImage(event) {
         <span>Open Graph title</span>
         <input v-model="form.seo.og_title" autocomplete="off" />
       </label>
-      <div class="admin-field">
+      <label class="admin-field">
         <span>Open Graph image</span>
         <input v-model="form.seo.og_image" autocomplete="off" />
         <input
@@ -220,7 +223,7 @@ async function uploadSeoImage(event) {
           accept="image/jpeg,image/png,image/webp"
           @change="uploadSeoImage"
         />
-        <div class="admin-toolbar">
+        <div class="admin-field__actions">
           <AppButton
             type="button"
             variant="secondary"
@@ -240,7 +243,7 @@ async function uploadSeoImage(event) {
           :src="seoImagePreview"
           alt="Open Graph image preview"
         />
-      </div>
+      </label>
       <label class="admin-field admin-field--full">
         <span>Open Graph description</span>
         <textarea v-model="form.seo.og_description" rows="2" />

@@ -101,9 +101,9 @@ class UserController extends Controller
             ], 422);
         }
 
-        if ($user->is_admin) {
+        if ($user->is_admin && User::query()->where('is_admin', true)->count() <= 1) {
             return response()->json([
-                'message' => 'Admin accounts cannot be deleted from customers.',
+                'message' => 'At least one administrator must remain.',
             ], 422);
         }
 

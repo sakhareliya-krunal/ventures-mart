@@ -13,10 +13,26 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
+            'email' => self::normalizeEmail($this->email),
             'avatar' => $this->avatar,
             'has_password' => filled($this->password),
             'is_admin' => $this->isAdmin(),
         ];
+    }
+
+    public static function normalizeEmail(?string $email): ?string
+    {
+        if ($email === null || $email === '') {
+            return $email;
+        }
+
+        $trimmed = preg_split('/LOCAL_ADMIN|PASSWORD=|\r|\n/', $email)[0] ?? $email;
+        $trimmed = trim($trimmed);
+
+        if (preg_match('/^([^\s@]+@[^\s@]+\.[^\s@]+)/', $trimmed, $matches)) {
+            return $matches[1];
+        }
+
+        return $trimmed;
     }
 }

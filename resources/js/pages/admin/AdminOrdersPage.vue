@@ -1,27 +1,31 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
-import { RouterLink, useRoute, useRouter } from 'vue-router';
-import AdminSearchField from '@/components/admin/AdminSearchField.vue';
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminListToolbar from '@/components/admin/AdminListToolbar.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue';
+import { useAdminList } from '@/composables/useAdminList';
+import { ref } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import {
+  badgeClassToTone,
   orderStatusBadgeClass,
   orderStatusLabel,
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from '@/utils/adminBadges';
 import { emailHref } from '@/utils/contactLinks';
-import { formatCurrency, unwrapData } from '@/utils/format';
+import { formatCurrency } from '@/utils/format';
 
-const route = useRoute();
 const router = useRouter();
-const loading = ref(true);
-const orders = ref([]);
-const search = ref('');
-const status = ref(typeof route.query.status === 'string' ? route.query.status : '');
+const { rows: orders, loading, refreshing, error: fetchError, search, filters, meta, filtered, load, go, reset } = useAdminList('/admin/orders', {
+  filterDefaults: { status: '' },
+  perPage: 10,
+});
 const listError = ref('');
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
@@ -36,22 +40,6 @@ const statusOptions = [
   { value: 'Delivered', label: 'Delivered' },
   { value: 'Cancelled', label: 'Cancelled' },
 ];
-
-async function load() {
-  loading.value = true;
-  listError.value = '';
-  try {
-    const { data } = await api.get('/admin/orders', {
-      params: {
-        search: search.value || undefined,
-        status: status.value || undefined,
-      },
-    });
-    orders.value = unwrapData(data) || [];
-  } finally {
-    loading.value = false;
-  }
-}
 
 function openOrder(order) {
   router.push({ name: 'admin-order-detail', params: { id: order.id } });
@@ -80,98 +68,110 @@ async function remove() {
     deleting.value = false;
   }
 }
-
-onMounted(load);
-watch([search, status], load);
 </script>
 
 <template>
-  <div class="admin-panel">
-    <div class="admin-toolbar">
-      <h2>All orders</h2>
-      <div class="admin-toolbar__filters">
-        <AdminSearchField
-          v-model="search"
-          placeholder="Search order, email, name…"
-          aria-label="Search orders"
-        />
-        <AppSelect
-          v-model="status"
-          :options="statusOptions"
-          placeholder="All statuses"
-          aria-label="Filter by status"
-        />
-      </div>
-    </div>
+  <AdminPanel>
+    <AdminListToolbar
+      v-model="search"
+      placeholder="Search order, email, name…"
+      label="Search orders"
+      :total="meta.total"
+      :filtered="filtered"
+      @reset="reset"
+    >
+      <AppSelect
+        v-model="filters.status"
+        :options="statusOptions"
+        placeholder="All statuses"
+        aria-label="Filter by status"
+      />
+    </AdminListToolbar>
 
     <p v-if="listError" class="form-error">{{ listError }}</p>
-    <LoadingSpinner v-if="loading" page label="Loading orders" />
-    <div v-else-if="orders.length" class="admin-table-wrap">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Status</th>
-            <th>Payment</th>
-            <th>Total</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="order in orders" :key="order.id">
-            <td data-label="Order">
-              <RouterLink :to="`/admin/orders/${order.id}`">{{ order.number }}</RouterLink>
-            </td>
-            <td data-label="Date">
-              {{ order.created_at ? new Date(order.created_at).toLocaleString() : '—' }}
-            </td>
-            <td data-label="Customer">
-              {{ order.address?.full_name || order.user?.name || '—' }}
-              <div v-if="order.address?.email" class="admin-muted">
-                <a :href="emailHref(order.address.email)">{{ order.address.email }}</a>
-              </div>
-            </td>
-            <td data-label="Status">
-              <div class="admin-status-cell">
-                <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
-                  {{ orderStatusLabel(order.status) }}
-                </span>
-              </div>
-            </td>
-            <td data-label="Payment">
-              <div class="admin-payment-cell">
-                <span class="admin-badge" :class="paymentStatusBadgeClass(order.payment_status)">
-                  {{ paymentStatusLabel(order.payment_status) }}
-                </span>
-                <span class="admin-muted">
-                  {{ order.payment_method === 'cod' ? 'COD' : (order.payment_method || '—') }}
-                </span>
-              </div>
-            </td>
-            <td data-label="Total">{{ formatCurrency(order.total) }}</td>
-            <td data-label="Actions">
-              <div class="admin-actions">
-                <AppButton type="button" variant="secondary" size="sm" @click="openOrder(order)">
-                  View
-                </AppButton>
-                <AppButton
-                  v-if="order.can_delete"
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  @click="requestRemove(order.id)"
-                >
-                  Delete
-                </AppButton>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else class="admin-empty">No orders found.</p>
+    <AdminDataList
+      :rows="orders"
+      :loading="loading"
+      :refreshing="refreshing"
+      :error="fetchError"
+      :searching="filtered"
+      @retry="load"
+      @reset="reset"
+    >
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Total</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="order in orders" :key="order.id">
+              <td data-label="Order">
+                <RouterLink :to="`/admin/orders/${order.id}`">{{ order.number }}</RouterLink>
+              </td>
+              <td data-label="Date">
+                {{ order.created_at ? new Date(order.created_at).toLocaleString() : '—' }}
+              </td>
+              <td data-label="Customer">
+                {{ order.address?.full_name || order.user?.name || '—' }}
+                <div v-if="order.address?.email" class="admin-muted">
+                  <a :href="emailHref(order.address.email)">{{ order.address.email }}</a>
+                </div>
+              </td>
+              <td data-label="Status">
+                <AdminStatusBadge
+                  :label="orderStatusLabel(order.status)"
+                  :tone="badgeClassToTone(orderStatusBadgeClass(order.status))"
+                />
+              </td>
+              <td data-label="Payment">
+                <div class="admin-payment-cell">
+                  <AdminStatusBadge
+                    :label="paymentStatusLabel(order.payment_status)"
+                    :tone="badgeClassToTone(paymentStatusBadgeClass(order.payment_status))"
+                  />
+                  <span class="admin-muted">
+                    {{ order.payment_method === 'cod' ? 'COD' : (order.payment_method || '—') }}
+                  </span>
+                </div>
+              </td>
+              <td data-label="Total">{{ formatCurrency(order.total) }}</td>
+              <td data-label="Actions">
+                <div class="admin-actions">
+                  <AppButton type="button" variant="secondary" size="sm" @click="openOrder(order)">
+                    View
+                  </AppButton>
+                  <AppButton
+                    v-if="order.can_delete"
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    @click="requestRemove(order.id)"
+                  >
+                    Delete
+                  </AppButton>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AdminDataList>
+    <AdminPagination
+      :page="meta.current_page"
+      :last-page="meta.last_page"
+      :total="meta.total"
+      :from="meta.from || 0"
+      :to="meta.to || 0"
+      @page="go"
+    />
 
     <ConfirmDialog
       v-model:open="confirmOpen"
@@ -184,5 +184,5 @@ watch([search, status], load);
       danger
       @confirm="remove"
     />
-  </div>
+  </AdminPanel>
 </template>

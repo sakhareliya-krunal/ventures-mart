@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ChevronLeft, ChevronRight, Inbox, Mail, RefreshCw, Trash2, X } from '@lucide/vue';
+import { Inbox, Mail, RefreshCw, Trash2, X } from '@lucide/vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
 import api from '@/services/api';
 import { useAdminNavigationCountsStore } from '@/stores/adminNavigationCounts';
 import { emailHref } from '@/utils/contactLinks';
@@ -233,7 +234,7 @@ onBeforeUnmount(() => {
 
     <div class="contact-inbox__shell">
       <div class="contact-inbox__list-panel" :aria-busy="loading">
-        <LoadingSpinner v-if="loading" page label="Loading messages" />
+        <AdminLoading v-if="loading" page label="Loading messages" />
 
         <div v-else-if="messages.length" class="contact-inbox__list" role="list">
           <article
@@ -277,31 +278,16 @@ onBeforeUnmount(() => {
           <p>{{ search ? 'Try a different name, email, or keyword.' : 'New customer messages will appear here.' }}</p>
         </div>
 
-        <footer v-if="!loading && meta.last_page > 1" class="contact-inbox__pagination">
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            :disabled="meta.current_page <= 1"
-            aria-label="Previous page"
-            @click="goToPage(meta.current_page - 1)"
-          >
-            <ChevronLeft :size="17" aria-hidden="true" />
-            Previous
-          </AppButton>
-          <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
-          <AppButton
-            type="button"
-            variant="secondary"
-            size="sm"
-            :disabled="meta.current_page >= meta.last_page"
-            aria-label="Next page"
-            @click="goToPage(meta.current_page + 1)"
-          >
-            Next
-            <ChevronRight :size="17" aria-hidden="true" />
-          </AppButton>
-        </footer>
+        <AdminPagination
+          v-if="!loading && meta.last_page > 1"
+          class="contact-inbox__pagination"
+          :page="meta.current_page"
+          :last-page="meta.last_page"
+          :total="meta.total"
+          :from="meta.from || 0"
+          :to="meta.to || 0"
+          @page="goToPage"
+        />
       </div>
 
       <button

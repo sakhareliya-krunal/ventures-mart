@@ -686,6 +686,15 @@
   line-height: 1.35;
 }
 
+a.admin-kpi {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.admin-kpi:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--admin-border));
+}
+
 .admin-dash-sub {
   margin: 0.2rem 0 0;
 }
@@ -1381,12 +1390,6 @@
   width: 100%;
 }
 
-.admin-field--robots {
-  align-items: center;
-  display: flex;
-  gap: 0.55rem;
-  padding-top: 1.55rem;
-}
 
 .admin-status-cell,
 .admin-payment-cell {
@@ -1401,6 +1404,15 @@
 
 .admin-payment-cell {
   flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.admin-table .admin-payment-cell {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.4rem 0.55rem;
   white-space: nowrap;
 }
 
@@ -2438,12 +2450,12 @@
 }
 
 .inventory-kpis .admin-kpi,
-.inventory-kpi__body {
+.inventory-kpis .admin-kpi__body {
   min-width: 0;
 }
 
-.inventory-kpi__value,
-.inventory-kpi__detail {
+.inventory-kpis .admin-kpi__body strong,
+.inventory-kpis .admin-kpi__body small {
   overflow-wrap: anywhere;
 }
 
@@ -3190,9 +3202,14 @@
 }
 
 .admin-product-form__grid {
+  align-items: start;
   display: grid;
   gap: 0.85rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-seo-tab .admin-product-form__grid + .admin-product-form__grid {
+  margin-top: 1rem;
 }
 
 .admin-product-form__grid--3 {
@@ -3216,7 +3233,9 @@
 }
 
 .admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']),
-.admin-product-form .admin-field textarea {
+.admin-product-form .admin-field textarea,
+.admin-seo-tab .admin-field input:not([type='checkbox']):not([type='radio']),
+.admin-seo-tab .admin-field textarea {
   -webkit-appearance: none;
   appearance: none;
   background: var(--color-surface);
@@ -3232,18 +3251,23 @@
   width: 100%;
 }
 
-.admin-product-form .admin-field textarea {
+.admin-product-form .admin-field textarea,
+.admin-seo-tab .admin-field textarea {
   min-height: 120px;
   resize: vertical;
 }
 
 .admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']):hover,
-.admin-product-form .admin-field textarea:hover {
+.admin-product-form .admin-field textarea:hover,
+.admin-seo-tab .admin-field input:not([type='checkbox']):not([type='radio']):hover,
+.admin-seo-tab .admin-field textarea:hover {
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
 }
 
 .admin-product-form .admin-field input:not([type='checkbox']):not([type='radio']):focus,
-.admin-product-form .admin-field textarea:focus {
+.admin-product-form .admin-field textarea:focus,
+.admin-seo-tab .admin-field input:not([type='checkbox']):not([type='radio']):focus,
+.admin-seo-tab .admin-field textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
   outline: none;
@@ -3257,6 +3281,24 @@
 
 .admin-field--full {
   grid-column: 1 / -1;
+}
+
+.admin-field--indexing .checkbox-row {
+  font-weight: 600;
+  margin: 0;
+}
+
+.admin-field--indexing .checkbox-row > span {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.admin-field__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.35rem;
 }
 
 .admin-field--grow {
@@ -4435,7 +4477,7 @@
     padding: 0.85rem;
   }
 
-  .inventory-kpi__value {
+  .inventory-kpis .admin-kpi__body strong {
     font-size: 1.18rem !important;
   }
 
@@ -4532,8 +4574,8 @@
     width: 32px;
   }
 
-  .inventory-kpi__label,
-  .inventory-kpi__detail {
+  .inventory-kpis .admin-kpi__body span,
+  .inventory-kpis .admin-kpi__body small {
     font-size: 0.68rem !important;
   }
 

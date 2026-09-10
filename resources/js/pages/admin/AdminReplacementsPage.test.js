@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminReplacementsPage from './AdminReplacementsPage.vue';
 
@@ -30,18 +31,26 @@ function row(overrides = {}) {
   };
 }
 
-function mountPage() {
+async function mountPage() {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/admin/replacements', component: AdminReplacementsPage }],
+  });
+  await router.push('/admin/replacements');
+  await router.isReady();
+
   return mount(AdminReplacementsPage, {
     global: {
+      plugins: [router],
       stubs: {
         RouterLink: {
           props: ['to'],
           template: '<a :href="typeof to === \'string\' ? to : \'#\'"><slot /></a>',
         },
         AppButton: {
-          props: ['disabled'],
+          props: ['disabled', 'loading'],
           emits: ['click'],
-          template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+          template: '<button :disabled="disabled || loading" @click="$emit(\'click\')"><slot /></button>',
         },
         AppSelect: {
           props: ['modelValue', 'options'],
@@ -53,7 +62,7 @@ function mountPage() {
           emits: ['update:modelValue'],
           template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
         },
-        LoadingSpinner: { template: '<div>Loading</div>' },
+        AdminPagination: true,
       },
     },
   });
@@ -63,7 +72,12 @@ describe('AdminReplacementsPage', () => {
   beforeEach(() => {
     get.mockReset();
     post.mockReset();
-    get.mockResolvedValue({ data: { data: [row()], meta: { total: 1 } } });
+    get.mockResolvedValue({
+      data: {
+        data: [row()],
+        meta: { current_page: 1, last_page: 1, total: 1, from: 1, to: 1 },
+      },
+    });
   });
 
   it('loads replacement requests and approves them', async () => {
@@ -76,12 +90,12 @@ describe('AdminReplacementsPage', () => {
       },
     });
 
-    const wrapper = mountPage();
+    const wrapper = await mountPage();
     await flushPromises();
 
-    expect(get).toHaveBeenCalledWith('/admin/replacement-requests', {
-      params: { search: undefined, status: undefined },
-    });
+    expect(get).toHaveBeenCalledWith('/admin/replacement-requests', expect.objectContaining({
+      params: expect.objectContaining({ page: 1, per_page: 20 }),
+    }));
     expect(wrapper.text()).toContain('VM-ORIG-1');
     expect(wrapper.text()).toContain('damaged');
 
@@ -99,7 +113,7 @@ describe('AdminReplacementsPage', () => {
       data: { data: row({ status: 'rejected', rejection_reason: 'Photos unclear' }) },
     });
 
-    const wrapper = mountPage();
+    const wrapper = await mountPage();
     await flushPromises();
 
     const reject = wrapper.findAll('button').find((button) =>

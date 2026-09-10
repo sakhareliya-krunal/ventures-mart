@@ -57,10 +57,9 @@ describe('AdminLayout navigation counts', () => {
     expect(contactsLink.find('.admin-nav-link__count').text()).toBe('99+');
     expect(get).toHaveBeenCalledWith('/admin/navigation-counts', { skipErrorToast: true });
 
-    const mainLinks = wrapper.findAll('aside nav > a');
-    const lastMainLink = mainLinks[mainLinks.length - 1];
-    expect(lastMainLink.attributes('href')).toBe('/admin/banners');
-    expect(lastMainLink.text()).toContain('Banners');
+    const bannersLink = wrapper.find('a[href="/admin/banners"]');
+    expect(bannersLink.exists()).toBe(true);
+    expect(bannersLink.text()).toContain('Banners');
 
     wrapper.unmount();
   });

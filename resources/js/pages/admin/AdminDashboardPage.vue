@@ -1,4 +1,7 @@
 <script setup>
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminStatCard from '@/components/admin/AdminStatCard.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
@@ -9,10 +12,11 @@ import {
   TrendingUp,
   Users,
 } from '@lucide/vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { orderStatusBadgeClass, orderStatusLabel } from '@/utils/adminBadges';
 import { formatCurrency, unwrapData } from '@/utils/format';
+
+const DASHBOARD_WIDGET_LIMIT = 4;
 
 const revenueRanges = [
   { key: 'day', label: 'Day' },
@@ -20,6 +24,10 @@ const revenueRanges = [
   { key: 'month', label: 'Month' },
   { key: 'year', label: 'Year' },
 ];
+
+function dashboardWidgetList(items) {
+  return (Array.isArray(items) ? items : []).slice(0, DASHBOARD_WIDGET_LIMIT);
+}
 
 const loading = ref(true);
 const chartLoading = ref(false);
@@ -98,6 +106,22 @@ const statusTotal = computed(() =>
   statusOrder.reduce((sum, key) => sum + (Number(stats.value.orders_by_status?.[key]) || 0), 0),
 );
 
+const displayRecentOrders = computed(() => dashboardWidgetList(stats.value.recent_orders));
+
+const displayLowStock = computed(() => dashboardWidgetList(stats.value.low_stock_products));
+
+const displayRecentMessages = computed(() => dashboardWidgetList(stats.value.recent_messages));
+
+const displayRecentPosts = computed(() => dashboardWidgetList(stats.value.recent_posts));
+
+const tooltipOrdersPreview = computed(() => {
+  const orders = activeDayPoint.value?.orders || [];
+  return {
+    visible: orders.slice(0, 3),
+    extra: Math.max(0, orders.length - 3),
+  };
+});
+
 const kpis = computed(() => [
   {
     key: 'revenue',
@@ -150,6 +174,18 @@ function formatDate(value) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function formatDateShort(value) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(value));
+}
+
+function orderCustomerName(order) {
+  return order?.address?.full_name || order?.user?.name || 'Guest';
 }
 
 function formatTime(value) {
@@ -262,7 +298,7 @@ onMounted(() => loadStats());
 
 <template>
   <div class="admin-dash">
-    <LoadingSpinner v-if="loading" page label="Loading dashboard" />
+    <AdminLoading v-if="loading" page label="Loading dashboard" />
     <template v-else>
       <header class="admin-dash-header">
         <div>
@@ -281,25 +317,18 @@ onMounted(() => loadStats());
       </header>
 
       <section class="admin-dash-kpis" aria-label="Key metrics">
-        <component
-          :is="kpi.to ? RouterLink : 'article'"
-          v-for="kpi in kpis"
+        <AdminStatCard
+          v-for="kpi in kpis.slice(0, 4)"
           :key="kpi.key"
-          class="admin-kpi"
-          v-bind="kpi.to ? { to: kpi.to } : {}"
-        >
-          <div class="admin-kpi__icon" aria-hidden="true">
-            <component :is="kpi.icon" :size="18" />
-          </div>
-          <div class="admin-kpi__body">
-            <span>{{ kpi.label }}</span>
-            <strong>{{ kpi.value }}</strong>
-            <small>{{ kpi.hint }}</small>
-          </div>
-        </component>
+          :label="kpi.label"
+          :value="kpi.value"
+          :hint="kpi.hint"
+          :icon="kpi.icon"
+          :to="kpi.to"
+        />
       </section>
 
-      <section class="admin-panel admin-dash-revenue" :aria-busy="chartLoading ? 'true' : 'false'">
+      <AdminPanel class="admin-panel admin-dash-revenue" :aria-busy="chartLoading ? 'true' : 'false'">
         <div class="admin-toolbar admin-dash-revenue__toolbar">
           <div>
             <h2>Sales · {{ stats.revenue_period_label }}</h2>
@@ -387,7 +416,7 @@ onMounted(() => loadStats());
             </div>
             <div v-if="activeDayPoint.orders?.length" class="admin-dash-hour-tooltip__orders">
               <RouterLink
-                v-for="order in activeDayPoint.orders"
+                v-for="order in tooltipOrdersPreview.visible"
                 :key="order.id"
                 :to="`/admin/orders/${order.id}`"
                 class="admin-dash-hour-tooltip__order"
@@ -395,6 +424,13 @@ onMounted(() => loadStats());
                 <time :datetime="order.created_at">{{ exactOrderTime(order) }}</time>
                 <strong>{{ order.number }}</strong>
                 <span>{{ formatCurrency(order.total) }}</span>
+              </RouterLink>
+              <RouterLink
+                v-if="tooltipOrdersPreview.extra"
+                class="admin-dash-hour-tooltip__more"
+                to="/admin/orders"
+              >
+                +{{ tooltipOrdersPreview.extra }} more orders
               </RouterLink>
             </div>
             <p v-else class="admin-dash-hour-tooltip__empty">No orders were created in this hour.</p>
@@ -425,50 +461,37 @@ onMounted(() => loadStats());
             </div>
           </div>
         </div>
-      </section>
+      </AdminPanel>
 
       <div class="admin-dash-grid admin-dash-grid--2">
-        <section class="admin-panel">
+        <AdminPanel class="admin-panel">
           <div class="admin-toolbar">
             <h2>Recent orders</h2>
             <RouterLink class="button button--secondary button--sm" to="/admin/orders">
               View all
             </RouterLink>
           </div>
-          <div v-if="stats.recent_orders.length" class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="order in stats.recent_orders" :key="order.id">
-                  <td data-label="Order">
-                    <RouterLink :to="`/admin/orders/${order.id}`">{{ order.number }}</RouterLink>
-                  </td>
-                  <td data-label="Customer">
-                    {{ order.address?.full_name || order.user?.name || '—' }}
-                  </td>
-                  <td data-label="Status">
-                    <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
-                      {{ orderStatusLabel(order.status) }}
-                    </span>
-                  </td>
-                  <td data-label="Date">{{ formatDate(order.created_at) }}</td>
-                  <td data-label="Total">{{ formatCurrency(order.total) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <ul v-if="displayRecentOrders.length" class="admin-dash-order-list">
+            <li v-for="order in displayRecentOrders" :key="order.id" class="admin-dash-order-list__row">
+              <div class="admin-dash-order-list__main">
+                <RouterLink :to="`/admin/orders/${order.id}`">{{ order.number }}</RouterLink>
+                <span
+                  class="admin-muted admin-dash-order-list__meta"
+                  :title="`${formatDate(order.created_at)} · ${orderCustomerName(order)}`"
+                >
+                  {{ formatDateShort(order.created_at) }} · {{ orderCustomerName(order) }}
+                </span>
+              </div>
+              <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
+                {{ orderStatusLabel(order.status) }}
+              </span>
+              <strong class="admin-dash-order-list__total">{{ formatCurrency(order.total) }}</strong>
+            </li>
+          </ul>
           <p v-else class="admin-empty">No orders yet.</p>
-        </section>
+        </AdminPanel>
 
-        <section class="admin-panel">
+        <AdminPanel class="admin-panel">
           <div class="admin-toolbar">
             <h2>Orders by status</h2>
             <RouterLink class="button button--secondary button--sm" to="/admin/orders">
@@ -492,7 +515,7 @@ onMounted(() => loadStats());
             </li>
           </ul>
           <p v-else class="admin-empty">No order activity yet.</p>
-        </section>
+        </AdminPanel>
       </div>
 
       <div class="admin-dash-grid admin-dash-grid--3">
@@ -503,8 +526,8 @@ onMounted(() => loadStats());
               Catalog
             </RouterLink>
           </div>
-          <ul v-if="stats.low_stock_products.length" class="admin-dash-list">
-            <li v-for="product in stats.low_stock_products" :key="product.id">
+          <ul v-if="displayLowStock.length" class="admin-dash-list">
+            <li v-for="product in displayLowStock" :key="product.id">
               <img
                 v-if="product.image"
                 class="admin-dash-list__thumb"
@@ -512,21 +535,22 @@ onMounted(() => loadStats());
                 :alt="product.name"
               />
               <div class="admin-dash-list__body">
-                <strong>{{ product.name }}</strong>
-                <span class="admin-muted">{{ product.sku || 'No SKU' }}</span>
+                <strong :title="product.name">{{ product.name }}</strong>
               </div>
-              <span
-                class="admin-badge"
-                :class="{ 'admin-badge--warn': product.stock <= 2 }"
-              >
-                {{ product.stock }} left
-              </span>
-              <RouterLink
-                class="admin-dash-list__link"
-                :to="{ name: 'admin-product-edit', params: { id: product.id } }"
-              >
-                Edit
-              </RouterLink>
+              <div class="admin-dash-list__actions">
+                <span
+                  class="admin-badge"
+                  :class="{ 'admin-badge--warn': product.stock <= 2 }"
+                >
+                  {{ product.stock }} left
+                </span>
+                <RouterLink
+                  class="admin-dash-list__link"
+                  :to="{ name: 'admin-product-edit', params: { id: product.id } }"
+                >
+                  Edit
+                </RouterLink>
+              </div>
             </li>
           </ul>
           <p v-else class="admin-empty">All products are stocked.</p>
@@ -539,8 +563,8 @@ onMounted(() => loadStats());
               Inbox
             </RouterLink>
           </div>
-          <ul v-if="stats.recent_messages.length" class="admin-dash-list admin-dash-list--simple">
-            <li v-for="message in stats.recent_messages" :key="message.id">
+          <ul v-if="displayRecentMessages.length" class="admin-dash-list admin-dash-list--simple">
+            <li v-for="message in displayRecentMessages" :key="message.id">
               <div class="admin-dash-list__avatar" aria-hidden="true">
                 {{ (message.name || '?').slice(0, 1).toUpperCase() }}
               </div>
@@ -561,8 +585,8 @@ onMounted(() => loadStats());
               Blog
             </RouterLink>
           </div>
-          <ul v-if="stats.recent_posts.length" class="admin-dash-list">
-            <li v-for="post in stats.recent_posts" :key="post.id">
+          <ul v-if="displayRecentPosts.length" class="admin-dash-list">
+            <li v-for="post in displayRecentPosts" :key="post.id">
               <img
                 v-if="post.cover_image"
                 class="admin-dash-list__thumb"
@@ -570,18 +594,20 @@ onMounted(() => loadStats());
                 :alt="post.title"
               />
               <div class="admin-dash-list__body">
-                <strong>{{ post.title }}</strong>
-                <span class="admin-muted">{{ formatDate(post.published_at) }}</span>
+                <strong :title="post.title">{{ post.title }}</strong>
+                <span class="admin-muted admin-dash-list__date">{{ formatDate(post.published_at) }}</span>
               </div>
-              <span class="admin-badge" :class="{ 'admin-badge--ok': isPublished(post) }">
-                {{ isPublished(post) ? 'Published' : 'Draft' }}
-              </span>
-              <RouterLink
-                class="admin-dash-list__link"
-                :to="{ name: 'admin-post-edit', params: { id: post.id } }"
-              >
-                Edit
-              </RouterLink>
+              <div class="admin-dash-list__actions">
+                <span class="admin-badge" :class="{ 'admin-badge--ok': isPublished(post) }">
+                  {{ isPublished(post) ? 'Published' : 'Draft' }}
+                </span>
+                <RouterLink
+                  class="admin-dash-list__link"
+                  :to="{ name: 'admin-post-edit', params: { id: post.id } }"
+                >
+                  Edit
+                </RouterLink>
+              </div>
             </li>
           </ul>
           <p v-else class="admin-empty">No posts yet.</p>

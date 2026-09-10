@@ -339,11 +339,16 @@ function ensureAdminRedirectWatcher(auth) {
         return;
       }
 
-      const current = router.currentRoute.value;
+      void router.isReady().then(() => {
+        const current = router.currentRoute.value;
+        if (current === START_LOCATION) {
+          return;
+        }
 
-      if (shouldRedirectAdminToPanel(current, true)) {
-        router.replace('/admin');
-      }
+        if (shouldRedirectAdminToPanel(current, true)) {
+          router.replace('/admin');
+        }
+      });
     },
   );
 }

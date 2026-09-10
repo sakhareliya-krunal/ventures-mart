@@ -9,7 +9,6 @@ import {
   MessageCircle,
   Phone,
   RefreshCw,
-  Send,
   ShoppingBag,
   Truck,
 } from '@lucide/vue';
@@ -17,14 +16,15 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import {
-  footerBlurb,
   footerBottomLinks,
   footerCompanyLinks,
   footerContact,
   footerCustomerCareLinks,
+  footerDescription,
   footerFeatures,
   footerPaymentPills,
   footerShopLinks,
+  footerTagline,
   footerWhatsApp,
 } from '@/constants/footer';
 import { useThemeStore } from '@/stores/theme';
@@ -45,7 +45,7 @@ const footerColumns = computed(() => [
   {
     label: 'Shop',
     icon: ShoppingBag,
-    tone: 'blue',
+    tone: 'pink',
     links: footerShopLinks,
   },
   {
@@ -64,23 +64,24 @@ const footerColumns = computed(() => [
 
 const contactLinks = computed(() => [
   {
+    label: 'WhatsApp',
+    value: footerWhatsApp.label,
+    href: footerWhatsApp.href,
+    icon: MessageCircle,
+    external: true,
+  },
+  {
     label: 'Email',
     value: footerContact.email,
     href: `mailto:${footerContact.email}`,
     icon: Mail,
+    isEmail: true,
   },
   {
     label: 'Phone',
     value: footerContact.phone,
     href: footerContact.phoneHref,
     icon: Phone,
-  },
-  {
-    label: 'WhatsApp',
-    value: footerWhatsApp.label,
-    href: footerWhatsApp.href,
-    icon: MessageCircle,
-    external: true,
   },
 ]);
 </script>
@@ -96,36 +97,14 @@ const contactLinks = computed(() => [
       <div class="footer-orb footer-orb--yellow" aria-hidden="true"></div>
 
       <div class="footer-inner">
-        <section class="footer-top" aria-label="Store updates">
+        <section class="footer-top" aria-label="About the store">
           <div class="footer-brand-panel">
             <RouterLink class="brand brand--footer" to="/" :aria-label="`${theme.brandName} home`">
               <img :src="brandAssets.logo" :alt="theme.brandName" />
             </RouterLink>
-            <p>{{ footerBlurb }}</p>
+            <p class="footer-brand-panel__tagline">{{ footerTagline }}</p>
+            <p class="footer-brand-panel__description">{{ footerDescription }}</p>
           </div>
-
-          <form class="footer-newsletter" aria-label="Newsletter signup" @submit.prevent>
-            <span class="footer-newsletter__eyebrow">Newsletter</span>
-            <h2>Join the VentureSmart family</h2>
-            <p>Get playful arrivals, lunch box picks, and store updates in your inbox.</p>
-            <div class="footer-newsletter__form">
-              <label class="sr-only" for="footer-newsletter-email">Email address</label>
-              <span class="footer-newsletter__input-icon" aria-hidden="true">
-                <Mail :size="18" />
-              </span>
-              <input
-                id="footer-newsletter-email"
-                type="email"
-                inputmode="email"
-                autocomplete="email"
-                placeholder="Enter your email"
-              />
-              <button type="submit">
-                <span>Subscribe</span>
-                <Send :size="16" aria-hidden="true" />
-              </button>
-            </div>
-          </form>
         </section>
 
         <section class="footer-columns" aria-label="Footer navigation">
@@ -148,6 +127,8 @@ const contactLinks = computed(() => [
             <RouterLink
               v-for="link in column.links"
               :key="link.label"
+              active-class=""
+              exact-active-class=""
               :to="link.href"
             >
               <span>{{ link.label }}</span>
@@ -157,13 +138,14 @@ const contactLinks = computed(() => [
           <address class="footer-col footer-col--contact" aria-label="Get in touch">
             <h3 class="footer-col__heading">
               <span class="footer-col__heading-icon footer-col__heading-icon--pink" aria-hidden="true">
-                <MessageCircle :size="20" />
+                <Phone :size="20" />
               </span>
               <span>Get In Touch</span>
             </h3>
             <a
               v-for="link in contactLinks"
               :key="link.label"
+              :class="{ 'footer-col__contact-value--email': link.isEmail }"
               :href="link.href"
               :target="link.external ? '_blank' : undefined"
               :rel="link.external ? 'noopener noreferrer' : undefined"
@@ -185,28 +167,25 @@ const contactLinks = computed(() => [
             <span class="footer-benefit__icon" aria-hidden="true">
               <component :is="featureIcons[feature.icon]" :size="20" />
             </span>
-            <span>{{ feature.label }}</span>
+            <span class="footer-benefit__copy">
+              <span class="footer-benefit__label">{{ feature.label }}</span>
+              <span class="footer-benefit__description">{{ feature.description }}</span>
+            </span>
           </div>
         </section>
 
         <div class="footer-bottom-card">
-          <div class="footer-bottom-card__row footer-bottom-card__row--top">
-            <div class="footer-bottom-card__secure">
-              <span class="footer-bottom-card__secure-label">Secure payments</span>
-              <RouterLink class="footer-bottom-card__learn" to="/payments">
-                <span>Learn more</span>
-                <ArrowUpRight :size="14" aria-hidden="true" />
-              </RouterLink>
-
-              <div class="footer-bottom-card__payments" aria-label="Accepted payment methods">
-                <span v-for="pill in footerPaymentPills" :key="pill">{{ pill }}</span>
-              </div>
-            </div>
+          <div class="footer-bottom-card__meta">
+            <p class="footer-bottom-card__copy">
+              &copy; 2026 Ventures Mart. Thoughtful finds for school, play, and gifting.
+            </p>
 
             <nav class="footer-bottom-card__links" aria-label="Legal">
               <RouterLink
                 v-for="link in footerBottomLinks"
                 :key="link.label"
+                active-class=""
+                exact-active-class=""
                 :to="link.href"
               >
                 <span>{{ link.label }}</span>
@@ -214,13 +193,17 @@ const contactLinks = computed(() => [
             </nav>
           </div>
 
-          <div class="footer-bottom-card__row footer-bottom-card__row--bottom">
-            <p class="footer-bottom-card__copy">
-              &copy; 2026 Ventures Mart. Thoughtful finds for school, play, and gifting.
-            </p>
-
+          <div class="footer-bottom-card__payments-band">
+            <span class="footer-bottom-card__accept-label">We accept</span>
+            <div class="footer-bottom-card__payments" aria-label="Accepted payment methods">
+              <span v-for="pill in footerPaymentPills" :key="pill">{{ pill }}</span>
+            </div>
+            <RouterLink class="footer-bottom-card__learn" to="/payments">
+              <span>Learn more</span>
+              <ArrowUpRight :size="14" aria-hidden="true" />
+            </RouterLink>
             <p class="footer-bottom-card__made">
-              <span>Made with</span>
+              <span>Made with care in India</span>
               <span class="footer-bottom-card__flag" aria-hidden="true">
                 <span class="footer-bottom-card__flag-wheel"></span>
               </span>

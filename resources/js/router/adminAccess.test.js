@@ -13,6 +13,7 @@ describe('admin storefront access', () => {
 
   it('keeps admin and authentication routes available to admins', () => {
     expect(shouldRedirectAdminToPanel({ name: 'admin-dashboard', path: '/admin' }, true)).toBe(false);
+    expect(shouldRedirectAdminToPanel({ name: 'admin-errors', path: '/admin/error' }, true)).toBe(false);
     expect(shouldRedirectAdminToPanel({ name: 'login', path: '/login' }, true)).toBe(false);
   });
 

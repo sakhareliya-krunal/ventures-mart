@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminTabs from '@/components/admin/AdminTabs.vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
@@ -24,6 +26,13 @@ const STATIC_SEO_PAGES = [
     label: 'Shopping confidence',
     url: '/shopping-confidence-shipping-replacement',
   },
+];
+
+const activeSection = ref('seo');
+const sections = [
+  { value: 'seo', label: 'SEO' },
+  { value: 'redirects', label: 'Redirects' },
+  { value: 'security', label: 'Security' },
 ];
 
 const passwordError = ref('');
@@ -289,7 +298,9 @@ onMounted(loadSeo);
 </script>
 
 <template>
-  <div class="admin-panel">
+  <div>
+    <AdminTabs v-model="activeSection" :items="sections" label="Settings sections" />
+    <AdminPanel v-show="activeSection === 'seo'">
     <h2>SEO settings</h2>
     <p class="admin-muted">Manage site metadata, page SEO, analytics, robots, sitemap, and redirects.</p>
     <p v-if="seoError" class="form-error">{{ seoError }}</p>
@@ -333,9 +344,9 @@ onMounted(loadSeo);
         Save SEO settings
       </AppButton>
     </form>
-  </div>
+    </AdminPanel>
 
-  <div class="admin-panel">
+  <AdminPanel v-show="activeSection === 'redirects'">
     <h2>Redirects</h2>
     <p v-if="redirectError" class="form-error">{{ redirectError }}</p>
     <form novalidate class="admin-form" @submit.prevent="saveRedirect">
@@ -390,9 +401,9 @@ onMounted(loadSeo);
         </tbody>
       </table>
     </div>
-  </div>
+  </AdminPanel>
 
-  <div class="admin-panel">
+  <AdminPanel v-show="activeSection === 'security'">
     <h2>Password</h2>
     <p class="admin-muted">Update your admin password.</p>
     <p v-if="passwordError" class="form-error">{{ passwordError }}</p>
@@ -423,6 +434,7 @@ onMounted(loadSeo);
         Update password
       </AppButton>
     </form>
+  </AdminPanel>
   </div>
 </template>
 

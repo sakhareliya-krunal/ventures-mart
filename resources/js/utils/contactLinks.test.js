@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailHref, phoneHref } from './contactLinks';
+import { emailHref, normalizeEmail, phoneHref } from './contactLinks';
 
 describe('contact link helpers', () => {
   it('builds an email link from a trimmed address', () => {
@@ -13,5 +13,11 @@ describe('contact link helpers', () => {
   it('does not build links for empty contact values', () => {
     expect(emailHref('  ')).toBe('');
     expect(phoneHref(null)).toBe('');
+  });
+
+  it('strips corrupted text appended to an email address', () => {
+    const corrupted = "user@example.comLOCAL_ADMIN_PASSWORD='secret'";
+    expect(normalizeEmail(corrupted)).toBe('user@example.com');
+    expect(emailHref(corrupted)).toBe('mailto:user@example.com');
   });
 });

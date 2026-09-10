@@ -1,24 +1,44 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminDrawer from '@/components/admin/AdminDrawer.vue';
+import AdminErrorsDetail from '@/components/admin/AdminErrorsDetail.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue';
+import { useAdminList } from '@/composables/useAdminList';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
-import { friendlyApiError, isNetworkOrTimeoutError } from '@/utils/apiError';
-import { emailHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
-const loading = ref(true);
-const loadError = ref('');
-const errors = ref([]);
+const {
+  rows: errors,
+  loading,
+  refreshing,
+  error: fetchError,
+  search,
+  filters,
+  meta,
+  filtered,
+  load,
+  go,
+  reset,
+} = useAdminList('/admin/errors', {
+  filterDefaults: { status: 'unresolved', category: '', level: '' },
+  searchParam: 'q',
+  searchQueryKey: 'q',
+  fixedParams: { sort: 'last_seen_at' },
+  skipErrorToast: true,
+});
+
+const openCount = computed(() => Number(meta.value.open_count ?? 0));
+const isWideViewport = ref(true);
+let wideQuery;
+
 const selected = ref(null);
-const openCount = ref(0);
-const search = ref('');
-const status = ref('unresolved');
-const category = ref('');
-const level = ref('');
 const confirmOpen = ref(false);
 const confirmClearOpen = ref(false);
 const pendingDeleteUuid = ref(null);
@@ -26,7 +46,13 @@ const deleting = ref(false);
 const clearing = ref(false);
 const updating = ref(false);
 
-let networkRetryTimer = null;
+const showDesktopDetail = computed(() => Boolean(selected.value && isWideViewport.value));
+const showMobileDrawer = computed(() => Boolean(selected.value && !isWideViewport.value));
+
+const layoutClass = computed(() => ({
+  'admin-errors-layout': true,
+  'admin-errors-layout--split': showDesktopDetail.value,
+}));
 
 const statusOptions = [
   { value: 'unresolved', label: 'Unresolved' },
@@ -54,44 +80,30 @@ const levelOptions = [
   { value: 'warning', label: 'Warning' },
 ];
 
-async function load({ silent = false } = {}) {
-  if (!silent) loading.value = true;
-  loadError.value = '';
-  let holdLoader = false;
-  try {
-    const { data } = await api.get('/admin/errors', {
-      params: {
-        status: status.value,
-        category: category.value || undefined,
-        level: level.value || undefined,
-        q: search.value || undefined,
-        sort: 'last_seen_at',
-      },
-      skipErrorToast: true,
-    });
-    errors.value = unwrapData(data) || data.data || [];
-    openCount.value = data.meta?.open_count ?? 0;
-  } catch (err) {
-    if (isNetworkOrTimeoutError(err)) {
-      holdLoader = !silent;
-      if (networkRetryTimer) clearTimeout(networkRetryTimer);
-      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
-      return;
-    }
-    errors.value = [];
-    openCount.value = 0;
-    loadError.value = friendlyApiError(
-      err,
-      'Unable to load error logs. Please try again.',
-    );
-  } finally {
-    if (!silent && !holdLoader) loading.value = false;
+function syncViewportWidth(event) {
+  isWideViewport.value = event.matches;
+  if (isWideViewport.value && selected.value) {
+    // keep selection when switching to desktop
   }
 }
+
+onMounted(() => {
+  wideQuery = window.matchMedia('(min-width: 961px)');
+  isWideViewport.value = wideQuery.matches;
+  wideQuery.addEventListener('change', syncViewportWidth);
+});
+
+onBeforeUnmount(() => {
+  wideQuery?.removeEventListener('change', syncViewportWidth);
+});
 
 async function openError(row) {
   const { data } = await api.get(`/admin/errors/${row.uuid}`);
   selected.value = unwrapData(data) || data.data;
+}
+
+function closeDetail() {
+  selected.value = null;
 }
 
 async function setStatus(nextStatus) {
@@ -102,7 +114,7 @@ async function setStatus(nextStatus) {
       status: nextStatus,
     });
     selected.value = unwrapData(data) || data.data;
-    await load({ silent: true });
+    await load();
   } finally {
     updating.value = false;
   }
@@ -124,7 +136,7 @@ async function remove() {
     }
     pendingDeleteUuid.value = null;
     confirmOpen.value = false;
-    await load({ silent: true });
+    await load();
   } finally {
     deleting.value = false;
   }
@@ -139,7 +151,7 @@ async function clearResolved() {
       selected.value = null;
     }
     confirmClearOpen.value = false;
-    await load({ silent: true });
+    await load();
   } finally {
     clearing.value = false;
   }
@@ -155,174 +167,147 @@ function formatWhen(value) {
   return value ? new Date(value).toLocaleString() : '—';
 }
 
-onMounted(load);
-watch([search, status, category, level], () => load({ silent: true }));
-
-onBeforeUnmount(() => {
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
-});
+const statusTone = {
+  new: 'warning',
+  investigating: 'brand',
+  resolved: 'success',
+  ignored: 'neutral',
+};
 </script>
 
 <template>
-  <div class="admin-detail-grid">
-    <div class="admin-panel">
-      <div class="admin-toolbar">
-        <div>
-          <h2>Error logs</h2>
-          <p class="admin-muted">{{ openCount }} unresolved · grouped by fingerprint</p>
-        </div>
-        <div class="admin-toolbar__filters">
-          <AdminSearchField
-            v-model="search"
-            placeholder="Search message, route, id…"
-            aria-label="Search errors"
-          />
-          <AppSelect v-model="status" :options="statusOptions" aria-label="Filter by status" />
+  <div :class="layoutClass">
+    <AdminPanel class="admin-errors-list">
+      <p class="admin-muted admin-errors-summary">{{ openCount }} unresolved · grouped by fingerprint</p>
+
+      <div class="admin-errors-toolbar">
+        <AdminSearchField
+          v-model="search"
+          class="admin-errors-toolbar__search"
+          placeholder="Search message, route, id…"
+          aria-label="Search errors"
+        />
+        <div class="admin-errors-toolbar__filters">
+          <AppSelect v-model="filters.status" :options="statusOptions" aria-label="Filter by status" />
           <AppSelect
-            v-model="category"
+            v-model="filters.category"
             :options="categoryOptions"
             placeholder="All categories"
             aria-label="Filter by category"
           />
           <AppSelect
-            v-model="level"
+            v-model="filters.level"
             :options="levelOptions"
             placeholder="All levels"
             aria-label="Filter by level"
           />
+        </div>
+        <div class="admin-errors-toolbar__actions">
+          <AppButton v-if="filtered" type="button" variant="ghost" size="sm" @click="reset">
+            Clear filters
+          </AppButton>
           <AppButton type="button" variant="ghost" size="sm" @click="confirmClearOpen = true">
             Clear resolved
           </AppButton>
+          <span v-if="meta.total != null" class="admin-errors-toolbar__count">
+            {{ meta.total.toLocaleString('en-IN') }} results
+          </span>
         </div>
       </div>
 
-      <LoadingSpinner v-if="loading" page label="Loading errors" />
-      <p v-else-if="loadError" class="form-error">{{ loadError }}</p>
-      <div v-else class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Last seen</th>
-              <th>Status</th>
-              <th>Message</th>
-              <th>Count</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in errors" :key="row.uuid">
-              <td data-label="Last seen">{{ formatWhen(row.last_seen_at || row.created_at) }}</td>
-              <td data-label="Status">
-                <span class="admin-badge" :class="{ 'admin-badge--warn': row.status === 'new' }">
-                  {{ row.status }}
-                </span>
-                <div class="admin-muted">{{ row.category }} · {{ row.level }}</div>
-              </td>
-              <td data-label="Message">
-                <button type="button" class="linkish" @click="openError(row)">
-                  <strong>{{ row.message }}</strong>
-                </button>
-                <div class="admin-muted">
-                  {{ row.exception_class || 'Log' }}
-                  <template v-if="row.route || row.url">
-                    · {{ row.route || row.url }}
-                  </template>
-                </div>
-              </td>
-              <td data-label="Count">
-                <span class="admin-badge">×{{ row.occurrence_count || 1 }}</span>
-              </td>
-              <td data-label="Actions">
-                <AppButton type="button" variant="danger" size="sm" @click="requestRemove(row.uuid)">
-                  Delete
-                </AppButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-if="!errors.length" class="admin-empty">No errors match these filters.</p>
-      </div>
-    </div>
-
-    <div class="admin-panel admin-message-pane">
-      <h3>Detail</h3>
-      <template v-if="selected">
-        <p>
-          <span class="admin-badge">{{ selected.status }}</span>
-          <span class="admin-muted">{{ selected.uuid }}</span>
-        </p>
-        <p><strong>{{ selected.message }}</strong></p>
-        <p class="admin-muted">
-          {{ selected.category }} · seen {{ selected.occurrence_count || 1 }}× ·
-          last {{ formatWhen(selected.last_seen_at) }}
-        </p>
-        <p v-if="selected.exception_class" class="admin-muted">{{ selected.exception_class }}</p>
-        <p v-if="selected.file" class="admin-muted">
-          {{ shortPath(selected.file) }}{{ selected.line ? `:${selected.line}` : '' }}
-        </p>
-        <p v-if="selected.url" class="admin-muted">{{ selected.method }} {{ selected.url }}</p>
-        <p v-if="selected.user" class="admin-muted">
-          User {{ selected.user.name }}
-          <template v-if="selected.user.email">
-            (<a :href="emailHref(selected.user.email)">{{ selected.user.email }}</a>)
-          </template>
-        </p>
-        <p v-if="selected.ip || selected.user_agent" class="admin-muted">
-          {{ selected.ip }}
-          <template v-if="selected.user_agent"> · {{ selected.user_agent }}</template>
-        </p>
-
-        <div class="error-actions">
-          <AppButton
-            type="button"
-            size="sm"
-            :disabled="updating || selected.status === 'investigating'"
-            @click="setStatus('investigating')"
-          >
-            Investigating
-          </AppButton>
-          <AppButton
-            type="button"
-            size="sm"
-            :disabled="updating || selected.status === 'resolved'"
-            @click="setStatus('resolved')"
-          >
-            Resolve
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            :disabled="updating || selected.status === 'ignored'"
-            @click="setStatus('ignored')"
-          >
-            Ignore
-          </AppButton>
-          <AppButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            :disabled="updating || selected.status === 'new'"
-            @click="setStatus('new')"
-          >
-            Reopen
-          </AppButton>
-          <AppButton type="button" variant="danger" size="sm" @click="requestRemove(selected.uuid)">
-            Delete
-          </AppButton>
+      <AdminDataList
+        :rows="errors"
+        :loading="loading"
+        :refreshing="refreshing"
+        :error="fetchError"
+        :searching="filtered"
+        @retry="load"
+        @reset="reset"
+      >
+        <div class="admin-table-wrap admin-errors-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Last seen</th>
+                <th>Status</th>
+                <th>Message</th>
+                <th>Count</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in errors" :key="row.uuid">
+                <td data-label="Last seen">{{ formatWhen(row.last_seen_at || row.created_at) }}</td>
+                <td data-label="Status">
+                  <AdminStatusBadge :label="row.status" :tone="statusTone[row.status] || 'neutral'" />
+                  <div class="admin-muted">{{ row.category }} · {{ row.level }}</div>
+                </td>
+                <td data-label="Message">
+                  <button type="button" class="linkish" @click="openError(row)">
+                    <strong>{{ row.message }}</strong>
+                  </button>
+                  <div class="admin-muted">
+                    {{ row.exception_class || 'Log' }}
+                    <template v-if="row.route || row.url">
+                      · {{ row.route || row.url }}
+                    </template>
+                  </div>
+                </td>
+                <td data-label="Count">
+                  <span class="admin-badge">×{{ row.occurrence_count || 1 }}</span>
+                </td>
+                <td data-label="Actions">
+                  <AppButton type="button" variant="danger" size="sm" @click="requestRemove(row.uuid)">
+                    Delete
+                  </AppButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </AdminDataList>
+      <AdminPagination
+        :page="meta.current_page"
+        :last-page="meta.last_page"
+        :total="meta.total"
+        :from="meta.from || 0"
+        :to="meta.to || 0"
+        @page="go"
+      />
+    </AdminPanel>
 
-        <h4>Request</h4>
-        <pre class="error-pre">{{ JSON.stringify(selected.request || {}, null, 2) }}</pre>
+    <AdminPanel v-if="showDesktopDetail" class="admin-message-pane admin-errors-detail-pane">
+      <h3>Error detail</h3>
+      <AdminErrorsDetail
+        v-if="selected"
+        :selected="selected"
+        :updating="updating"
+        :status-tone="statusTone"
+        :format-when="formatWhen"
+        :short-path="shortPath"
+        @set-status="setStatus"
+        @remove="requestRemove"
+      />
+    </AdminPanel>
 
-        <h4>Context</h4>
-        <pre class="error-pre">{{ JSON.stringify(selected.context || {}, null, 2) }}</pre>
-
-        <h4>Stack trace</h4>
-        <pre class="error-pre">{{ selected.trace || 'No stack trace.' }}</pre>
-      </template>
-      <p v-else class="admin-empty">Select an error to inspect it.</p>
-    </div>
+    <AdminDrawer
+      :open="showMobileDrawer"
+      title="Error detail"
+      :busy="updating"
+      @update:open="(open) => { if (!open) closeDetail(); }"
+      @close="closeDetail"
+    >
+      <AdminErrorsDetail
+        v-if="selected"
+        :selected="selected"
+        :updating="updating"
+        :status-tone="statusTone"
+        :format-when="formatWhen"
+        :short-path="shortPath"
+        @set-status="setStatus"
+        @remove="requestRemove"
+      />
+    </AdminDrawer>
 
     <ConfirmDialog
       v-model:open="confirmOpen"
@@ -351,6 +336,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.admin-errors-summary {
+  margin: 0 0 12px;
+}
+
 .linkish {
   background: none;
   border: 0;
@@ -359,25 +348,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   color: inherit;
   font: inherit;
-}
-
-.error-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.75rem 0 1rem;
-}
-
-.error-pre {
-  margin: 0.5rem 0 1rem;
-  padding: 0.75rem;
-  max-height: 14rem;
-  overflow: auto;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: color-mix(in srgb, var(--admin-border, #d4d4d8) 35%, transparent);
-  border-radius: 0.5rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 </style>

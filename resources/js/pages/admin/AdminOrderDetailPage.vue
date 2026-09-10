@@ -6,9 +6,12 @@ import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import FormField from '@/components/ui/FormField.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue';
 import api from '@/services/api';
 import {
+  badgeClassToTone,
   orderStatusBadgeClass,
   orderStatusLabel,
   paymentStatusBadgeClass,
@@ -408,9 +411,9 @@ async function resendConfirmationEmail() {
       </AppButton>
     </div>
 
-    <LoadingSpinner v-if="loading" page label="Loading order" />
-    <div v-else-if="!order" class="admin-panel">{{ error || 'Order not found.' }}</div>
-    <div v-else class="admin-panel admin-order-detail">
+    <AdminLoading v-if="loading" page label="Loading order" />
+    <AdminPanel v-else-if="!order">{{ error || 'Order not found.' }}</AdminPanel>
+    <AdminPanel v-else class="admin-order-detail">
       <header class="admin-order-detail__header">
         <div>
           <h2>Order {{ order.number }}</h2>
@@ -422,15 +425,19 @@ async function resendConfirmationEmail() {
           </p>
         </div>
         <div class="admin-order-detail__badges">
-          <span class="admin-badge" :class="paymentStatusBadgeClass(order.payment_status)">
-            {{ paymentStatusLabel(order.payment_status) }}
-          </span>
-          <span class="admin-badge" :class="orderStatusBadgeClass(order.status)">
-            {{ orderStatusLabel(order.status) }}
-          </span>
-          <span v-if="order.inventory_status" class="admin-badge admin-badge--info">
-            Inventory {{ String(order.inventory_status).replaceAll('_', ' ') }}
-          </span>
+          <AdminStatusBadge
+            :label="paymentStatusLabel(order.payment_status)"
+            :tone="badgeClassToTone(paymentStatusBadgeClass(order.payment_status))"
+          />
+          <AdminStatusBadge
+            :label="orderStatusLabel(order.status)"
+            :tone="badgeClassToTone(orderStatusBadgeClass(order.status))"
+          />
+          <AdminStatusBadge
+            v-if="order.inventory_status"
+            :label="`Inventory ${String(order.inventory_status).replaceAll('_', ' ')}`"
+            tone="brand"
+          />
           <span v-if="order.paid_at" class="admin-muted">
             Paid {{ new Date(order.paid_at).toLocaleString() }}
           </span>
@@ -914,7 +921,7 @@ async function resendConfirmationEmail() {
           </div>
         </dl>
       </section>
-    </div>
+    </AdminPanel>
 
     <InventoryReturnDialog
       :open="returnDialogOpen"

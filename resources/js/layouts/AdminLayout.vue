@@ -13,6 +13,7 @@ import {
   MapPin,
   Images,
   User,
+  UserPlus,
   Settings,
   LogOut,
   ChevronUp,
@@ -20,6 +21,10 @@ import {
   X,
   RefreshCw,
 } from '@lucide/vue';
+import '@/styles/admin/index.css';
+import AdminPageHeader from '@/components/admin/AdminPageHeader.vue';
+import { useUiStore } from '@/stores/ui';
+import { useOverlayFocus } from '@/composables/useOverlayFocus';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { useScrollLock } from '@/composables/useScrollLock';
 import { brandAssets } from '@/constants/assets';
@@ -27,6 +32,10 @@ import { useAdminNavigationCountsStore } from '@/stores/adminNavigationCounts';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 
+const ui = useUiStore();
+const sidebarRef = ref(null);
+const contentRef = ref(null);
+let disposed = false;
 const auth = useAuthStore();
 const navigationCounts = useAdminNavigationCountsStore();
 const theme = useThemeStore();
@@ -48,6 +57,7 @@ function syncViewportHeight() {
   viewportResizeFrame = window.requestAnimationFrame(() => {
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
     shellRef.value?.style.setProperty('--admin-viewport-height', `${Math.ceil(viewportHeight)}px`);
+    document.documentElement.style.setProperty('--admin-visual-height', `${Math.ceil(viewportHeight)}px`);
     viewportResizeFrame = null;
   });
 }
@@ -74,6 +84,25 @@ const nav = [
   { to: '/admin/banners', label: 'Banners', icon: Images },
 ];
 
+const navGroups = [
+  { label: 'Overview', items: [nav[0]] },
+  { label: 'Commerce', items: [nav[1], nav[2]] },
+  { label: 'Catalog', items: [nav[3], nav[4], nav[5]] },
+  { label: 'Customers', items: [nav[8], nav[9], nav[7]] },
+  { label: 'Content', items: [nav[6], nav[10]] },
+  { label: 'Administration', items: [
+    { to: '/admin/account/create-admin', label: 'Create admin', icon: UserPlus },
+  ] },
+];
+const pageDescription = computed(() => ({
+  '/admin': 'Your store at a glance. Review performance and take care of what needs attention.',
+  '/admin/orders': 'Track purchases, manage fulfilment, and help your customers.',
+  '/admin/products': 'Manage the products your customers discover in the storefront.',
+  '/admin/inventory': 'Keep stock levels accurate and review inventory alerts.',
+  '/admin/contacts': 'Read and respond to customer enquiries.',
+  '/admin/settings': 'Manage storefront SEO, redirects, and account security.',
+  '/admin/error': 'Review grouped application errors and update their status.',
+}[route.path] || 'Manage your store from one connected workspace.'));
 const pageTitle = computed(() => route.meta.title || 'Admin');
 
 const accountMenuActive = computed(
@@ -126,6 +155,8 @@ function onVisibilityChange() {
 }
 
 useScrollLock('admin-nav', () => navOpen.value);
+useOverlayFocus(() => navOpen.value, sidebarRef, closeNav);
+watch(() => route.path, () => { if (contentRef.value) contentRef.value.scrollTop = 0; });
 
 function requestLogout() {
   closeAccountMenu();
@@ -175,12 +206,15 @@ onMounted(async () => {
   if (route.path === '/admin/inventory') {
     await navigationCounts.markInventoryRead();
   }
+  if (disposed) return;
   window.addEventListener('focus', refreshNavigationCounts);
   document.addEventListener('visibilitychange', onVisibilityChange);
   countsPoll = window.setInterval(refreshNavigationCounts, 60000);
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
+  document.documentElement.style.removeProperty('--admin-visual-height');
   window.removeEventListener('resize', syncViewportHeight);
   window.removeEventListener('orientationchange', syncViewportHeight);
   window.visualViewport?.removeEventListener('resize', syncViewportHeight);
@@ -197,6 +231,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="shellRef" class="admin-shell" :class="{ 'admin-shell--nav-open': navOpen }">
+    <a href="#admin-content" class="admin-skip-link">Skip to content</a>
     <button
       v-if="navOpen"
       class="admin-sidebar__backdrop"
@@ -205,7 +240,7 @@ onBeforeUnmount(() => {
       @click="closeNav"
     />
 
-    <aside class="admin-sidebar" :class="{ 'is-open': navOpen }" id="admin-sidebar">
+    <aside ref="sidebarRef" tabindex="-1" class="admin-sidebar" :class="{ 'is-open': navOpen }" id="admin-sidebar">
       <div class="admin-sidebar__brand">
         <div class="admin-sidebar__brand-row">
           <RouterLink
@@ -229,8 +264,10 @@ onBeforeUnmount(() => {
       </div>
 
       <nav class="admin-sidebar__nav" aria-label="Admin">
+        <div v-for="group in navGroups" :key="group.label" class="admin-nav-group">
+          <p class="admin-nav-group__label">{{ group.label }}</p>
         <RouterLink
-          v-for="item in nav"
+          v-for="item in group.items"
           :key="item.to"
           :to="item.to"
           class="admin-nav-link"
@@ -254,6 +291,7 @@ onBeforeUnmount(() => {
             {{ navigationCounts.contactUnread > 99 ? '99+' : navigationCounts.contactUnread }}
           </span>
         </RouterLink>
+        </div>
       </nav>
 
       <div class="admin-sidebar__account" :class="{ 'is-open': accountMenuOpen }">
@@ -266,7 +304,7 @@ onBeforeUnmount(() => {
           <RouterLink
             to="/admin/account"
             class="admin-nav-link"
-            :class="{ 'is-active': route.path === '/admin/account' || route.path.startsWith('/admin/account/') }"
+            :class="{ 'is-active': route.path === '/admin/account' }"
             role="menuitem"
             @click="closeNav"
           >
@@ -337,14 +375,16 @@ onBeforeUnmount(() => {
           </button>
           <div class="admin-topbar__title">
             <p class="admin-topbar__eyebrow">Administration</p>
-            <h1>{{ pageTitle }}</h1>
+            <span class="admin-topbar__location">{{ pageTitle }}</span>
           </div>
         </div>
         <div class="admin-topbar__actions">
           <span class="admin-topbar__user">{{ auth.user?.name }}</span>
         </div>
+        <div v-if="ui.navigating" class="admin-topbar-progress" role="progressbar" aria-label="Loading page" />
       </header>
-      <main class="admin-content">
+      <main ref="contentRef" id="admin-content" tabindex="-1" class="admin-content" :inert="navOpen || undefined">
+        <AdminPageHeader :title="pageTitle" :description="pageDescription" />
         <p v-if="welcomeMessage" class="form-success" role="status">
           {{ welcomeMessage }}
         </p>

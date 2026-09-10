@@ -1,9 +1,11 @@
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AdminFormGuard from '@/components/admin/AdminFormGuard.vue';
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import AdminPostForm from '@/components/admin/AdminPostForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import {
@@ -13,7 +15,6 @@ import {
   fillPostForm,
   validatePostForm,
 } from '@/utils/adminPostForm';
-import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -24,8 +25,6 @@ const loadError = ref('');
 const fieldErrors = ref({});
 const form = reactive(blankPostForm());
 
-let networkRetryTimer = null;
-
 function goBack() {
   router.push({ name: 'admin-posts' });
 }
@@ -33,21 +32,13 @@ function goBack() {
 async function load() {
   loading.value = true;
   loadError.value = '';
-  let holdLoader = false;
   try {
     const { data } = await api.get(`/admin/posts/${route.params.id}`);
-    const full = unwrapData(data);
-    fillPostForm(form, full);
+    fillPostForm(form, unwrapData(data));
   } catch (err) {
-    if (isNetworkOrTimeoutError(err)) {
-      holdLoader = true;
-      if (networkRetryTimer) clearTimeout(networkRetryTimer);
-      networkRetryTimer = setTimeout(load, 1500);
-      return;
-    }
     loadError.value = apiErrorMessage(err, 'Unable to load post.');
   } finally {
-    if (!holdLoader) loading.value = false;
+    loading.value = false;
   }
 }
 
@@ -80,37 +71,36 @@ async function save() {
 }
 
 onMounted(load);
-
-onBeforeUnmount(() => {
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
-});
 </script>
 
 <template>
-  <div>
-    <div class="admin-toolbar">
-      <AppButton type="button" variant="ghost" @click="goBack">← Back to posts</AppButton>
-    </div>
-
-    <LoadingSpinner v-if="loading" page label="Loading post" />
-    <div v-else-if="loadError" class="admin-panel">
-      <p class="form-error">{{ loadError }}</p>
-      <AppButton type="button" variant="ghost" @click="goBack">Back to posts</AppButton>
-    </div>
-    <template v-else>
-      <div class="admin-panel">
-        <h2>Edit post</h2>
-        <p class="admin-muted">Update this blog post, then save to return to the list.</p>
+  <AdminFormGuard>
+    <div>
+      <div class="admin-toolbar">
+        <AppButton type="button" variant="ghost" @click="goBack">← Back to posts</AppButton>
       </div>
-      <AdminPostForm
-        :form="form"
-        :field-errors="fieldErrors"
-        :error="error"
-        :saving="saving"
-        submit-label="Save changes"
-        @submit="save"
-        @cancel="goBack"
-      />
-    </template>
-  </div>
+
+      <AdminLoading v-if="loading" page label="Loading post" />
+      <AdminPanel v-else-if="loadError">
+        <p class="form-error">{{ loadError }}</p>
+        <AppButton type="button" variant="secondary" @click="load">Try again</AppButton>
+        <AppButton type="button" variant="ghost" @click="goBack">Back to posts</AppButton>
+      </AdminPanel>
+      <template v-else>
+        <AdminPanel>
+          <h2>Edit post</h2>
+          <p class="admin-muted">Update this blog post, then save to return to the list.</p>
+        </AdminPanel>
+        <AdminPostForm
+          :form="form"
+          :field-errors="fieldErrors"
+          :error="error"
+          :saving="saving"
+          submit-label="Save changes"
+          @submit="save"
+          @cancel="goBack"
+        />
+      </template>
+    </div>
+  </AdminFormGuard>
 </template>

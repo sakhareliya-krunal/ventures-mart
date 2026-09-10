@@ -155,6 +155,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config || {};
+    if (error.code === 'ERR_CANCELED' || config.signal?.aborted) {
+      return Promise.reject(error);
+    }
     const status = error.response?.status;
 
     if (status === 419 && !config.__csrfRetried) {

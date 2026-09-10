@@ -60,3 +60,14 @@ export function paymentStatusBadgeClass(status) {
   const key = String(status).toLowerCase();
   return PAYMENT_STATUS_CLASSES[key] || 'admin-badge--warn';
 }
+
+const BADGE_CLASS_TONES = {
+  'admin-badge--ok': 'success',
+  'admin-badge--danger': 'danger',
+  'admin-badge--warn': 'warning',
+  'admin-badge--info': 'brand',
+};
+
+export function badgeClassToTone(badgeClass) {
+  return BADGE_CLASS_TONES[badgeClass] || 'neutral';
+}

@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    private const WIDGET_LIST_LIMIT = 4;
+
     public function __construct(private readonly DashboardRevenueSeries $revenueSeries)
     {
     }
@@ -44,24 +46,24 @@ class DashboardController extends Controller
         $recentOrders = Order::query()
             ->with(['items', 'user'])
             ->latest()
-            ->limit(8)
+            ->limit(self::WIDGET_LIST_LIMIT)
             ->get();
 
         $lowStockProducts = Product::query()
             ->whereRaw('stock <= COALESCE(low_stock_threshold, ?)', [config('inventory.default_low_stock_threshold')])
             ->orderBy('stock')
             ->orderBy('name')
-            ->limit(6)
+            ->limit(self::WIDGET_LIST_LIMIT)
             ->get(['id', 'name', 'sku', 'stock', 'image']);
 
         $recentMessages = ContactMessage::query()
             ->latest()
-            ->limit(5)
+            ->limit(self::WIDGET_LIST_LIMIT)
             ->get(['id', 'name', 'email', 'message', 'created_at']);
 
         $recentPosts = Post::query()
             ->latest()
-            ->limit(4)
+            ->limit(self::WIDGET_LIST_LIMIT)
             ->get(['id', 'title', 'slug', 'published_at', 'cover_image']);
 
         $nonCancelled = fn ($query) => $query->where('status', '!=', 'Cancelled');

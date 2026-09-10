@@ -1,4 +1,7 @@
 <script setup>
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import { useAdminList } from '@/composables/useAdminList';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -12,18 +15,14 @@ import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
-const loading = ref(true);
+const { rows: posts, loading, refreshing, error: fetchError, search, filters, meta, filtered, load, go, reset } = useAdminList('/admin/posts', {});
 const listError = ref('');
 const successMessage = ref('');
-const posts = ref([]);
-const search = ref('');
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 const deleting = ref(false);
 
-let searchTimer = null;
 let successTimer = null;
-let networkRetryTimer = null;
 
 function flashSuccess(message) {
   successMessage.value = message;
@@ -47,28 +46,6 @@ function consumeNotice() {
   router.replace({ query });
 }
 
-async function load({ silent = false } = {}) {
-  if (!silent) loading.value = true;
-  listError.value = '';
-  let holdLoader = false;
-  try {
-    const { data } = await api.get('/admin/posts', {
-      params: { search: search.value || undefined },
-    });
-    posts.value = unwrapData(data) || [];
-  } catch (err) {
-    if (isNetworkOrTimeoutError(err)) {
-      holdLoader = !silent;
-      if (networkRetryTimer) clearTimeout(networkRetryTimer);
-      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
-      return;
-    }
-    posts.value = [];
-    listError.value = apiErrorMessage(err, 'Unable to load posts.');
-  } finally {
-    if (!silent && !holdLoader) loading.value = false;
-  }
-}
 
 function openCreate() {
   router.push({ name: 'admin-post-create' });
@@ -103,18 +80,11 @@ async function remove() {
 
 onMounted(() => {
   consumeNotice();
-  load();
 });
 
-watch(search, () => {
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(load, 300);
-});
 
 onBeforeUnmount(() => {
-  if (searchTimer) clearTimeout(searchTimer);
   if (successTimer) clearTimeout(successTimer);
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
 });
 </script>
 
@@ -134,8 +104,7 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
       <p v-if="listError" class="form-error">{{ listError }}</p>
-      <LoadingSpinner v-if="loading" page label="Loading posts" />
-      <div v-else class="admin-table-wrap">
+      <AdminDataList :rows="posts" :loading="loading" :refreshing="refreshing" :error="fetchError" :searching="filtered" @retry="load" @reset="reset"><div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
@@ -171,7 +140,8 @@ onBeforeUnmount(() => {
           </tbody>
         </table>
         <p v-if="!posts.length" class="admin-empty">No posts found.</p>
-      </div>
+      </div></AdminDataList>
+      <AdminPagination :page="meta.current_page" :last-page="meta.last_page" :total="meta.total" :from="meta.from || 0" :to="meta.to || 0" @page="go" />
     </div>
 
     <ConfirmDialog

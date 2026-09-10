@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -35,7 +37,7 @@ class AdminCustomerDeleteTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $customer->id]);
     }
 
-    public function test_admin_cannot_delete_admin_user(): void
+    public function test_admin_can_delete_other_admin(): void
     {
         $admin = User::factory()->admin()->create();
         $otherAdmin = User::factory()->admin()->create([
@@ -45,10 +47,29 @@ class AdminCustomerDeleteTest extends TestCase
         Sanctum::actingAs($admin);
 
         $this->deleteJson("/api/admin/users/{$otherAdmin->id}")
-            ->assertStatus(422)
-            ->assertJsonPath('message', 'Admin accounts cannot be deleted from customers.');
+            ->assertOk()
+            ->assertJsonPath('ok', true);
 
-        $this->assertDatabaseHas('users', ['id' => $otherAdmin->id]);
+        $this->assertDatabaseMissing('users', ['id' => $otherAdmin->id]);
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_destroy_blocks_deleting_sole_administrator(): void
+    {
+        $actor = User::factory()->create(['is_admin' => false]);
+        $soleAdmin = User::factory()->admin()->create(['email' => 'sole-admin@example.com']);
+
+        $request = Request::create("/api/admin/users/{$soleAdmin->id}", 'DELETE');
+        $request->setUserResolver(fn () => $actor);
+
+        $response = app(UserController::class)->destroy($request, $soleAdmin);
+
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertSame(
+            'At least one administrator must remain.',
+            $response->getData(true)['message']
+        );
+        $this->assertDatabaseHas('users', ['id' => $soleAdmin->id]);
     }
 
     public function test_admin_cannot_delete_self(): void

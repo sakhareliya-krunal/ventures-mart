@@ -50,6 +50,8 @@ class OrderController extends Controller
         'expected_delivery_at',
     ];
 
+    private const INDEX_PER_PAGE_DEFAULT = 10;
+
     public function index(Request $request)
     {
         $query = Order::query()->with(['items.inventoryReservation', 'user', 'shiprocketShipment'])->latest();
@@ -69,7 +71,7 @@ class OrderController extends Controller
         }
 
         return AdminOrderResource::collection(
-            $query->paginate(min((int) $request->integer('per_page', 20), 100))
+            $query->paginate(min((int) $request->integer('per_page', self::INDEX_PER_PAGE_DEFAULT), 100))
         );
     }
 

@@ -1,9 +1,10 @@
 <script setup>
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ChevronDown, ChevronUp, ImagePlus, Trash2 } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingSpinner from '@/components/admin/AdminLoading.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 
@@ -221,7 +222,7 @@ onMounted(load);
 
 <template>
   <div>
-    <div class="admin-panel">
+    <AdminPanel class="admin-panel">
       <div class="admin-toolbar">
         <div>
           <h2>Banners</h2>
@@ -233,7 +234,7 @@ onMounted(load);
       <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
       <p v-if="error" class="form-error">{{ error }}</p>
 
-      <div v-if="showForm" ref="formPanelRef" class="admin-panel admin-banner-form-panel">
+      <AdminPanel v-if="showForm" ref="formPanelRef" class="admin-panel admin-banner-form-panel">
       <h3>{{ editingId ? 'Edit banner' : 'New banner' }}</h3>
       <form novalidate class="admin-form" @submit.prevent="save">
         <div class="admin-form__grid">
@@ -333,7 +334,7 @@ onMounted(load);
           </AppButton>
         </div>
       </form>
-    </div>
+    </AdminPanel>
 
       <LoadingSpinner v-if="loading" page label="Loading banners" />
 
@@ -392,7 +393,7 @@ onMounted(load);
         </article>
         <p v-if="!orderedBanners.length" class="admin-empty">No banners found.</p>
       </div>
-    </div>
+    </AdminPanel>
 
 
     <ConfirmDialog

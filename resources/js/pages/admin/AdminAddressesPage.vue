@@ -1,31 +1,22 @@
 <script setup>
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import { useAdminList } from '@/composables/useAdminList';
 import { onMounted, ref, watch } from 'vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingSpinner from '@/components/admin/AdminLoading.vue';
 import api from '@/services/api';
 import { emailHref, phoneHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
-const loading = ref(true);
-const addresses = ref([]);
-const search = ref('');
+const { rows: addresses, loading, refreshing, error: fetchError, search, filters, meta, filtered, load, go, reset } = useAdminList('/admin/addresses', {});
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 const deleting = ref(false);
 
-async function load({ silent = false } = {}) {
-  if (!silent) loading.value = true;
-  try {
-    const { data } = await api.get('/admin/addresses', {
-      params: { search: search.value || undefined },
-    });
-    addresses.value = unwrapData(data) || [];
-  } finally {
-    if (!silent) loading.value = false;
-  }
-}
 
 function requestRemove(id) {
   pendingDeleteId.value = id;
@@ -45,12 +36,10 @@ async function remove() {
   }
 }
 
-onMounted(load);
-watch(search, load);
 </script>
 
 <template>
-  <div class="admin-panel">
+  <AdminPanel class="admin-panel">
     <div class="admin-toolbar">
       <h2>Saved addresses</h2>
       <AdminSearchField
@@ -59,8 +48,7 @@ watch(search, load);
         aria-label="Search addresses"
       />
     </div>
-    <LoadingSpinner v-if="loading" page label="Loading addresses" />
-    <div v-else class="admin-table-wrap">
+    <AdminDataList :rows="addresses" :loading="loading" :refreshing="refreshing" :error="fetchError" :searching="filtered" @retry="load" @reset="reset"><div class="admin-table-wrap">
       <table class="admin-table">
         <thead>
           <tr>
@@ -100,7 +88,8 @@ watch(search, load);
         </tbody>
       </table>
       <p v-if="!addresses.length" class="admin-empty">No addresses saved.</p>
-    </div>
+    </div></AdminDataList>
+      <AdminPagination :page="meta.current_page" :last-page="meta.last_page" :total="meta.total" :from="meta.from || 0" :to="meta.to || 0" @page="go" />
 
     <ConfirmDialog
       v-model:open="confirmOpen"
@@ -113,5 +102,5 @@ watch(search, load);
       danger
       @confirm="remove"
     />
-  </div>
+  </AdminPanel>
 </template>

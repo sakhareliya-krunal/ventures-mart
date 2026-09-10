@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AdminFormGuard from '@/components/admin/AdminFormGuard.vue';
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import AdminProductForm from '@/components/admin/AdminProductForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import api from '@/services/api';
 import { unwrapData } from '@/utils/format';
 import {
@@ -14,7 +16,6 @@ import {
   fillProductForm,
   validateProductForm,
 } from '@/utils/adminProductForm';
-import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
@@ -26,8 +27,6 @@ const fieldErrors = ref({});
 const categories = ref([]);
 const form = reactive(blankProductForm());
 
-let networkRetryTimer = null;
-
 const categoryOptions = computed(() => categoryOptionsFromList(categories.value));
 
 function goBack() {
@@ -37,7 +36,6 @@ function goBack() {
 async function load() {
   loading.value = true;
   loadError.value = '';
-  let holdLoader = false;
   try {
     const [{ data: productData }, { data: categoryData }] = await Promise.all([
       api.get(`/admin/products/${route.params.id}`),
@@ -46,15 +44,9 @@ async function load() {
     categories.value = unwrapData(categoryData) || [];
     fillProductForm(form, unwrapData(productData) || {});
   } catch (err) {
-    if (isNetworkOrTimeoutError(err)) {
-      holdLoader = true;
-      if (networkRetryTimer) clearTimeout(networkRetryTimer);
-      networkRetryTimer = setTimeout(load, 1500);
-      return;
-    }
     loadError.value = apiErrorMessage(err, 'Unable to load product.');
   } finally {
-    if (!holdLoader) loading.value = false;
+    loading.value = false;
   }
 }
 
@@ -87,38 +79,37 @@ async function save() {
 }
 
 onMounted(load);
-
-onBeforeUnmount(() => {
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
-});
 </script>
 
 <template>
-  <div>
-    <div class="admin-toolbar">
-      <AppButton type="button" variant="ghost" @click="goBack">← Back to products</AppButton>
-    </div>
-
-    <LoadingSpinner v-if="loading" page label="Loading product" />
-    <div v-else-if="loadError" class="admin-panel">
-      <p class="form-error">{{ loadError }}</p>
-      <AppButton type="button" variant="ghost" @click="goBack">Back to products</AppButton>
-    </div>
-    <template v-else>
-      <div class="admin-panel">
-        <h2>Edit product</h2>
-        <p class="admin-muted">Update catalog details, then save to return to the list.</p>
+  <AdminFormGuard>
+    <div>
+      <div class="admin-toolbar">
+        <AppButton type="button" variant="ghost" @click="goBack">← Back to products</AppButton>
       </div>
-      <AdminProductForm
-        :form="form"
-        :category-options="categoryOptions"
-        :field-errors="fieldErrors"
-        :error="error"
-        :saving="saving"
-        editing
-        @submit="save"
-        @cancel="goBack"
-      />
-    </template>
-  </div>
+
+      <AdminLoading v-if="loading" page label="Loading product" />
+      <AdminPanel v-else-if="loadError">
+        <p class="form-error">{{ loadError }}</p>
+        <AppButton type="button" variant="secondary" @click="load">Try again</AppButton>
+        <AppButton type="button" variant="ghost" @click="goBack">Back to products</AppButton>
+      </AdminPanel>
+      <template v-else>
+        <AdminPanel>
+          <h2>Edit product</h2>
+          <p class="admin-muted">Update catalog details, then save to return to the list.</p>
+        </AdminPanel>
+        <AdminProductForm
+          :form="form"
+          :category-options="categoryOptions"
+          :field-errors="fieldErrors"
+          :error="error"
+          :saving="saving"
+          editing
+          @submit="save"
+          @cancel="goBack"
+        />
+      </template>
+    </div>
+  </AdminFormGuard>
 </template>

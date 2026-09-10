@@ -1,0 +1,1 @@
+function e(e){let t=String(e??``).trim();if(!t)return``;let n=t.split(/LOCAL_ADMIN|PASSWORD=|\r|\n/)[0].trim(),r=n.match(/^[^\s@]+@[^\s@]+\.[^\s@]+/);return r?r[0]:n}function t(t){let n=e(t);return n?`mailto:${n}`:``}function n(e){let t=String(e??``).trim(),n=t.replace(/\D/g,``);return n?`tel:${t.startsWith(`+`)?`+`:``}${n}`:``}export{e as n,n as r,t};

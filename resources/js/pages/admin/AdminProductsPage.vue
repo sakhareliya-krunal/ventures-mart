@@ -1,4 +1,7 @@
 <script setup>
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import { useAdminList } from '@/composables/useAdminList';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
@@ -12,9 +15,7 @@ import { isNetworkOrTimeoutError } from '@/utils/apiError';
 
 const route = useRoute();
 const router = useRouter();
-const loading = ref(true);
-const products = ref([]);
-const search = ref('');
+const { rows: products, loading, refreshing, error: fetchError, search, filters, meta, filtered, load, go, reset } = useAdminList('/admin/products', {});
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 const deleting = ref(false);
@@ -22,7 +23,6 @@ const listError = ref('');
 const successMessage = ref('');
 
 let successTimer = null;
-let networkRetryTimer = null;
 
 function flashSuccess(message) {
   successMessage.value = message;
@@ -52,28 +52,6 @@ function openEdit(product) {
   router.push({ name: 'admin-product-edit', params: { id: product.id } });
 }
 
-async function load({ silent = false } = {}) {
-  if (!silent) loading.value = true;
-  listError.value = '';
-  let holdLoader = false;
-  try {
-    const { data } = await api.get('/admin/products', {
-      params: { search: search.value || undefined },
-    });
-    products.value = unwrapData(data) || [];
-  } catch (err) {
-    if (isNetworkOrTimeoutError(err)) {
-      holdLoader = !silent;
-      if (networkRetryTimer) clearTimeout(networkRetryTimer);
-      networkRetryTimer = setTimeout(() => load({ silent }), 1500);
-      return;
-    }
-    products.value = [];
-    listError.value = apiErrorMessage(err, 'Unable to load products.');
-  } finally {
-    if (!silent && !holdLoader) loading.value = false;
-  }
-}
 
 function requestRemove(id) {
   listError.value = '';
@@ -101,14 +79,11 @@ async function remove() {
 
 onMounted(() => {
   consumeNotice();
-  load();
 });
 
-watch(search, load);
 
 onBeforeUnmount(() => {
   if (successTimer) clearTimeout(successTimer);
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
 });
 </script>
 
@@ -129,8 +104,7 @@ onBeforeUnmount(() => {
 
       <p v-if="successMessage" class="form-success">{{ successMessage }}</p>
       <p v-if="listError" class="form-error">{{ listError }}</p>
-      <LoadingSpinner v-if="loading" page label="Loading products" />
-      <div v-else class="admin-table-wrap">
+      <AdminDataList :rows="products" :loading="loading" :refreshing="refreshing" :error="fetchError" :searching="filtered" @retry="load" @reset="reset"><div class="admin-table-wrap">
         <table class="admin-table admin-products-table">
           <thead>
             <tr>
@@ -194,7 +168,8 @@ onBeforeUnmount(() => {
           </tbody>
         </table>
         <p v-if="!products.length" class="admin-empty">No products found.</p>
-      </div>
+      </div></AdminDataList>
+      <AdminPagination :page="meta.current_page" :last-page="meta.last_page" :total="meta.total" :from="meta.from || 0" :to="meta.to || 0" @page="go" />
     </div>
 
     <ConfirmDialog

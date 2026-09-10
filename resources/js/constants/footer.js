@@ -1,12 +1,37 @@
 export const footerFeatures = [
-  { icon: 'truck', label: 'Free & Fast Delivery', tone: 'blue' },
-  { icon: 'refresh', label: 'Easy Returns', tone: 'green' },
-  { icon: 'card', label: 'Secure Payments', tone: 'pink' },
-  { icon: 'award', label: 'Quality Assured', tone: 'yellow' },
+  {
+    icon: 'truck',
+    label: 'Free & Fast Delivery',
+    description: 'Across India',
+    tone: 'blue',
+  },
+  {
+    icon: 'refresh',
+    label: 'Easy Returns',
+    description: 'Hassle-free shopping',
+    tone: 'green',
+  },
+  {
+    icon: 'card',
+    label: 'Secure Payments',
+    description: '100% safe & secure',
+    tone: 'pink',
+  },
+  {
+    icon: 'award',
+    label: 'Quality Assured',
+    description: 'Curated with care',
+    tone: 'yellow',
+  },
 ];
 
-export const footerBlurb =
-  'A focused store for creative toys and everyday lunch boxes across India.';
+export const footerTagline = 'Thoughtful toys and lunch boxes for everyday family life.';
+
+export const footerDescription =
+  'A focused store for creative toys and durable lunch boxes across India—clear picks, reliable delivery, and support when you need it.';
+
+/** @deprecated Use footerTagline + footerDescription in the footer brand panel */
+export const footerBlurb = footerDescription;
 
 const whatsappNumber = '919173279323';
 const whatsappMessage =

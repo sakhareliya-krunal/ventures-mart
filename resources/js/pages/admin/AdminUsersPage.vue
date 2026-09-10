@@ -1,4 +1,7 @@
 <script setup>
+import AdminDataList from '@/components/admin/AdminDataList.vue';
+import AdminPagination from '@/components/admin/AdminPagination.vue';
+import { useAdminList } from '@/composables/useAdminList';
 import { onMounted, ref, watch } from 'vue';
 import AdminSearchField from '@/components/admin/AdminSearchField.vue';
 import AppButton from '@/components/ui/AppButton.vue';
@@ -8,35 +11,12 @@ import api from '@/services/api';
 import { emailHref } from '@/utils/contactLinks';
 import { unwrapData } from '@/utils/format';
 
-const loading = ref(true);
-const users = ref([]);
-const search = ref('');
+const { rows: users, loading, refreshing, error: fetchError, search, filters, meta, filtered, load, go, reset } = useAdminList('/admin/users', { fixedParams: { role: 'customer' } });
 const error = ref('');
 const confirmOpen = ref(false);
 const pendingDeleteId = ref(null);
 const deleting = ref(false);
 
-async function load() {
-  loading.value = true;
-  error.value = '';
-  try {
-    const { data } = await api.get('/admin/users', {
-      params: {
-        role: 'customer',
-        search: search.value || undefined,
-      },
-    });
-    users.value = unwrapData(data) || [];
-  } catch (err) {
-    error.value =
-      err.response?.data?.message ||
-      Object.values(err.response?.data?.errors || {})[0]?.[0] ||
-      'Unable to load customers.';
-    users.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
 
 function requestRemove(id) {
   error.value = '';
@@ -62,8 +42,6 @@ async function remove() {
   }
 }
 
-onMounted(load);
-watch(search, load);
 </script>
 
 <template>
@@ -79,8 +57,7 @@ watch(search, load);
       </div>
     </div>
     <p v-if="error" class="form-error">{{ error }}</p>
-    <LoadingSpinner v-if="loading" page label="Loading customers" />
-    <div v-else class="admin-table-wrap">
+    <AdminDataList :rows="users" :loading="loading" :refreshing="refreshing" :error="fetchError" :searching="filtered" @retry="load" @reset="reset"><div class="admin-table-wrap">
       <table class="admin-table">
         <thead>
           <tr>
@@ -106,7 +83,8 @@ watch(search, load);
           </tr>
         </tbody>
       </table>
-    </div>
+    </div></AdminDataList>
+      <AdminPagination :page="meta.current_page" :last-page="meta.last_page" :total="meta.total" :from="meta.from || 0" :to="meta.to || 0" @page="go" />
 
     <ConfirmDialog
       v-model:open="confirmOpen"

@@ -10,7 +10,9 @@ import InventoryMovementHistory from '@/components/admin/InventoryMovementHistor
 import InventoryReturnsPanel from '@/components/admin/InventoryReturnsPanel.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import AdminLoading from '@/components/admin/AdminLoading.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
+import AdminStatCard from '@/components/admin/AdminStatCard.vue';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/adminProductForm';
 
@@ -379,17 +381,18 @@ onBeforeUnmount(() => {
     </nav>
 
     <section v-if="activeTab === 'stock'" class="inventory-kpis" aria-label="Inventory summary">
-      <article v-for="kpi in kpis" :key="kpi.label" class="admin-kpi" :class="{ 'inventory-kpi--warn': kpi.tone === 'warn' }">
-        <span class="admin-kpi__icon"><component :is="kpi.icon" :size="19" /></span>
-        <span class="admin-kpi__body inventory-kpi__body">
-          <span class="inventory-kpi__label">{{ kpi.label }}</span>
-          <strong class="inventory-kpi__value">{{ kpi.value.toLocaleString('en-IN') }}</strong>
-          <small class="inventory-kpi__detail">{{ kpi.detail }}</small>
-        </span>
-      </article>
+      <AdminStatCard
+        v-for="kpi in kpis"
+        :key="kpi.label"
+        :label="kpi.label"
+        :value="kpi.value.toLocaleString('en-IN')"
+        :hint="kpi.detail"
+        :icon="kpi.icon"
+        :tone="kpi.tone === 'warn' ? 'warn' : 'brand'"
+      />
     </section>
 
-    <section v-if="activeTab === 'stock'" class="admin-panel inventory-stock-panel">
+    <AdminPanel v-if="activeTab === 'stock'" class="inventory-stock-panel">
       <div class="admin-toolbar inventory-toolbar">
         <div class="admin-toolbar__filters inventory-toolbar__filters">
           <AdminSearchField
@@ -417,7 +420,7 @@ onBeforeUnmount(() => {
 
       <p v-if="successMessage" class="form-success" role="status">{{ successMessage }}</p>
       <p v-if="listError" class="form-error" role="alert">{{ listError }}</p>
-      <LoadingSpinner v-if="loading" page label="Loading inventory" />
+      <AdminLoading v-if="loading" page label="Loading inventory" />
 
       <template v-else>
         <div class="admin-table-wrap inventory-table-wrap" tabindex="0" aria-label="Inventory records">
@@ -501,7 +504,7 @@ onBeforeUnmount(() => {
           @page="changePage"
         />
       </template>
-    </section>
+    </AdminPanel>
 
     <aside
       v-if="activeTab === 'stock' && selectedProducts.length"

@@ -1,9 +1,12 @@
 <script setup>
+import AdminDrawer from '@/components/admin/AdminDrawer.vue';
+import AdminFormActions from '@/components/admin/AdminFormActions.vue';
+import AdminPanel from '@/components/admin/AdminPanel.vue';
 import { onMounted, reactive, ref } from 'vue';
 import AdminSeoTab from '@/components/admin/AdminSeoTab.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingSpinner from '@/components/admin/AdminLoading.vue';
 import api from '@/services/api';
 import { blankSeoFields, buildSeoPayload, fillSeoFields, validateSeoFields } from '@/utils/adminSeo';
 import { unwrapData } from '@/utils/format';
@@ -128,10 +131,10 @@ onMounted(load);
 
 <template>
   <div>
-    <div class="admin-panel">
+    <AdminPanel class="admin-panel">
       <div class="admin-toolbar">
         <h2>Categories</h2>
-        <AppButton type="button" @click="showForm = true; editingId = null">Add category</AppButton>
+        <AppButton type="button" @click="resetForm(); showForm = true">Add category</AppButton>
       </div>
       <LoadingSpinner v-if="loading" page label="Loading categories" />
       <div v-else class="admin-table-wrap">
@@ -165,12 +168,17 @@ onMounted(load);
           </tbody>
         </table>
       </div>
-    </div>
+    </AdminPanel>
 
-    <div v-if="showForm" class="admin-panel">
-      <h3>{{ editingId ? 'Edit category' : 'New category' }}</h3>
+    <AdminDrawer
+      :open="showForm"
+      :busy="saving"
+      :title="editingId ? 'Edit category' : 'New category'"
+      @update:open="(value) => { if (!value) resetForm(); else showForm = true; }"
+      @close="resetForm"
+    >
       <p v-if="error" class="form-error">{{ error }}</p>
-      <form novalidate class="admin-form" @submit.prevent="save">
+      <form id="admin-category-form" novalidate class="admin-form" @submit.prevent="save">
         <div class="admin-form__grid">
           <label>Name <input v-model="form.name" required /></label>
           <label>Slug <input v-model="form.slug" /></label>
@@ -186,12 +194,14 @@ onMounted(load);
           :fallback-description="form.description"
           :fallback-url="form.slug ? `/category/${form.slug}` : '/category'"
         />
-        <div class="admin-actions">
-          <AppButton type="submit" :loading="saving">Save</AppButton>
-          <AppButton type="button" variant="ghost" @click="resetForm">Cancel</AppButton>
-        </div>
       </form>
-    </div>
+      <template #footer>
+        <AdminFormActions layout="footer" :busy="saving">
+          <AppButton type="button" variant="ghost" @click="resetForm">Cancel</AppButton>
+          <AppButton type="submit" form="admin-category-form" :loading="saving">Save</AppButton>
+        </AdminFormActions>
+      </template>
+    </AdminDrawer>
 
     <ConfirmDialog
       v-model:open="confirmOpen"

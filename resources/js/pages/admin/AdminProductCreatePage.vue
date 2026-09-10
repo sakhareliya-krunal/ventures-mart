@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import AdminFormGuard from '@/components/admin/AdminFormGuard.vue';
 import AdminProductForm from '@/components/admin/AdminProductForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import api from '@/services/api';
@@ -64,6 +65,7 @@ onMounted(loadCategories);
 </script>
 
 <template>
+  <AdminFormGuard>
   <div>
     <div class="admin-toolbar">
       <AppButton type="button" variant="ghost" @click="goBack">← Back to products</AppButton>
@@ -82,4 +84,5 @@ onMounted(loadCategories);
       @cancel="goBack"
     />
   </div>
+  </AdminFormGuard>
 </template>

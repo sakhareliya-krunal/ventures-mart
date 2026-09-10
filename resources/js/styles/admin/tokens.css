@@ -1,0 +1,14 @@
+:where(.admin-shell, .admin-overlay) {
+  --admin-sidebar: var(--color-primary-dark);
+  --admin-sidebar-text: #cbd5ed;
+  --admin-sidebar-active: #fff;
+  --admin-bg: var(--color-background);
+  --admin-panel: var(--color-surface);
+  --admin-ink: var(--color-ink);
+  --admin-muted: #526481;
+  --admin-border: #dfe5ef;
+  --admin-viewport-height: var(--admin-visual-height, 100dvh);
+  --admin-radius: 14px;
+  font-family: var(--font-sans);
+  color: var(--admin-ink);
+}
