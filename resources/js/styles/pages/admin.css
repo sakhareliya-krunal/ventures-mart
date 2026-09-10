@@ -14,7 +14,11 @@
   font-family: var(--font-sans);
   grid-template-columns: 260px minmax(0, 1fr);
   height: var(--admin-viewport-height);
+  left: 0;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  width: 100%;
 }
 
 @supports (height: 100svh) {
@@ -389,6 +393,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 1.35rem;
   padding-bottom: calc(1.35rem + env(safe-area-inset-bottom));
 }

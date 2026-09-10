@@ -36,7 +36,21 @@ const confirmLogoutOpen = ref(false);
 const navOpen = ref(false);
 const accountMenuOpen = ref(false);
 const welcomeMessage = ref('');
+const shellRef = ref(null);
 let countsPoll = null;
+let viewportResizeFrame = null;
+
+function syncViewportHeight() {
+  if (viewportResizeFrame !== null) {
+    window.cancelAnimationFrame(viewportResizeFrame);
+  }
+
+  viewportResizeFrame = window.requestAnimationFrame(() => {
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    shellRef.value?.style.setProperty('--admin-viewport-height', `${Math.ceil(viewportHeight)}px`);
+    viewportResizeFrame = null;
+  });
+}
 
 function consumeWelcomeQuery() {
   if (String(route.query.welcome || '') !== '1') return;
@@ -153,6 +167,10 @@ function onViewportChange(event) {
 const desktopQuery = window.matchMedia('(min-width: 961px)');
 desktopQuery.addEventListener('change', onViewportChange);
 onMounted(async () => {
+  syncViewportHeight();
+  window.addEventListener('resize', syncViewportHeight);
+  window.addEventListener('orientationchange', syncViewportHeight);
+  window.visualViewport?.addEventListener('resize', syncViewportHeight);
   await navigationCounts.refresh();
   if (route.path === '/admin/inventory') {
     await navigationCounts.markInventoryRead();
@@ -163,6 +181,12 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewportHeight);
+  window.removeEventListener('orientationchange', syncViewportHeight);
+  window.visualViewport?.removeEventListener('resize', syncViewportHeight);
+  if (viewportResizeFrame !== null) {
+    window.cancelAnimationFrame(viewportResizeFrame);
+  }
   window.removeEventListener('keydown', onKeydown);
   window.removeEventListener('focus', refreshNavigationCounts);
   document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -172,7 +196,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="admin-shell" :class="{ 'admin-shell--nav-open': navOpen }">
+  <div ref="shellRef" class="admin-shell" :class="{ 'admin-shell--nav-open': navOpen }">
     <button
       v-if="navOpen"
       class="admin-sidebar__backdrop"

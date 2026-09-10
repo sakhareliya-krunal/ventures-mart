@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminLayout from './AdminLayout.vue';
 
 const { get, patch } = vi.hoisted(() => ({
@@ -19,6 +19,7 @@ vi.mock('@/services/api', () => ({
 
 describe('AdminLayout navigation counts', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     window.matchMedia = vi.fn(() => ({
       matches: true,
       addEventListener: vi.fn(),
@@ -62,5 +63,49 @@ describe('AdminLayout navigation counts', () => {
     expect(lastMainLink.text()).toContain('Banners');
 
     wrapper.unmount();
+  });
+
+  it('tracks the visual viewport height and removes its listener on unmount', async () => {
+    let resizeHandler;
+    let scheduledFrame;
+    const visualViewport = {
+      height: 719.2,
+      addEventListener: vi.fn((event, handler) => {
+        if (event === 'resize') resizeHandler = handler;
+      }),
+      removeEventListener: vi.fn(),
+    };
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      scheduledFrame = callback;
+      return 1;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/admin', component: { template: '<div />' } }],
+    });
+    await router.push('/admin');
+    await router.isReady();
+
+    const wrapper = mount(AdminLayout, {
+      global: { plugins: [createPinia(), router], stubs: { Teleport: true } },
+    });
+    scheduledFrame();
+    expect(wrapper.get('.admin-shell').attributes('style')).toContain('--admin-viewport-height: 720px');
+
+    visualViewport.height = 680;
+    resizeHandler();
+    scheduledFrame();
+    expect(wrapper.get('.admin-shell').attributes('style')).toContain('--admin-viewport-height: 680px');
+
+    wrapper.unmount();
+    expect(visualViewport.removeEventListener).toHaveBeenCalledWith('resize', resizeHandler);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: undefined });
   });
 });

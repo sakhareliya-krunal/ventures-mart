@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { syncSeoForPath } from '@/utils/seoHead';
 import { trackMetaEvent } from '@/services/metaPixel';
+import { shouldRedirectAdminToPanel } from './adminAccess';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -339,12 +340,8 @@ function ensureAdminRedirectWatcher(auth) {
       }
 
       const current = router.currentRoute.value;
-      const path = current.path || '/';
-      const onAuthPage = ['login', 'register', 'forgot-password', 'reset-password'].includes(
-        current.name,
-      );
 
-      if (!path.startsWith('/admin') && !onAuthPage) {
+      if (shouldRedirectAdminToPanel(current, true)) {
         router.replace('/admin');
       }
     },
@@ -406,7 +403,7 @@ router.beforeEach(async (to, from) => {
     return { name: 'admin-account' };
   }
 
-  if (auth.isAdmin && !isAdminRoute && !isAuthPage) {
+  if (shouldRedirectAdminToPanel(to, auth.isAdmin)) {
     return { path: '/admin' };
   }
 
