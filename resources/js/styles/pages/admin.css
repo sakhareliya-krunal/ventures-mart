@@ -3803,6 +3803,248 @@ a.admin-kpi:hover {
   }
 }
 
+@media (max-width: 1024px) {
+  .admin-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .admin-toolbar__filters {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .admin-toolbar .admin-search {
+    flex: 1 1 100%;
+    max-width: none;
+    width: 100%;
+  }
+
+  .admin-table td[data-label='Actions'] {
+    white-space: normal;
+    width: auto;
+  }
+
+  .admin-table td[data-label='Date'],
+  .admin-table td[data-label='Total'] {
+    white-space: normal;
+  }
+
+  .admin-table-wrap {
+    overflow-x: visible;
+  }
+
+  .admin-table,
+  .admin-table thead,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table th,
+  .admin-table td {
+    display: block;
+  }
+
+  .admin-table thead {
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  .admin-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .admin-table tbody tr {
+    background: var(--admin-panel);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    padding: 0.35rem 0.75rem;
+  }
+
+  .admin-table tbody tr:hover {
+    background: var(--admin-panel);
+  }
+
+  .admin-table td {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--admin-border);
+    display: grid;
+    gap: 0.25rem;
+    grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+    overflow-wrap: anywhere;
+    padding: 0.7rem 0;
+  }
+
+  .admin-table td[data-label='Customer'],
+  .admin-table td[data-label='Address'] {
+    grid-template-columns: minmax(4.75rem, 30%) minmax(0, 1fr);
+  }
+
+  .admin-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-table td::before {
+    align-self: start;
+    color: var(--color-primary-dark);
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 700;
+    grid-column: 1;
+    letter-spacing: 0.05em;
+    padding-top: 0.15rem;
+    text-transform: uppercase;
+  }
+
+  .admin-table td:not([data-label])::before,
+  .admin-table td[data-label='']::before {
+    display: none;
+  }
+
+  .admin-table td:not([data-label]),
+  .admin-table td[data-label=''] {
+    display: block;
+  }
+
+  .admin-table td > .admin-table__value,
+  .admin-table td > .admin-actions {
+    grid-column: 2;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .admin-table td[data-label='Address'] .admin-table__value {
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-table td[data-label='Actions'] .admin-actions {
+    justify-content: flex-start;
+    width: auto;
+  }
+
+  .admin-table td[data-label='Actions'] .admin-actions .button {
+    flex: 0 1 auto;
+    justify-content: center;
+  }
+
+  .admin-table td > .admin-badge,
+  .admin-table td > .admin-status-badge,
+  .admin-table td > .admin-products-table__stock-link {
+    justify-self: start;
+    max-width: 100%;
+    width: fit-content;
+  }
+
+  .admin-products-table .admin-product-cell {
+    align-items: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .admin-products-table .admin-product-cell__thumb {
+    height: 56px;
+    width: 56px;
+  }
+
+  .admin-products-table td[data-label='Status'] {
+    align-items: center;
+  }
+
+  .admin-products-table .admin-products-table__status {
+    justify-self: start;
+    width: fit-content;
+  }
+
+  .admin-main .admin-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-content > .admin-page-header,
+  .admin-content > .form-success {
+    flex-shrink: 0;
+  }
+
+  .admin-content > .admin-panel:has(.admin-pagination) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .admin-panel:has(.admin-pagination) > .admin-pagination {
+    margin-top: auto;
+  }
+
+  .admin-content > .admin-errors-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .admin-errors-layout > .admin-errors-list:has(.admin-pagination) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .admin-errors-layout > .admin-errors-list:has(.admin-pagination) > .admin-pagination {
+    margin-top: auto;
+  }
+
+  .admin-content > .inventory-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .inventory-page .admin-panel:has(.admin-pagination),
+  .inventory-page .inventory-operations-panel:has(.admin-pagination) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .inventory-page .admin-panel:has(.admin-pagination) > .admin-pagination,
+  .inventory-page .inventory-operations-panel:has(.admin-pagination) > .admin-pagination {
+    margin-top: auto;
+  }
+
+  .admin-content > .contact-inbox {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .contact-inbox__shell {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .contact-inbox__list-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .contact-inbox__list-panel > .admin-pagination {
+    margin-top: auto;
+  }
+}
+
 @media (max-width: 720px) {
   .inventory-tabs button {
     font-size: 0.8rem;
@@ -3938,16 +4180,6 @@ a.admin-kpi:hover {
     justify-content: center;
   }
 
-  .admin-table td[data-label='Actions'] {
-    white-space: normal;
-    width: auto;
-  }
-
-  .admin-table td[data-label='Date'],
-  .admin-table td[data-label='Total'] {
-    white-space: normal;
-  }
-
   .admin-order-status .app-select,
   .admin-order-status .button,
   .admin-order-detail__actions .app-select,
@@ -3966,108 +4198,6 @@ a.admin-kpi:hover {
 
   .admin-message-pane a {
     overflow-wrap: anywhere;
-  }
-
-  .admin-table-wrap {
-    overflow-x: visible;
-  }
-
-  .admin-table,
-  .admin-table thead,
-  .admin-table tbody,
-  .admin-table tr,
-  .admin-table th,
-  .admin-table td {
-    display: block;
-  }
-
-  .admin-table thead {
-    clip: rect(0 0 0 0);
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    padding: 0;
-    position: absolute;
-    width: 1px;
-  }
-
-  .admin-table tbody {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .admin-table tbody tr {
-    background: var(--admin-panel);
-    border: 1px solid var(--admin-border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
-    padding: 0.35rem 0.75rem;
-  }
-
-  .admin-table tbody tr:hover {
-    background: var(--admin-panel);
-  }
-
-  .admin-table td {
-    align-items: flex-start;
-    border-bottom: 1px solid var(--admin-border);
-    display: grid;
-    gap: 0.25rem;
-    grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
-    overflow-wrap: anywhere;
-    padding: 0.7rem 0;
-  }
-
-  .admin-table td:last-child {
-    border-bottom: 0;
-  }
-
-  .admin-table td::before {
-    color: var(--color-primary-dark);
-    content: attr(data-label);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    padding-top: 0.15rem;
-    text-transform: uppercase;
-  }
-
-  .admin-table td:not([data-label])::before,
-  .admin-table td[data-label='']::before {
-    display: none;
-  }
-
-  .admin-table td:not([data-label]),
-  .admin-table td[data-label=''] {
-    display: block;
-  }
-
-  .admin-table td > .admin-badge,
-  .admin-table td > .admin-status-badge,
-  .admin-table td > .admin-products-table__stock-link {
-    justify-self: start;
-    max-width: 100%;
-    width: fit-content;
-  }
-
-  .admin-products-table .admin-product-cell {
-    align-items: flex-start;
-    gap: 0.65rem;
-    width: 100%;
-  }
-
-  .admin-products-table .admin-product-cell__thumb {
-    height: 56px;
-    width: 56px;
-  }
-
-  .admin-products-table td[data-label='Status'] {
-    align-items: center;
-  }
-
-  .admin-products-table .admin-products-table__status {
-    justify-self: start;
-    width: fit-content;
   }
 
   .admin-modal {
@@ -4412,6 +4542,14 @@ a.admin-kpi:hover {
   .inventory-pagination,
   .admin-pagination {
     margin-top: 0.75rem;
+  }
+
+  .admin-panel:has(.admin-pagination) > .admin-pagination,
+  .inventory-page .admin-panel:has(.admin-pagination) > .admin-pagination,
+  .inventory-page .inventory-operations-panel:has(.admin-pagination) > .admin-pagination,
+  .admin-errors-layout > .admin-errors-list:has(.admin-pagination) > .admin-pagination,
+  .contact-inbox__list-panel > .admin-pagination {
+    margin-top: auto;
   }
 
   .inventory-kpis .admin-kpi {

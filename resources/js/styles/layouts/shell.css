@@ -1720,8 +1720,8 @@
       "legal legal"
       "made made";
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    /* Space above the page-ending strip for the floating contact button. */
-    margin-block-start: 3.5rem;
+    /* Reduced reserve above the bottom strip for the floating WhatsApp button. */
+    margin-block-start: 0.875rem;
     margin-inline: calc(-1 * var(--footer-content-inset));
     padding: 0.85rem var(--footer-content-inset);
     padding-bottom: calc(0.85rem + max(env(safe-area-inset-bottom), var(--footer-sticky-clearance, 0px)));

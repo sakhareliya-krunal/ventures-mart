@@ -42,11 +42,13 @@ async function remove() {
   <AdminPanel class="admin-panel">
     <div class="admin-toolbar">
       <h2>Saved addresses</h2>
-      <AdminSearchField
-        v-model="search"
-        placeholder="Search addresses…"
-        aria-label="Search addresses"
-      />
+      <div class="admin-toolbar__filters">
+        <AdminSearchField
+          v-model="search"
+          placeholder="Search addresses…"
+          aria-label="Search addresses"
+        />
+      </div>
     </div>
     <AdminDataList :rows="addresses" :loading="loading" :refreshing="refreshing" :error="fetchError" :searching="filtered" @retry="load" @reset="reset"><div class="admin-table-wrap">
       <table class="admin-table">
@@ -61,22 +63,28 @@ async function remove() {
         <tbody>
           <tr v-for="address in addresses" :key="address.id">
             <td data-label="Customer">
-              <strong>{{ address.user?.name || '—' }}</strong>
-              <div v-if="address.user?.email" class="admin-muted">
-                <a :href="emailHref(address.user.email)">{{ address.user.email }}</a>
+              <div class="admin-table__value">
+                <strong>{{ address.user?.name || '—' }}</strong>
+                <div v-if="address.user?.email" class="admin-muted">
+                  <a :href="emailHref(address.user.email)">{{ address.user.email }}</a>
+                </div>
               </div>
             </td>
             <td data-label="Address">
-              <strong>{{ address.label }}</strong> · {{ address.full_name }}<br />
-              {{ address.address }}, {{ address.city }}
-              <template v-if="address.district">, {{ address.district }}</template>,
-              {{ address.state }}
-              {{ address.postal_code }}
-              <div v-if="address.phone" class="admin-muted">
-                <a :href="phoneHref(address.phone)">{{ address.phone }}</a>
+              <div class="admin-table__value">
+                <strong>{{ address.label }}</strong> · {{ address.full_name }}<br />
+                {{ address.address }}, {{ address.city }}
+                <template v-if="address.district">, {{ address.district }}</template>,
+                {{ address.state }}
+                {{ address.postal_code }}
+                <div v-if="address.phone" class="admin-muted">
+                  <a :href="phoneHref(address.phone)">{{ address.phone }}</a>
+                </div>
               </div>
             </td>
-            <td data-label="Default">{{ address.is_default ? 'Yes' : 'No' }}</td>
+            <td data-label="Default">
+              <span class="admin-table__value">{{ address.is_default ? 'Yes' : 'No' }}</span>
+            </td>
             <td data-label="Actions">
               <div class="admin-actions">
                 <AppButton type="button" variant="danger" size="sm" @click="requestRemove(address.id)">

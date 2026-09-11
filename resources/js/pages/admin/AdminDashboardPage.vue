@@ -2,6 +2,7 @@
 import AdminLoading from '@/components/admin/AdminLoading.vue';
 import AdminPanel from '@/components/admin/AdminPanel.vue';
 import AdminStatCard from '@/components/admin/AdminStatCard.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
@@ -306,13 +307,15 @@ onMounted(() => loadStats());
           <p class="admin-muted">Store overview — orders, catalog, blog, and inbox at a glance.</p>
         </div>
         <div class="admin-dash-header__actions">
-          <RouterLink class="button button--secondary button--sm" to="/admin/products/create">
+          <AppButton to="/admin/products/create" variant="secondary" size="sm">
             Add product
-          </RouterLink>
-          <RouterLink class="button button--secondary button--sm" to="/admin/posts/create">
+          </AppButton>
+          <AppButton to="/admin/posts/create" variant="secondary" size="sm">
             New post
-          </RouterLink>
-          <RouterLink class="button button--sm" to="/admin/orders">View orders</RouterLink>
+          </AppButton>
+          <AppButton to="/admin/orders" variant="primary" size="sm">
+            View orders
+          </AppButton>
         </div>
       </header>
 
