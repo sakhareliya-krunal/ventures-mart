@@ -10,6 +10,7 @@
 @import './components/category.css';
 @import './components/cart.css';
 @import './components/forms.css';
+@import './components/confirm-dialog.css';
 @import './components/toast.css';
 @import './components/home.css';
 @import './components/page-hero.css';

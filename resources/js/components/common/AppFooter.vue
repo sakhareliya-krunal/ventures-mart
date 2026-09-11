@@ -1,6 +1,5 @@
 <script setup>
 import {
-  ArrowUpRight,
   Award,
   Building2,
   CreditCard,
@@ -12,17 +11,18 @@ import {
   ShoppingBag,
   Truck,
 } from '@lucide/vue';
+import FooterPaymentMarks from '@/components/common/FooterPaymentMarks.vue';
 import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { brandAssets } from '@/constants/assets';
 import {
   footerBottomLinks,
+  footerBottomTagline,
   footerCompanyLinks,
   footerContact,
   footerCustomerCareLinks,
   footerDescription,
   footerFeatures,
-  footerPaymentPills,
   footerShopLinks,
   footerTagline,
   footerWhatsApp,
@@ -175,10 +175,13 @@ const contactLinks = computed(() => [
         </section>
 
         <div class="footer-bottom-card">
-          <div class="footer-bottom-card__meta">
-            <p class="footer-bottom-card__copy">
-              &copy; 2026 Ventures Mart. Thoughtful finds for school, play, and gifting.
-            </p>
+          <div class="footer-bottom-card__legal">
+            <div class="footer-bottom-card__copy-block">
+              <p class="footer-bottom-card__copy">
+                &copy; 2026 {{ theme.brandName }}. All rights reserved.
+              </p>
+              <p class="footer-bottom-card__tagline">{{ footerBottomTagline }}</p>
+            </div>
 
             <nav class="footer-bottom-card__links" aria-label="Legal">
               <RouterLink
@@ -193,22 +196,17 @@ const contactLinks = computed(() => [
             </nav>
           </div>
 
-          <div class="footer-bottom-card__payments-band">
+          <div class="footer-bottom-card__payments">
             <span class="footer-bottom-card__accept-label">We accept</span>
-            <div class="footer-bottom-card__payments" aria-label="Accepted payment methods">
-              <span v-for="pill in footerPaymentPills" :key="pill">{{ pill }}</span>
-            </div>
-            <RouterLink class="footer-bottom-card__learn" to="/payments">
-              <span>Learn more</span>
-              <ArrowUpRight :size="14" aria-hidden="true" />
-            </RouterLink>
-            <p class="footer-bottom-card__made">
-              <span>Made with care in India</span>
-              <span class="footer-bottom-card__flag" aria-hidden="true">
-                <span class="footer-bottom-card__flag-wheel"></span>
-              </span>
-            </p>
+            <FooterPaymentMarks />
           </div>
+
+          <p class="footer-bottom-card__made">
+            <span>Made with care in India</span>
+            <span class="footer-bottom-card__flag" aria-hidden="true">
+              <span class="footer-bottom-card__flag-wheel"></span>
+            </span>
+          </p>
         </div>
       </div>
     </div>

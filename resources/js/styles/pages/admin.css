@@ -2240,63 +2240,6 @@ a.admin-kpi:hover {
   }
 }
 
-.confirm-dialog {
-  align-items: center;
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 1.25rem;
-  position: fixed;
-  z-index: 80;
-}
-
-.confirm-dialog__backdrop {
-  background: rgba(7, 31, 99, 0.45);
-  border: 0;
-  inset: 0;
-  position: absolute;
-}
-
-.confirm-dialog__panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  max-width: 420px;
-  padding: 1.35rem;
-  position: relative;
-  width: min(100%, 420px);
-}
-
-.confirm-dialog__panel h2 {
-  color: var(--color-ink);
-  font-size: 1.15rem;
-  margin: 0 0 0.45rem;
-}
-
-.confirm-dialog__panel p {
-  color: color-mix(in srgb, var(--color-ink) 62%, var(--color-muted));
-  line-height: 1.5;
-  margin: 0 0 1.15rem;
-}
-
-.confirm-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  justify-content: flex-end;
-}
-
-.confirm-dialog__backdrop:disabled {
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.confirm-dialog__confirm.auth-submit {
-  min-width: 8.5rem;
-  width: auto;
-}
-
 .admin-product-cell {
   align-items: center;
   display: flex;
@@ -4099,8 +4042,11 @@ a.admin-kpi:hover {
     display: block;
   }
 
-  .admin-table .admin-badge {
+  .admin-table td > .admin-badge,
+  .admin-table td > .admin-status-badge,
+  .admin-table td > .admin-products-table__stock-link {
     justify-self: start;
+    max-width: 100%;
     width: fit-content;
   }
 
@@ -4193,10 +4139,6 @@ a.admin-kpi:hover {
   .address-card__actions {
     justify-content: flex-start;
     width: 100%;
-  }
-
-  .confirm-dialog {
-    padding: 0.85rem;
   }
 
   .profile-actions {

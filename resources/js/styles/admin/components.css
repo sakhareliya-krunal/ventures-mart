@@ -95,7 +95,7 @@
 .admin-table tbody tr:hover { background: #f9fbff; }
 .admin-table td a:not(.button) { color: var(--color-primary); }
 .admin-table-wrap { border: 1px solid var(--admin-border); border-radius: 10px; }
-.admin-status-badge { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 6px; color: #526481; background: #eef2f7; }
+.admin-status-badge { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; max-width: 100%; padding: 5px 9px; border-radius: 6px; color: #526481; background: #eef2f7; width: fit-content; }
 .admin-status-badge > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .admin-status-badge[data-tone='success'] { color: #08633f; background: #e6faf3; }
 .admin-status-badge[data-tone='danger'] { color: #a61436; background: #fce8ee; }

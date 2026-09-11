@@ -1,1 +1,0 @@
-import{D as e,c as t}from"./runtime-core.esm-bundler-CiCxr3dK.js";import{t as n}from"./AdminAsyncState-Z4TZRMIq.js";var r={__name:`AdminLoading`,props:{label:{type:String,default:`Loading`},page:Boolean},setup(r){return(i,a)=>(e(),t(n,{loading:``,label:r.label},null,8,[`label`]))}};export{r as t};

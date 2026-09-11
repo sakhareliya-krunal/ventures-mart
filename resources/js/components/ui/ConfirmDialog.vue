@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
           </AppButton>
           <AppButton
             type="button"
-            class="confirm-dialog__confirm auth-submit"
+            class="confirm-dialog__confirm"
             :variant="danger ? 'danger' : 'primary'"
             :loading="busy"
             @click="confirm"

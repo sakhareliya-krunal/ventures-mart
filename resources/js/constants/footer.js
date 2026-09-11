@@ -75,8 +75,18 @@ export const footerContact = {
 
 export const footerPaymentPills = ['UPI', 'Cards', 'Net Banking', 'COD'];
 
+export const footerPaymentMarks = [
+  { id: 'visa', label: 'Visa', src: '/images/payment-marks/visa.svg' },
+  { id: 'mastercard', label: 'Mastercard', src: '/images/payment-marks/mastercard.svg' },
+  { id: 'rupay', label: 'RuPay', src: '/images/payment-marks/rupay.svg' },
+  { id: 'upi', label: 'UPI', src: '/images/payment-marks/upi.svg' },
+  { id: 'paytm', label: 'Paytm', src: '/images/payment-marks/paytm.svg' },
+];
+
+export const footerBottomTagline = 'Thoughtful finds for school, play, and gifting.';
+
 export const footerBottomLinks = [
-  { label: 'Privacy', href: '/privacy-policy' },
-  { label: 'Terms', href: '/terms' },
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+  { label: 'Terms & Conditions', href: '/terms' },
   { label: 'Contact', href: '/contact' },
 ];

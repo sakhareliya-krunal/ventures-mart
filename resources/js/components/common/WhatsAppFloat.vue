@@ -1,9 +1,83 @@
 <script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { footerWhatsApp } from '@/constants/footer';
+
+const button = ref(null);
+let frame = 0;
+let resizeObserver;
+let mutationObserver;
+let footer;
+let sticky;
+let media;
+
+function schedulePosition() {
+  if (!frame) frame = requestAnimationFrame(updatePosition);
+}
+
+function updatePosition() {
+  frame = 0;
+  if (!button.value) return;
+
+  const nextFooter = document.querySelector('.footer-bottom-card');
+  const nextSticky = document.querySelector('.product-detail__sticky');
+  if (footer !== nextFooter || sticky !== nextSticky) {
+    footer?.style.removeProperty('--footer-sticky-clearance');
+    resizeObserver.disconnect();
+    footer = nextFooter;
+    sticky = nextSticky;
+    if (footer) resizeObserver.observe(footer);
+    if (sticky) resizeObserver.observe(sticky);
+  }
+
+  if (!media.matches || !footer) {
+    button.value.style.removeProperty('--whatsapp-footer-offset');
+    footer?.style.removeProperty('--footer-sticky-clearance');
+    return;
+  }
+
+  // The bar includes its own safe-area padding. Reserve its real height only.
+  const clearance = sticky ? sticky.offsetHeight : 0;
+  const value = clearance + 'px';
+  if (footer.style.getPropertyValue('--footer-sticky-clearance') !== value) {
+    footer.style.setProperty('--footer-sticky-clearance', value);
+  }
+  const rect = footer.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const gap = 12;
+  const offset = rect.top < viewportHeight && rect.bottom > 0
+    ? Math.min(viewportHeight - button.value.offsetHeight - gap, viewportHeight - rect.top + gap)
+    : 0;
+  button.value.style.setProperty('--whatsapp-footer-offset', Math.max(0, offset) + 'px');
+}
+
+onMounted(() => {
+  media = window.matchMedia('(max-width: 1040px)');
+  resizeObserver = new ResizeObserver(schedulePosition);
+  // Route content and the product bar can arrive after the layout mounts.
+  mutationObserver = new MutationObserver(schedulePosition);
+  mutationObserver.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('scroll', schedulePosition, { passive: true });
+  window.addEventListener('resize', schedulePosition, { passive: true });
+  window.visualViewport?.addEventListener('resize', schedulePosition);
+  media.addEventListener('change', schedulePosition);
+  schedulePosition();
+});
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(frame);
+  resizeObserver?.disconnect();
+  mutationObserver?.disconnect();
+  window.removeEventListener('scroll', schedulePosition);
+  window.removeEventListener('resize', schedulePosition);
+  window.visualViewport?.removeEventListener('resize', schedulePosition);
+  media?.removeEventListener('change', schedulePosition);
+  footer?.style.removeProperty('--footer-sticky-clearance');
+});
 </script>
 
 <template>
   <a
+    ref="button"
     class="whatsapp-float"
     :href="footerWhatsApp.href"
     target="_blank"

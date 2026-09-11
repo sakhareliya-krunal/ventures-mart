@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 3.584 26 16.832" role="img" aria-label="Mastercard" preserveAspectRatio="xMidYMid meet">
+    <defs>
+        <clipPath id="mastercard-left-circle">
+            <circle cx="7.416" cy="12" r="7.416"/>
+        </clipPath>
+    </defs>
+    <circle cx="7.416" cy="12" r="7.416" fill="#EB001B"/>
+    <circle cx="16.584" cy="12" r="7.416" fill="#F79E1B"/>
+    <circle cx="16.584" cy="12" r="7.416" fill="#FF5F00" clip-path="url(#mastercard-left-circle)"/>
+</svg>
