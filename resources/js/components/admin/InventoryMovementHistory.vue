@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { X } from '@lucide/vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingSpinner from '@/components/admin/AdminLoading.vue';
 import { useScrollLock } from '@/composables/useScrollLock';
 
 const props = defineProps({

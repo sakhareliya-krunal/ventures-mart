@@ -2321,6 +2321,7 @@ a.admin-kpi:hover {
 }
 
 .inventory-tabs {
+  flex-shrink: 0;
   background: color-mix(in srgb, var(--color-soft-2) 88%, #fff);
   border: 1px solid var(--admin-border);
   border-radius: 999px;
@@ -4004,16 +4005,17 @@ a.admin-kpi:hover {
   .admin-content > .inventory-page {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    /* Let the content scroller handle long inventory pages without squeezing tabs. */
+    flex: 1 0 auto;
+    min-height: auto;
   }
 
   .inventory-page .admin-panel:has(.admin-pagination),
   .inventory-page .inventory-operations-panel:has(.admin-pagination) {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 1 0 auto;
+    min-height: auto;
   }
 
   .inventory-page .admin-panel:has(.admin-pagination) > .admin-pagination,
@@ -5112,4 +5114,20 @@ a.admin-kpi:hover {
   .admin-banner-fields {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keep navigation together; compact pagination is selected by viewport and measured width. */
+.admin-pagination { position: relative; min-width: 0; }
+.admin-pagination__controls { flex-wrap: nowrap; max-width: 100%; }
+.admin-pagination__controls > .admin-pagination__nav { flex: 0 0 auto; width: auto; }
+.admin-pagination__pages { flex: 0 0 auto; max-width: none; overflow: visible; }
+.admin-pagination__measure { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.admin-pagination__measure > .admin-pagination__controls { width: max-content; max-width: none; }
+.admin-pagination--compact > .admin-pagination__controls { width: 100%; gap: 4px; justify-content: center; }
+.admin-pagination--compact > .admin-pagination__controls > .admin-pagination__nav { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.admin-pagination--compact > .admin-pagination__controls .admin-pagination__nav-label { display: none; }
+.admin-pagination--compact > .admin-pagination__controls .admin-pagination__pages { gap: 4px; padding: 0; }
+.admin-pagination--compact > .admin-pagination__controls .admin-pagination__page { min-width: 44px; height: 44px; }
+@media (max-width: 1024px) {
+  .admin-pagination { flex-direction: column; align-items: stretch; text-align: center; }
 }

@@ -103,10 +103,6 @@
 .admin-status-badge[data-tone='brand'] { color: #0b2e8a; background: #e8eef8; }
 .admin-state { text-align: center; padding: 40px 20px; color: var(--admin-muted); }
 .admin-state p { max-width: 48ch; margin: 12px auto 20px; }
-.admin-skeleton { display: grid; gap: 16px; padding: 24px 0; }
-.admin-skeleton > span:not(.sr-only) { height: 44px; border-radius: 8px; background: linear-gradient(100deg,#eef2f7 25%,#f8faff 50%,#eef2f7 75%); background-size: 200% 100%; animation: admin-skeleton 1.5s linear infinite; }
-.admin-skeleton > span:nth-child(even) { width: 80%; }
-@keyframes admin-skeleton { to { background-position: -200% 0; } }
 .admin-form-section { min-width: 0; border: 1px solid var(--admin-border); border-radius: 12px; padding: 20px; margin: 0 0 20px; }
 .admin-form-section legend { padding: 0 8px; font-weight: 600; }
 .admin-form-section > p { color: var(--admin-muted); font-size: 13px; margin-top: 0; }
@@ -169,3 +165,6 @@
   .admin-overlay__body { padding: 16px; }
   .admin-overlay input, .admin-shell input, .admin-overlay textarea, .admin-shell textarea { font-size: 16px !important; }
 }
+
+.admin-loading { position: relative; flex: 0 0 auto; width: 100%; height: var(--admin-loading-height, 112px); min-height: 112px; }
+.admin-loading > .admin-loading__indicator { position: absolute; top: var(--admin-loading-center, 50%); left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 0; }

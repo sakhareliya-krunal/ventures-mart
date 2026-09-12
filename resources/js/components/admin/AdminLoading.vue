@@ -1,5 +1,15 @@
 <script setup>
-import AdminAsyncState from './AdminAsyncState.vue';
+import { ref } from 'vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import { useAdminLoadingRegion } from '@/composables/useAdminLoadingRegion';
+
 defineProps({ label: { type: String, default: 'Loading' }, page: Boolean });
+const region = ref(null);
+useAdminLoadingRegion(region);
 </script>
-<template><AdminAsyncState loading :label="label" /></template>
+
+<template>
+    <div ref="region" class="admin-loading" aria-busy="true">
+        <LoadingSpinner class="admin-loading__indicator" :label="label" />
+    </div>
+</template>

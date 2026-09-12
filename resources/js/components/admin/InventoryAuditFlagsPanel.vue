@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { AlertTriangle, CheckCircle2 } from '@lucide/vue';
 import AdminPagination from '@/components/admin/AdminPagination.vue';
 import AppButton from '@/components/ui/AppButton.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingSpinner from '@/components/admin/AdminLoading.vue';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/adminProductForm';
 
