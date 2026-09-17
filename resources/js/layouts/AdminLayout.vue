@@ -104,6 +104,13 @@ const pageDescription = computed(() => ({
   '/admin/error': 'Review grouped application errors and update their status.',
 }[route.path] || 'Manage your store from one connected workspace.'));
 const pageTitle = computed(() => route.meta.title || 'Admin');
+watch(
+  [pageTitle, () => theme.brandName],
+  ([title, brandName]) => {
+    document.title = `${title} | ${brandName}`;
+  },
+  { immediate: true },
+);
 
 const accountMenuActive = computed(
   () =>

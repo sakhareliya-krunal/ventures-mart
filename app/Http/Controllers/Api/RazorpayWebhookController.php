@@ -72,12 +72,17 @@ class RazorpayWebhookController extends Controller
         $order = Order::query()->where('razorpay_order_id', $razorpayOrderId)->first();
 
         if (! $order) {
+            $webhook->forceFill([
+                'status' => 'failed',
+                'last_error' => 'No local order matched the Razorpay order id.',
+            ])->save();
+
             Log::warning('Razorpay webhook order not found', [
                 'razorpay_order_id' => $razorpayOrderId,
                 'payment_id' => $paymentId,
             ]);
 
-            return response()->json(['status' => 'ok']);
+            return response()->json(['message' => 'Webhook processing deferred.'], 500);
         }
 
         $amount = (int) ($payment['amount'] ?? 0);

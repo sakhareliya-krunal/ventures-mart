@@ -404,6 +404,7 @@ class ProductionInventoryWorkflowTest extends TestCase
             'address' => '1 Inventory Road',
             'city' => 'Ahmedabad',
             'state' => 'Gujarat',
+            'district' => 'Ahmedabad',
             'postal_code' => '380001',
             'payment_method' => 'razorpay',
         ];

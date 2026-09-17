@@ -200,6 +200,7 @@ class GstTotalsTest extends TestCase
             'address' => '12 Test Street',
             'city' => 'Ahmedabad',
             'state' => 'Gujarat',
+            'district' => 'Ahmedabad',
             'postal_code' => '380001',
             'payment_method' => 'razorpay',
         ], $overrides);

@@ -108,12 +108,9 @@ class FulfillmentWorkflowTest extends TestCase
         $this->assertSame(FulfillmentMethod::Shiprocket, $order->fresh()->fulfillment_method);
     }
 
-    public function test_remote_cancellation_failure_keeps_shiprocket_ownership(): void
+    public function test_switch_to_manual_does_not_cancel_the_remote_order(): void
     {
-        Http::fake([
-            '*/auth/login' => Http::response(['token' => 'test-token']),
-            '*/orders/cancel' => Http::response(['message' => 'Cannot cancel'], 503),
-        ]);
+        Http::fake();
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
         $order = $this->makeOrder(FulfillmentMethod::Shiprocket);
@@ -125,14 +122,14 @@ class FulfillmentWorkflowTest extends TestCase
         ]);
 
         $this->postJson("/api/admin/orders/{$order->id}/fulfillment/manual")
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['fulfillment_method']);
+            ->assertOk();
 
-        $this->assertSame(FulfillmentMethod::Shiprocket, $order->fresh()->fulfillment_method);
+        $this->assertSame(FulfillmentMethod::Manual, $order->fresh()->fulfillment_method);
         $this->assertDatabaseHas('order_fulfillment_events', [
             'order_id' => $order->id,
-            'event_type' => 'manual_switch_failed',
+            'event_type' => 'manual_switch_completed',
         ]);
+        Http::assertNothingSent();
     }
 
     public function test_stale_fulfillment_work_is_a_noop_after_manual_switch(): void

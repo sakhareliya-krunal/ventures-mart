@@ -106,6 +106,7 @@ class SeoService
         };
 
         return [
+            'status' => $type === 'not-found' ? 404 : 200,
             'title' => $title,
             'description' => $description,
             'keywords' => $this->first($seo?->meta_keywords, null),
@@ -503,15 +504,32 @@ class SeoService
         }
 
         if (preg_match('#^/product/([^/]+)$#', $path, $matches)) {
-            return [Product::query()->with(['category', 'seoMetadata', 'seoFaqs'])->active()->where('slug', $matches[1])->first(), null, 'product'];
+            $product = Product::query()
+                ->with(['category', 'seoMetadata', 'seoFaqs'])
+                ->active()
+                ->where('slug', $matches[1])
+                ->first();
+
+            return $product ? [$product, null, 'product'] : [null, 'not-found', 'not-found'];
         }
 
         if (preg_match('#^/category/([^/]+)$#', $path, $matches)) {
-            return [Category::query()->with(['seoMetadata', 'seoFaqs'])->where('slug', $matches[1])->first(), null, 'category'];
+            $category = Category::query()
+                ->with(['seoMetadata', 'seoFaqs'])
+                ->where('slug', $matches[1])
+                ->first();
+
+            return $category ? [$category, null, 'category'] : [null, 'not-found', 'not-found'];
         }
 
         if (preg_match('#^/blog/([^/]+)$#', $path, $matches)) {
-            return [Post::query()->with(['seoMetadata', 'seoFaqs'])->published()->where('slug', $matches[1])->first(), null, 'post'];
+            $post = Post::query()
+                ->with(['seoMetadata', 'seoFaqs'])
+                ->published()
+                ->where('slug', $matches[1])
+                ->first();
+
+            return $post ? [$post, null, 'post'] : [null, 'not-found', 'not-found'];
         }
 
         $static = [

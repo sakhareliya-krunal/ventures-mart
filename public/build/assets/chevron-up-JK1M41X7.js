@@ -1,1 +1,0 @@
-import{N as e}from"./app-rtf0aNvf.js";var t=e(`chevron-up`,[[`path`,{d:`m18 15-6-6-6 6`,key:`153udz`}]]);export{t};

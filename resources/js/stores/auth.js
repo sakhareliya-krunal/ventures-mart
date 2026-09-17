@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
   const redirecting = ref(false);
   const error = ref(null);
   const pendingReturnUrl = ref(null);
+  const sessionChecked = ref(false);
 
   const isAuthenticated = computed(() => Boolean(user.value));
   const isAdmin = computed(() => Boolean(user.value?.is_admin));
@@ -75,9 +76,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function fetchUser() {
+  async function fetchUser({ force = false } = {}) {
     if (sessionPromise) {
       return sessionPromise;
+    }
+
+    if (sessionChecked.value && !force) {
+      return user.value;
     }
 
     sessionPromise = (async () => {
@@ -90,6 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
       } catch {
         user.value = null;
       } finally {
+        sessionChecked.value = true;
         booting.value = false;
         sessionPromise = null;
       }
@@ -99,7 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function establishSessionAfterAuth() {
-    await fetchUser();
+    await fetchUser({ force: true });
 
     if (!user.value) {
       error.value =
@@ -212,6 +218,7 @@ export const useAuthStore = defineStore('auth', () => {
     redirecting,
     error,
     pendingReturnUrl,
+    sessionChecked,
     isAuthenticated,
     isAdmin,
     beginRedirect,

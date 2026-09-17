@@ -17,6 +17,8 @@ export const useProductsStore = defineStore('products', () => {
   const error = ref(null);
   const priceBounds = ref({ min: 0, max: 0 });
   const boundsLoaded = ref(false);
+  const listRequests = new Map();
+  let latestListRequestKey = null;
 
   function beginListLoad() {
     loading.value = true;
@@ -25,19 +27,38 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   async function fetchList(params = {}) {
+    const requestKey = JSON.stringify(params);
+    if (listRequests.has(requestKey)) {
+      return listRequests.get(requestKey);
+    }
+
     beginListLoad();
 
-    try {
-      const { data } = await api.get('/products', { params });
-      list.value = unwrapData(data) || [];
-      return list.value;
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Unable to load products.';
-      list.value = [];
-      return [];
-    } finally {
-      loading.value = false;
-    }
+    latestListRequestKey = requestKey;
+    const request = (async () => {
+      try {
+        const { data } = await api.get('/products', { params });
+        const result = unwrapData(data) || [];
+        if (latestListRequestKey === requestKey) {
+          list.value = result;
+        }
+        return result;
+      } catch (err) {
+        if (latestListRequestKey === requestKey) {
+          error.value = err.response?.data?.message || 'Unable to load products.';
+          list.value = [];
+        }
+        return [];
+      } finally {
+        listRequests.delete(requestKey);
+        if (latestListRequestKey === requestKey) {
+          loading.value = false;
+        }
+      }
+    })();
+
+    listRequests.set(requestKey, request);
+    return request;
   }
 
   async function fetchPriceBounds() {

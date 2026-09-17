@@ -107,9 +107,22 @@ export function seoHeadFromRecord(record, fallback = {}) {
  * Apply SEO payload from Laravel (window.__APP__.seo or /api/seo).
  */
 export function seoHeadFromServer(fallback = {}, serverOverride = null) {
-  const server =
+  let server =
     serverOverride ||
     (typeof window !== 'undefined' ? window.__APP__?.seo || {} : {});
+  if (!serverOverride && fallback.canonical && server.canonical) {
+    try {
+      const fallbackPath =
+        new URL(absoluteSeoUrl(fallback.canonical)).pathname.replace(/\/$/, '') || '/';
+      const serverPath =
+        new URL(absoluteSeoUrl(server.canonical)).pathname.replace(/\/$/, '') || '/';
+      if (fallbackPath !== serverPath) {
+        server = {};
+      }
+    } catch {
+      server = {};
+    }
+  }
   const title = server.title || fallback.title || 'Ventures Mart';
   const description = server.description || fallback.description || '';
   const keywords = server.keywords || fallback.keywords || '';

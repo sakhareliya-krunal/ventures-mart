@@ -21,10 +21,13 @@ const videos = [
 ];
 
 const videoEls = ref([]);
+const loaded = ref(videos.map(() => false));
+let observer = null;
 
 function setVideoRef(el, index) {
   if (el) {
     videoEls.value[index] = el;
+    observer?.observe(el);
   }
 }
 
@@ -43,6 +46,13 @@ function playVideo(video) {
   }
 }
 
+function loadVideo(video, index) {
+  if (!video || index < 0 || loaded.value[index]) return;
+  loaded.value[index] = true;
+  video.src = videos[index].src;
+  video.load();
+}
+
 function playAll() {
   videoEls.value.forEach(playVideo);
 }
@@ -54,12 +64,25 @@ function handleVisibilityChange() {
 }
 
 onMounted(async () => {
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const index = videoEls.value.indexOf(entry.target);
+        loadVideo(entry.target, index);
+        playVideo(entry.target);
+        observer?.unobserve(entry.target);
+      });
+    },
+    { rootMargin: '240px 0px' },
+  );
   await nextTick();
-  playAll();
+  videoEls.value.forEach((video) => observer.observe(video));
   document.addEventListener('visibilitychange', handleVisibilityChange);
 });
 
 onUnmounted(() => {
+  observer?.disconnect();
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
@@ -76,12 +99,10 @@ onUnmounted(() => {
         <video
           :ref="(el) => setVideoRef(el, index)"
           class="home-video__media"
-          :src="video.src"
-          autoplay
           muted
           loop
           playsinline
-          preload="auto"
+          preload="none"
           aria-hidden="true"
           @canplay="(event) => playVideo(event.target)"
           @pause="(event) => playVideo(event.target)"

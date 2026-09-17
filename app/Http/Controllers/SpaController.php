@@ -27,8 +27,8 @@ class SpaController extends Controller
             return redirect($redirect->target_path, $redirect->status_code);
         }
 
-        return view('app', [
-            'seo' => $seo->resolvePath($path),
-        ]);
+        $metadata = $seo->resolvePath($path);
+
+        return response()->view('app', ['seo' => $metadata], $metadata['status'] ?? 200);
     }
 }

@@ -69,6 +69,15 @@ const breadcrumbItems = computed(() => {
 });
 
 useHead(() => {
+  if (props.searchQuery) {
+    return seoHeadFromServer({
+      title: `Search: ${props.searchQuery} | ${theme.brandName}`,
+      description: `Search products at ${theme.brandName}.`,
+      canonical: '/search',
+      robots: 'noindex,follow',
+    });
+  }
+
   if (props.categorySlug) {
     return seoHeadFromServer({
       title: `${props.title} Online | ${theme.brandName}`,

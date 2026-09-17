@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\OrderConfirmation;
 use App\Models\Category;
 use App\Models\Order;
+use App\Models\PaymentWebhookEvent;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -97,13 +98,31 @@ class RazorpayWebhookTest extends TestCase
         Mail::assertSent(OrderConfirmation::class, 1);
     }
 
-    public function test_unknown_order_still_returns_ok(): void
+    public function test_unknown_order_requests_retry_and_can_recover_later(): void
     {
         $payload = $this->capturedPayload('order_missing', 'pay_missing');
 
         $this->postWebhook($payload)
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Webhook processing deferred.');
+
+        $event = PaymentWebhookEvent::query()->sole();
+        $this->assertSame('failed', $event->status);
+        $this->assertNull($event->processed_at);
+
+        $product = $this->makeProduct(['stock' => 5, 'price' => 200]);
+        $order = $this->makeOrder($product, [
+            'razorpay_order_id' => 'order_missing',
+        ]);
+
+        $this->postWebhook($payload)
             ->assertOk()
             ->assertJsonPath('status', 'ok');
+
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertSame('processed', $event->fresh()->status);
+        $this->assertNotNull($event->fresh()->processed_at);
+        $this->assertSame(4, $product->fresh()->stock);
     }
 
     /**

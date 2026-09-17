@@ -12,6 +12,9 @@ class SeoResolveController extends Controller
     {
         $path = (string) $request->query('path', '/');
 
-        return response()->json($seo->resolvePath($path));
+        $metadata = $seo->resolvePath($path);
+        unset($metadata['status']);
+
+        return response()->json($metadata);
     }
 }
